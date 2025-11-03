@@ -1,0 +1,3 @@
+import src.analysis.consistency_analysis
+import src.analysis.map_analysis
+import src.analysis.map_analysis_3d
