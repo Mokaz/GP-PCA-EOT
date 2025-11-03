@@ -3,8 +3,8 @@ import os
 import numpy as np 
 sys.path.append(os.path.abspath('../'))
 
-from extent_model.extent import PCAExtentModel, Extent
-from dynamics.kinematic_state import KinematicState
+from src.extent_model.extent import PCAExtentModel, Extent
+from src.dynamics.kinematic_state import KinematicState
 
 class Vessel:
     def __init__(self, extent: Extent, extent_model: PCAExtentModel, kinematic_state: KinematicState):

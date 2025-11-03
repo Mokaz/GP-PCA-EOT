@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils.tools import ssa, rot2D
+from src.utils.tools import ssa, rot2D
 
 class KinematicState:
     def __init__(self) -> None:

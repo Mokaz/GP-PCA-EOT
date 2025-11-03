@@ -2,23 +2,22 @@ import os
 import sys
 import numpy as np
 import pickle
-import plotly
 from copy import deepcopy
 from tqdm import trange
 
-PROJECT_ROOT = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
+from src.config_paths import PROJECT_ROOT
 sys.path.append(PROJECT_ROOT)
+
+from src.config_paths import SIMDATA_PATH
 
 from src.dynamics.vessel import Vessel
 from src.dynamics.kinematic_state import KinematicState
-from dynamics.process_models import decoupled_CV_model, decoupled_CV_model_jacobian
+from src.dynamics.process_models import decoupled_CV_model, decoupled_CV_model_jacobian
+from src.sensors.lidar import simulate_lidar_measurements
 
 from src.extent_model.extent import Extent, PCAExtentModel
-from utils.tools import rot2D, cast_rays, add_noise_to_distances
-from utils.plotly_sim_visualization import initialize_plotly_figure, create_frame, create_sim_figure
+from src.extent_model.geometry_utils import get_vessel_shape, compute_estimated_shape
+from visualization.plotly_sim_visualization import initialize_plotly_figure, create_frame, create_sim_figure
 
 from src.tracker.ExtendedKalmanFilter import EKF
 from src.tracker.IterativeEKF import IterativeEKF
@@ -29,44 +28,7 @@ from src.tracker.SLSQP import SLSQP
 from src.tracker.smoothing_SLSQP import SmoothingSLSQP
 from src.tracker.UnscentedKalmanFilter import UKF
 
-def get_vessel_shape(vessel: Vessel):
-    shape_coords = vessel.extent.cartesian
-    shape_coords = np.matmul(rot2D(vessel.kinematic_state.yaw), shape_coords)
-    shape_x = shape_coords[0] + vessel.kinematic_state.pos[0]
-    shape_y = shape_coords[1] + vessel.kinematic_state.pos[1]
-    return shape_x, shape_y
-
-def simulate_lidar_measurements(shape_x, shape_y, lidar_config, rng: np.random.Generator):
-    """
-    Simulate LiDAR measurements by casting rays from the LiDAR position to the vessel shape.
-    Returns noisy distance measurements in polar coordinates.
-    """
-    # Noise characteristics
-    lidar_position = lidar_config.lidar_position
-    num_rays = lidar_config.num_rays
-    max_distance = lidar_config.max_distance
-    lidar_noise_mean = lidar_config.noise_mean
-    lidar_noise_std_dev = lidar_config.noise_std_dev
-
-    angles, distances = cast_rays(lidar_position, num_rays, max_distance, shape_x, shape_y)
-    noisy_measurements = add_noise_to_distances(rng, distances, angles, lidar_noise_mean, lidar_noise_std_dev)
-    return noisy_measurements
-
-def compute_estimated_shape(tracker, angles):
-    L = tracker.state[6]
-    W = tracker.state[7]
-
-    est_shape_coords = np.array([
-        (tracker.g(angle).T @ (tracker.fourier_coeff_mean + tracker.M @ tracker.state[8:].reshape(-1, 1))).item()
-        for angle in angles
-    ])
-    est_shape_coords_x = est_shape_coords * L * np.cos(angles)
-    est_shape_coords_y = est_shape_coords * W * np.sin(angles)
-    est_shape_coords = np.stack([est_shape_coords_x, est_shape_coords_y], axis=0)
-    est_shape_coords = np.matmul(rot2D(tracker.state[2]), est_shape_coords)
-    return est_shape_coords[0] + tracker.state[0], est_shape_coords[1] + tracker.state[1]
-
-def run_simulation_with_plot(config, method):
+def run_single_simulation(config, method):
     sim_params = config.sim
     ekfconfig = config.tracker
     lidar_config = config.lidar
@@ -75,11 +37,16 @@ def run_simulation_with_plot(config, method):
     num_simulations = sim_params.num_simulations
     seed = sim_params.seed
     name = sim_params.name
+    timestep = sim_params.timestep
     param_true = sim_params.param_true
-
     d_angle = sim_params.d_angle
+    angles = sim_params.angles
 
-    all_state_estimates = []
+    lidar_position = lidar_config.lidar_position
+    lidar_max_distance = lidar_config.max_distance
+
+    all_state_posteriors = []
+    all_state_predictions = []
     all_gt = []
     all_P_prior = []
     all_P_post = []
@@ -88,8 +55,11 @@ def run_simulation_with_plot(config, method):
     all_z = []
     all_x_dim = []
     all_z_dim = []
+    all_shape_x = []
+    all_shape_y = []
     all_init_conditions = []
     static_covariances = []
+
 
     rng = np.random.default_rng(seed=seed)
 
@@ -99,18 +69,13 @@ def run_simulation_with_plot(config, method):
     kinematics_true = KinematicState()
     target_vessel = Vessel(extent_true, pca_extent_true, kinematics_true)
 
-    lidar_position = lidar_config.lidar_position
-    max_distance = lidar_config.max_distance
-
-    tracker = _initialize_tracker(sim_params.timestep, method, rng, my_config)
+    tracker = _initialize_tracker(timestep, method, rng, my_config)
     
     # --- Data and Plotting Initialization ---
-    state_estimates, gt, P_prior, P_post, S, y, z, x_dim, z_dim = [], [], [], [], [], [], [], [], []
+    state_predictions, state_posteriors, gt, P_prior, P_post, S, y, z, x_dim, z_dim = [], [], [], [], [], [], [], [], [], []
+    shape_x_list, shape_y_list = [], []
     init_condition = [tracker.state.copy(), tracker.P.copy(), target_vessel.get_state()]
     
-    fig = initialize_plotly_figure(num_frames)
-    plot_frames, locationx, locationy = [], [], []
-
     for i in trange(num_frames):
         try:
             tracker.predict(decoupled_CV_model_jacobian)
@@ -118,16 +83,16 @@ def run_simulation_with_plot(config, method):
             P_prior_i = tracker.P.copy()
 
             # Step and measure ground truth
-            target_vessel.step(sim_params.timestep, rng)
+            target_vessel.step(timestep, rng)
             shape_x, shape_y = get_vessel_shape(target_vessel)
             measurements_polar = simulate_lidar_measurements(shape_x, shape_y, lidar_config, rng)
 
             # Run update
-            update_results = tracker.update(measurements_polar, lidar_pos=lidar_position, ais_measurements=None, ground_truth=target_vessel.get_state())
+            state_pred_i, state_post_i, z_i, y_i, S_i, _, P_post_i, z_dim_i, x_dim_i = tracker.update(measurements_polar, lidar_pos=lidar_position, ais_measurements=None, ground_truth=target_vessel.get_state())
             
             # Store data
-            state_est_i, z_i, y_i, S_i, _, P_post_i, z_dim_i, x_dim_i = update_results
-            state_estimates.append(state_est_i)
+            state_predictions.append(state_pred_i)
+            state_posteriors.append(state_post_i)
             gt.append(target_vessel.get_state())
             P_prior.append(P_prior_i)
             P_post.append(P_post_i)
@@ -136,27 +101,15 @@ def run_simulation_with_plot(config, method):
             z.append(z_i)
             x_dim.append(x_dim_i)
             z_dim.append(z_dim_i)
-
-            # Create plot frame
-            locationx.append(target_vessel.kinematic_state.pos[0])
-            locationy.append(target_vessel.kinematic_state.pos[1])
-            plot_frame = create_frame(tracker, measurements_polar, (i+1), locationx, locationy, 
-                                    shape_x, shape_y, max_distance, lidar_position, sim_params.angles, compute_estimated_shape)
-            plot_frames.append(plot_frame)
+            shape_x_list.append(shape_x)
+            shape_y_list.append(shape_y)
 
         except Exception as e:
             print(f"Error in plotting simulation step {i}: {e}")
             break
-            
-    fig = create_sim_figure(fig, plot_frames, len(plot_frames))
-    plot_filename = f"figures/{name}.html"
-    os.makedirs(os.path.dirname(plot_filename), exist_ok=True)
-    plotly.offline.plot(fig, filename=plot_filename, auto_open=False)
-    print(f"Plot for first simulation run saved to {plot_filename}")
 
-    static_covariances = [tracker.Q, tracker.R_ais, tracker.R_lidar]
-    
-    all_state_estimates.append(state_estimates)
+    all_state_posteriors.append(state_posteriors)
+    all_state_predictions.append(state_predictions)
     all_gt.append(gt)
     all_P_prior.append(P_prior)
     all_P_post.append(P_post)
@@ -166,19 +119,18 @@ def run_simulation_with_plot(config, method):
     all_x_dim.append(x_dim)
     all_z_dim.append(z_dim)
     all_init_conditions.append(init_condition)
+    all_shape_x.append(shape_x_list)
+    all_shape_y.append(shape_y_list)
 
     true_extent = Extent(param_true, d_angle)
     true_extent_pca = PCAExtentModel(true_extent, ekfconfig.N_pca)
+    static_covariances = [tracker.Q, tracker.R_ais, tracker.R_lidar]
 
     data_to_save = {
-        "lidar_position": lidar_config.lidar_position,
-        "state_estimates": all_state_estimates,
+        # Lists of simulation run data
+        "state_predictions": all_state_predictions,
+        "state_posteriors": all_state_posteriors,
         "ground_truth": all_gt,
-        "static_covariances": static_covariances,
-        "true_extent": true_extent.cartesian,
-        "true_extent_radius": true_extent.radii,
-        "PCA_mean": true_extent_pca.fourier_coeff_mean,
-        "PCA_eigenvectors": true_extent_pca.M,
         "P_prior": all_P_prior,
         "P_post": all_P_post,
         "S": all_S,
@@ -186,13 +138,28 @@ def run_simulation_with_plot(config, method):
         "z": all_z,
         "x_dim": all_x_dim,
         "z_dim": all_z_dim,
+        "shape_x": all_shape_x,
+        "shape_y": all_shape_y,
         "initial_condition": all_init_conditions,
+
+        # Config data
+        "config": config,
+        "lidar_position": lidar_position,
+        "lidar_max_distance": lidar_max_distance,
+        "true_extent": true_extent.cartesian,
+        "true_extent_radius": true_extent.radii,
         "N_pca": ekfconfig.N_pca,
+        "angles": angles,
+        "num_simulations": num_simulations,
         "num_frames": num_frames,
-        "num_simulations": num_simulations
+
+        # Static data
+        "PCA_mean": true_extent_pca.fourier_coeff_mean,
+        "PCA_eigenvectors": true_extent_pca.M,
+        "static_covariances": static_covariances,
     }
 
-    filename = f"data/results/simulation_data_{name}.pkl"
+    filename = os.path.join(SIMDATA_PATH, f"{name}.pkl")
     with open(filename, "wb") as f:
         pickle.dump(data_to_save, f)
     print(f"Simulation run data saved to {filename}")
@@ -262,7 +229,7 @@ def _initialize_tracker(timestep, method, rng, config):
 #             shape_x, shape_y = get_vessel_shape(target_vessel)
 #             measurements_polar = simulate_lidar_measurements(shape_x, shape_y, lidar_config, rng)
 
-#             update_results = tracker.update(measurements_polar, lidar_pos=lidar_config.lidar_position, ground_truth=target_vessel.get_state())
+#             update_results = tracker.update(measurements_polar, lidar_pos=lidar_config.lidar_position, ground_truth=target_vessel.get_state()) # NB new return signature
             
 #             state_estimates[i] = update_results[0]
 #             P_post[i] = update_results[5]

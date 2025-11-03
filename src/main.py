@@ -1,59 +1,28 @@
 import os
 import sys
 import numpy as np
-from dataclasses import dataclass, field
 
-from utils.ekf_config import EKFConfig
-from sensors.LidarConfig import LidarConfig
-from simulation import run_simulation_with_plot
 
-# Initialize project and import modules
-PROJECT_ROOT = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
+# Correct the path to be relative to this file's location
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 sys.path.append(PROJECT_ROOT)
 
-@dataclass
-class SimulationParams:
-    name: str = "default_simulation"
-    # method : str = "iekf"
+from src.config_paths import SIMDATA_PATH, FIGURES_PATH
+from src.utils.ekf_config import EKFConfig
+from src.sensors.lidar import LidarConfig
+from src.visualization.plotly_offline_generator import generate_plotly_html_from_pickle
 
-    num_simulations: int = 1
-    num_frames: int = 100
-    timestep: float = 0.1
-    seed: int = 42
-
-    # Target Vessel Parameters
-    d_angle: float = np.deg2rad(1.0)
-    L_gt: float = 20.0
-    W_gt: float = 6.0
-    
-    angles: np.ndarray = field(init=False)
-    param_true: dict = field(init=False)
-
-    def __post_init__(self):
-        self.angles = np.arange(-np.pi, np.pi, self.d_angle)
-        self.param_true = {
-            "type": "ellipsis", 
-            "L": self.L_gt, 
-            "W": self.W_gt, 
-            "P": self.L_gt * 0.2, 
-            "S": self.L_gt * 0.1
-        }
-
-@dataclass
-class Config:
-    sim: SimulationParams
-    lidar: LidarConfig
-    tracker: EKFConfig
+from src.simulation import run_single_simulation
+from src.config_classes import SimulationParams, Config
 
 if __name__ == "__main__":
+    GENERATE_PLOTLY_HTML = True
+
     # Simulation Parameters
     sim_params = SimulationParams(
         name = "",
         num_simulations=1,
-        num_frames=90,
+        num_frames=100,
         timestep=0.1,
         seed=42,
         d_angle=np.deg2rad(1.0),
@@ -98,8 +67,10 @@ if __name__ == "__main__":
 
         # Combine into a single config object
         config = Config(sim=sim_params, lidar=lidar_config, tracker=ekf_config)
-        config.sim.name = f"martin_sim_{method}_ellipse_{sim_params.num_frames}frames"
+        config.sim.name = f"{method}_{sim_params.param_true.get('type')}_{sim_params.num_frames}frames"
 
-        # Pass the single config object
-        # monte_carlo(config=config, method=method, create_plot=True)
-        run_simulation_with_plot(config=config, method=method)
+        run_single_simulation(config=config, method=method)
+
+        if GENERATE_PLOTLY_HTML:
+            pickle_filename = os.path.join(SIMDATA_PATH, f"{config.sim.name}.pkl")
+            generate_plotly_html_from_pickle(pickle_filename, sim_selection=0)

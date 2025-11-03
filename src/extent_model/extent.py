@@ -1,6 +1,6 @@
 import numpy as np
 from pathlib import Path
-from utils.tools import ssa, cart2pol, pol2cart, fourier_transform
+from src.utils.tools import ssa, cart2pol, pol2cart, fourier_transform
 
 # TODO: Find better name than theta_0
 class Extent:
@@ -146,5 +146,5 @@ class PCAExtentModel:
         
         self.pca_extent = self.fourier_coeff_mean + self.M @ pca_params
         self.pca_params = pca_params.ravel()
-        
+
 

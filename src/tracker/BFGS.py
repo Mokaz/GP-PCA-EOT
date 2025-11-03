@@ -68,7 +68,7 @@ class BFGS(Tracker):
         S_combined = None
 
         # Find correct initialization point for vessel position
-        state_vector[:2] = initialize_centroid(state_vector[:2], lidar_pos, lidar_measurements_polar, L_est=state_vector[6], W_est=state_vector[7])
+        state_vector[:2] = initialize_centroid(state_vector[:2], lidar_pos, lidar_measurements_polar, L_est=state_vector[6], W_est=state_vector[7]) # TODO Martin This is weird
 
         # Extract the angles from the measurements
         angles = np.array([ssa(measurement[0]) for measurement in lidar_measurements_polar])
@@ -104,18 +104,20 @@ class BFGS(Tracker):
         res = minimize(self.prob_with_penalty, state_vector, 
                        args=(z_combined, self.h, R, state_vector, P_pred, ssa_vec, ais_available, ground_truth, mean_lidar_angle, lower_diff, upper_diff, lidar_pos), 
                        method='BFGS')#, options={'ftol': self.convergence_threshold})
+        
+        state_pred = self.state.copy()
 
         # Update final state
         self.state = res.x
 
-        state_iterates.append(self.state.copy())
+        state_post = self.state.copy()
 
         x_dim = self.state_dim
 
         self.P = res.hess_inv
 
-        return state_iterates, z_combined, y_combined, S_combined, P_pred, self.P, z_dim, x_dim
-    
+        return state_pred, state_post, z_combined, y_combined, S_combined, P_pred, self.P, z_dim, x_dim
+
     def penalty_function(self, x, z, h, mean_angle, lower_diff, upper_diff, lidar_pos):
         L = x[6]
         W = x[7]

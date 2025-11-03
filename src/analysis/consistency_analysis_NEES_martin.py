@@ -73,7 +73,7 @@ sys.path.append(PROJECT_ROOT)
 
 NAME = 'bfgs'
 # FILENAME = f'simulation_data_{NAME}.pkl'
-FILENAME = "simulation_data_martin_sim_bfgs_ellipse_50frames.pkl"
+FILENAME = "simulation_data_martin_sim_bfgs_ellipse_90frames.pkl"
 FIG_DIR = 'figures'
 os.makedirs(FIG_DIR, exist_ok=True)
 
@@ -101,6 +101,12 @@ z_dim           = sim_data['z_dim']
 M                  = sim_data['PCA_eigenvectors']
 fourier_coeff_mean = sim_data['PCA_mean']
 initial_condition  = sim_data['initial_condition']
+
+print(type(state_estimates[0]))
+print(len(state_estimates[0]))
+print(state_estimates[0])
+
+exit()
 
 try:
     num_timesteps = int(sim_data['timesteps'])

@@ -1,1 +1,1 @@
-from . import LidarConfig
+from . import lidar
