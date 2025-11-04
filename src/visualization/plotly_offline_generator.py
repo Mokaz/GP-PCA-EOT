@@ -17,6 +17,7 @@ from src.extent_model.geometry_utils import compute_estimated_shape_from_params
 from src.config_classes import Config, SimulationParams
 from src.sensors.lidar import LidarConfig
 from src.utils.ekf_config import EKFConfig
+from src.utils.SimulationResult import SimulationResult
 
 
 def generate_plotly_html_from_pickle(filename: str, sim_selection: int = 0):
@@ -25,29 +26,29 @@ def generate_plotly_html_from_pickle(filename: str, sim_selection: int = 0):
         sim_data = pickle.load(f)
 
     # Extract the data
-    state_posteriors = sim_data['state_posteriors'][sim_selection]
-    ground_truth    = sim_data['ground_truth'][sim_selection]
-    static_covariances = sim_data['static_covariances'][sim_selection]
-    true_extent     = sim_data['true_extent'][sim_selection]
-    P_prior         = sim_data['P_prior'][sim_selection]
-    P_post          = sim_data['P_post'][sim_selection]
-    S               = sim_data['S'][sim_selection]
-    y               = sim_data['y'][sim_selection]
-    z_flattened     = sim_data['z'][sim_selection]
-    x_dim           = sim_data['x_dim'][sim_selection]
-    z_dim           = sim_data['z_dim'][sim_selection]
-    shape_x_list    = sim_data['shape_x'][sim_selection]
-    shape_y_list    = sim_data['shape_y'][sim_selection]
+    state_posteriors = sim_data.state_posteriors[sim_selection]
+    ground_truth    = sim_data.ground_truth[sim_selection]
+    static_covariances = sim_data.static_covariances[sim_selection]
+    true_extent     = sim_data.true_extent[sim_selection]
+    P_prior         = sim_data.P_prior[sim_selection]
+    P_post          = sim_data.P_post[sim_selection]
+    S               = sim_data.S[sim_selection]
+    y               = sim_data.y[sim_selection]
+    z_flattened     = sim_data.z[sim_selection]
+    x_dim           = sim_data.x_dim[sim_selection]
+    z_dim           = sim_data.z_dim[sim_selection]
+    shape_x_list    = sim_data.shape_x[sim_selection]
+    shape_y_list    = sim_data.shape_y[sim_selection]
 
-    PCA_eigenvectors_M = sim_data['PCA_eigenvectors']
-    fourier_coeff_mean = sim_data['PCA_mean']
-    initial_condition  = sim_data['initial_condition']
-    num_frames         = sim_data['num_frames']
-    angles             = sim_data['angles']
-    lidar_max_distance = sim_data['lidar_max_distance']
-    lidar_position     = sim_data['lidar_position']
+    PCA_eigenvectors_M = sim_data.PCA_eigenvectors
+    fourier_coeff_mean = sim_data.PCA_mean
+    initial_condition  = sim_data.initial_condition
+    num_frames         = sim_data.num_frames
+    angles             = sim_data.angles
+    lidar_max_distance = sim_data.lidar_max_distance
+    lidar_position     = sim_data.lidar_position
 
-    config = sim_data['config']
+    config = sim_data.config
     name = config.sim.name # TODO Martin: fix this hacky way to get the name
 
     # Initialize the figure

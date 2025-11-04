@@ -17,7 +17,6 @@ from src.sensors.lidar import simulate_lidar_measurements
 
 from src.extent_model.extent import Extent, PCAExtentModel
 from src.extent_model.geometry_utils import get_vessel_shape, compute_estimated_shape
-from visualization.plotly_sim_visualization import initialize_plotly_figure, create_frame, create_sim_figure
 
 from src.tracker.ExtendedKalmanFilter import EKF
 from src.tracker.IterativeEKF import IterativeEKF
@@ -27,6 +26,8 @@ from src.tracker.BFGS import BFGS
 from src.tracker.SLSQP import SLSQP
 from src.tracker.smoothing_SLSQP import SmoothingSLSQP
 from src.tracker.UnscentedKalmanFilter import UKF
+
+from src.utils.SimulationResult import SimulationResult
 
 def run_single_simulation(config, method):
     sim_params = config.sim
@@ -126,38 +127,43 @@ def run_single_simulation(config, method):
     true_extent_pca = PCAExtentModel(true_extent, ekfconfig.N_pca)
     static_covariances = [tracker.Q, tracker.R_ais, tracker.R_lidar]
 
-    data_to_save = {
+    # TODO Martin
+    # Consistency analysis
+    # NEES(all_state_posteriors, all_gt, ekfconfig, name)
+    # NIS(all_y, all_S, name)
+
+    data_to_save = SimulationResult(
         # Lists of simulation run data
-        "state_predictions": all_state_predictions,
-        "state_posteriors": all_state_posteriors,
-        "ground_truth": all_gt,
-        "P_prior": all_P_prior,
-        "P_post": all_P_post,
-        "S": all_S,
-        "y": all_y,
-        "z": all_z,
-        "x_dim": all_x_dim,
-        "z_dim": all_z_dim,
-        "shape_x": all_shape_x,
-        "shape_y": all_shape_y,
-        "initial_condition": all_init_conditions,
+        state_predictions=all_state_predictions,
+        state_posteriors=all_state_posteriors,
+        ground_truth=all_gt,
+        P_prior=all_P_prior,
+        P_post=all_P_post,
+        S=all_S,
+        y=all_y,
+        z=all_z,
+        x_dim=all_x_dim,
+        z_dim=all_z_dim,
+        shape_x=all_shape_x,
+        shape_y=all_shape_y,
+        initial_condition=all_init_conditions,
 
         # Config data
-        "config": config,
-        "lidar_position": lidar_position,
-        "lidar_max_distance": lidar_max_distance,
-        "true_extent": true_extent.cartesian,
-        "true_extent_radius": true_extent.radii,
-        "N_pca": ekfconfig.N_pca,
-        "angles": angles,
-        "num_simulations": num_simulations,
-        "num_frames": num_frames,
+        config=config,
+        lidar_position=lidar_position,
+        lidar_max_distance=lidar_max_distance,
+        true_extent=true_extent.cartesian,
+        true_extent_radius=true_extent.radii,
+        N_pca=ekfconfig.N_pca,
+        angles=angles,
+        num_simulations=num_simulations,
+        num_frames=num_frames,
 
         # Static data
-        "PCA_mean": true_extent_pca.fourier_coeff_mean,
-        "PCA_eigenvectors": true_extent_pca.M,
-        "static_covariances": static_covariances,
-    }
+        PCA_mean=true_extent_pca.fourier_coeff_mean,
+        PCA_eigenvectors=true_extent_pca.M,
+        static_covariances=static_covariances,
+    )
 
     filename = os.path.join(SIMDATA_PATH, f"{name}.pkl")
     with open(filename, "wb") as f:

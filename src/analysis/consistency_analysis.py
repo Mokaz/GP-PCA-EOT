@@ -10,18 +10,45 @@ PROJECT_ROOT = os.path.abspath(os.path.join(
 ))
 sys.path.append(PROJECT_ROOT)
 
+from utils.tools import ssa
+from src.utils.SimulationResult import SimulationResult
+
+def calculate_NEES_single_sim(state_gt, state_estimates, covariances):
+    nees = []
+    for t in range(len(state_estimates)):
+        error = state_estimates[t] - state_gt[t]
+        error[2] = ssa(error[2])  # Normalize angle error
+        P = covariances[t]
+        nees_t = (error.T @ np.linalg.inv(P) @ error).item()
+        nees.append(nees_t)
+    return nees
+
+def calculate_NIS_single_sim(y_measurements, S_matrices):
+    nis = []
+    for t in range(len(y_measurements)):
+        y = y_measurements[t]
+
+
+        v = y - z[t] # Innovation
+
+
+
+        S = S_matrices[t]
+        nis_t = (v.T @ np.linalg.inv(S) @ v).item()
+        nis.append(nis_t)
+    return nis
+
 NAME = 'bfgs'
 
 PLOT_SAVE_PATH = f'figures/consistency_{NAME}.svg'
 
 FIGURE_TITLE = f'Consistency Analysis: {NAME}'
 
-from utils.tools import ssa
+
+sim_data_path = f'data/results/simulation_data_martin_sim_bfgs_ellipse_50frames.pkl'
 
 # Load the simulation data
-sim_data = np.load(f'data/results/simulation_data_martin_sim_bfgs_ellipse_50frames.pkl', allow_pickle=True)
-
-# print (sim_data.keys())
+sim_data = np.load(sim_data_path, allow_pickle=True)
 
 # Extract the data
 state_estimates = sim_data['state_estimates']
