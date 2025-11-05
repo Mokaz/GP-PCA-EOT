@@ -2,6 +2,7 @@ import numpy as np
 from numpy.linalg import norm
 import random
 from typing import Tuple, List, Optional, Callable
+from enum import IntEnum
 
 def cart2pol(x, y):
     r = np.sqrt(x**2 + y**2)
@@ -310,3 +311,31 @@ def compute_iou_radial(r1, r2, theta=None):
 
     iou = intersection_area / union_area if union_area > 0 else 0.0
     return iou
+
+class StateIdxToName(IntEnum):
+    """
+    Enum mapping state vector indices to human-readable names.
+    """
+    X_POS = 0
+    Y_POS = 1
+    HEADING = 2
+    X_VEL = 3
+    Y_VEL = 4
+    YAW_RATE = 5
+    LENGTH = 6
+    WIDTH = 7
+    PCA_COMPONENTS = 8  # Starting index for PCA components
+
+    def __new__(cls, value):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        return obj
+
+    @property
+    def name(self):
+        if self.value >= self.PCA_COMPONENTS:
+            return f"PCA_{self.value - self.PCA_COMPONENTS + 1}"
+        return super().name
+
+    def __str__(self):
+        return self.name

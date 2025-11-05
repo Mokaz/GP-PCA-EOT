@@ -7,7 +7,7 @@ import numpy as np
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 sys.path.append(PROJECT_ROOT)
 
-from src.config_paths import SIMDATA_PATH, FIGURES_PATH
+from global_project_paths import SIMDATA_PATH, FIGURES_PATH
 from src.utils.ekf_config import EKFConfig
 from src.sensors.lidar import LidarConfig
 from src.visualization.plotly_offline_generator import generate_plotly_html_from_pickle

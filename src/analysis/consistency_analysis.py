@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats.distributions import chi2, gamma
+from typing import Dict, List, Union, Tuple
 
 # Initialize project and import modules
 PROJECT_ROOT = os.path.abspath(os.path.join(
@@ -10,8 +11,150 @@ PROJECT_ROOT = os.path.abspath(os.path.join(
 ))
 sys.path.append(PROJECT_ROOT)
 
-from utils.tools import ssa
+from utils.tools import ssa, StateIdxToName
 from src.utils.SimulationResult import SimulationResult
+
+def calculate_nees_for_components_over_time(
+    state_estimates_list: List[np.ndarray],
+    state_gt_list: List[np.ndarray],
+    covariance_list: List[np.ndarray],
+    nees_config: Dict[str, Union[List[int], Tuple[int, int], slice]]
+) -> Dict[str, np.ndarray]:
+    """
+    Calculates NEES for multiple components over a sequence of time steps.
+
+    Args:
+        state_estimates_list (List[np.ndarray]): List of state estimates for each time step.
+        state_gt_list (List[np.ndarray]): List of ground truth states for each time step.
+        covariance_list (List[np.ndarray]): List of covariance matrices for each time step.
+        nees_config (Dict): A dictionary defining the components to calculate NEES for.
+                            Keys are the names of the components (e.g., "position").
+                            Values are lists of indices, tuples for ranges, or slices
+                            corresponding to that component in the state vector.
+                            Example:
+                            {
+                                "all": "all",
+                                "position": [0, 1],
+                                "heading": [2],
+                                "pca_coeffs": slice(8, None)
+                            }
+
+    Returns:
+        Dict[str, np.ndarray]: A dictionary where keys are component names and values
+                               are numpy arrays of NEES values over time for that component.
+    """
+    num_timesteps = len(state_estimates_list)
+    
+    # Initialize a dictionary to hold the time series of NEES for each component
+    nees_results_over_time = {name: [] for name in nees_config.keys()}
+
+    for t in range(num_timesteps):
+        state_estimate = state_estimates_list[t]
+        state_gt = state_gt_list[t]
+        covariance = covariance_list[t]
+
+        assert state_estimate.ndim == 1, f"state_estimate at t={t} must be a 1D vector"
+        assert state_gt.ndim == 1, f"state_gt at t={t} must be a 1D vector"
+        assert covariance.shape == (state_estimate.shape[0], state_estimate.shape[0]), \
+            f"Covariance shape at t={t} is not compatible with state shape"
+
+        error = state_estimate - state_gt
+        if error.shape[0] > 2:
+            error[2] = ssa(error[2])
+
+        for name, indices in nees_config.items():
+            nees_val = 0.0
+            try:
+                if isinstance(indices, str) and indices == "all":
+                    sub_error, sub_cov = error, covariance
+                else:
+                    sub_error = error[indices]
+                    sub_cov = covariance[np.ix_(indices, indices)]
+
+                if sub_error.ndim == 0 or len(sub_error) == 1:  # Scalar case
+                    scalar_error = sub_error.item() if isinstance(sub_error, np.ndarray) else sub_error
+                    scalar_cov = sub_cov.item() if isinstance(sub_cov, np.ndarray) else sub_cov
+                    if scalar_cov > 1e-9:
+                        nees_val = scalar_error**2 / scalar_cov
+                    else:
+                        print(f"Warning at t={t} for '{name}': Covariance too small ({scalar_cov}). Defaulting NEES to 1.0.")
+                        nees_val = 1.0
+                else:  # Vector case
+                    nees_val = sub_error.T @ np.linalg.solve(sub_cov, sub_error)
+
+            except (np.linalg.LinAlgError, ZeroDivisionError) as e:
+                print(f"Warning at t={t} for '{name}': {e}. Defaulting NEES to 1.0.")
+                nees_val = 1.0
+
+            if nees_val < 0:
+                print(f"\n--- Negative NEES Debug Info at t={t} ---")
+                print(f"Component: '{name}' (Indices: {indices})")
+                print(f"Negative NEES value: {nees_val}")
+                print(f"Sub-state error (sub_error): {sub_error}")
+                print(f"Sub-covariance (sub_cov):\n{sub_cov}")
+                try:
+                    # Condition number indicator of a matrix being close to singular
+                    cond_num = np.linalg.cond(sub_cov)
+                    print(f"Condition number of sub_cov: {cond_num:.2e}")
+                except np.linalg.LinAlgError:
+                    print("Could not compute condition number for sub_cov.")
+                print("--- End Debug Info ---\n")
+            nees_results_over_time[name].append(max(0.0, nees_val)) # Ensure non-negative
+            
+    # Convert lists to numpy arrays for easier plotting and analysis
+    for name, values in nees_results_over_time.items():
+        nees_results_over_time[name] = np.array(values)
+        
+    return nees_results_over_time
+
+def calculate_nis_over_time(
+    innovations_list: List[np.ndarray],
+    innovation_covariances_list: List[np.ndarray]
+) -> np.ndarray:
+    """
+    Calculates the Normalized Innovation Squared (NIS) over a sequence of time steps.
+
+    Args:
+        innovations_list (List[np.ndarray]): List of innovation vectors (y) for each time step.
+        innovation_covariances_list (List[np.ndarray]): List of innovation covariance matrices (S)
+                                                       for each time step.
+
+    Returns:
+        np.ndarray: A numpy array of NIS values over time.
+    """
+    num_timesteps = len(innovations_list)
+    assert num_timesteps == len(innovation_covariances_list), "Input lists must have the same length."
+
+    nis_results_over_time = []
+
+    for t in range(num_timesteps):
+        innovation = innovations_list[t]
+        s_matrix = innovation_covariances_list[t]
+        nis_val = 0.0
+
+        # Ensure innovation is a 1D vector
+        if innovation.ndim > 1:
+            innovation = innovation.flatten()
+
+        assert innovation.shape[0] == s_matrix.shape[0], \
+            f"Shape mismatch at t={t}: innovation has {innovation.shape[0]} elements, S has shape {s_matrix.shape}"
+
+        try:
+            # Calculate NIS: v.T * S^-1 * v
+            nis_val = innovation.T @ np.linalg.solve(s_matrix, innovation)
+
+        except np.linalg.LinAlgError as e:
+            print(f"Warning for NIS at t={t}: Could not solve S matrix. {e}. Defaulting NIS to 1.0.")
+            nis_val = 1.0
+
+        if nis_val < 0:
+            print(f"Warning for NIS at t={t}: Negative NIS value ({nis_val}). Clamping to 0.")
+            nis_val = 0.0
+        
+        nis_results_over_time.append(nis_val)
+
+    return np.array(nis_results_over_time)
+
 
 def calculate_NEES_single_sim(state_gt, state_estimates, covariances):
     nees = []

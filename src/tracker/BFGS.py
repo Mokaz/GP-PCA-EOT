@@ -64,7 +64,7 @@ class BFGS(Tracker):
         ssa_vec = np.vectorize(ssa)
 
         # Consistency Analysis
-        y_combined = None
+        v_combined = None
         S_combined = None
 
         # Find correct initialization point for vessel position
@@ -116,7 +116,7 @@ class BFGS(Tracker):
 
         self.P = res.hess_inv
 
-        return state_pred, state_post, z_combined, y_combined, S_combined, P_pred, self.P, z_dim, x_dim
+        return state_pred, state_post, z_combined, v_combined, S_combined, P_pred, self.P, z_dim, x_dim
 
     def penalty_function(self, x, z, h, mean_angle, lower_diff, upper_diff, lidar_pos):
         L = x[6]

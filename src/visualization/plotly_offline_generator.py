@@ -10,7 +10,7 @@ import pickle
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 sys.path.append(PROJECT_ROOT)
 
-from src.config_paths import SIMDATA_PATH, FIGURES_PATH
+from global_project_paths import SIMDATA_PATH, FIGURES_PATH
 from src.extent_model.geometry_utils import compute_estimated_shape_from_params
 
 # Import necessary classes from main.py to access configuration dataclasses

@@ -5,10 +5,10 @@ import pickle
 from copy import deepcopy
 from tqdm import trange
 
-from src.config_paths import PROJECT_ROOT
+from global_project_paths import PROJECT_ROOT
 sys.path.append(PROJECT_ROOT)
 
-from src.config_paths import SIMDATA_PATH
+from global_project_paths import SIMDATA_PATH
 
 from src.dynamics.vessel import Vessel
 from src.dynamics.kinematic_state import KinematicState
@@ -52,7 +52,7 @@ def run_single_simulation(config, method):
     all_P_prior = []
     all_P_post = []
     all_S = []
-    all_y = []
+    all_v = []
     all_z = []
     all_x_dim = []
     all_z_dim = []
@@ -73,7 +73,7 @@ def run_single_simulation(config, method):
     tracker = _initialize_tracker(timestep, method, rng, my_config)
     
     # --- Data and Plotting Initialization ---
-    state_predictions, state_posteriors, gt, P_prior, P_post, S, y, z, x_dim, z_dim = [], [], [], [], [], [], [], [], [], []
+    state_predictions, state_posteriors, gt, P_prior, P_post, S, v, z, x_dim, z_dim = [], [], [], [], [], [], [], [], [], []
     shape_x_list, shape_y_list = [], []
     init_condition = [tracker.state.copy(), tracker.P.copy(), target_vessel.get_state()]
     
@@ -89,7 +89,7 @@ def run_single_simulation(config, method):
             measurements_polar = simulate_lidar_measurements(shape_x, shape_y, lidar_config, rng)
 
             # Run update
-            state_pred_i, state_post_i, z_i, y_i, S_i, _, P_post_i, z_dim_i, x_dim_i = tracker.update(measurements_polar, lidar_pos=lidar_position, ais_measurements=None, ground_truth=target_vessel.get_state())
+            state_pred_i, state_post_i, z_i, v_i, S_i, _, P_post_i, z_dim_i, x_dim_i = tracker.update(measurements_polar, lidar_pos=lidar_position, ais_measurements=None, ground_truth=target_vessel.get_state())
             
             # Store data
             state_predictions.append(state_pred_i)
@@ -98,7 +98,7 @@ def run_single_simulation(config, method):
             P_prior.append(P_prior_i)
             P_post.append(P_post_i)
             S.append(S_i)
-            y.append(y_i)
+            v.append(v_i)
             z.append(z_i)
             x_dim.append(x_dim_i)
             z_dim.append(z_dim_i)
@@ -115,7 +115,7 @@ def run_single_simulation(config, method):
     all_P_prior.append(P_prior)
     all_P_post.append(P_post)
     all_S.append(S)
-    all_y.append(y)
+    all_v.append(v)
     all_z.append(z)
     all_x_dim.append(x_dim)
     all_z_dim.append(z_dim)
@@ -140,7 +140,7 @@ def run_single_simulation(config, method):
         P_prior=all_P_prior,
         P_post=all_P_post,
         S=all_S,
-        y=all_y,
+        y=all_v,
         z=all_z,
         x_dim=all_x_dim,
         z_dim=all_z_dim,
