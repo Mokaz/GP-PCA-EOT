@@ -3,10 +3,10 @@ from scipy.optimize import minimize, NonlinearConstraint, LinearConstraint, show
 
 from src.tracker.tracker import Tracker
 from src.utils.tools import ssa, ur, ut, initialize_centroid, compute_angle_range, cart2pol
-from src.utils.ekf_config import EKFConfig
+from utils.config_classes import TrackerConfig
 
 class SLSQP(Tracker):
-    def __init__(self, process_model, timestep: float, rng, max_iterations=10, convergence_threshold=1e-9, config: EKFConfig=None):
+    def __init__(self, process_model, timestep: float, rng, max_iterations=10, convergence_threshold=1e-9, config: TrackerConfig=None):
         """
         Initializes the SLSQP tracker.
 
@@ -40,7 +40,7 @@ class SLSQP(Tracker):
         - self.P: Predicted covariance estimate
         """
         # Compute the predicted state using the process model
-        self.state = self.process_model(self.state, self.T)
+        self.state = self.dynamic_model(self.state, self.T)
 
         # Compute the Jacobian of the transition model
         F = F_jacobian(self.state, self.T, self.N_pca)

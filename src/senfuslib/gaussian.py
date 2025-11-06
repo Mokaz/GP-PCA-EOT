@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import numpy as np
-from config import DEBUG
+from senfuslib.debug_config import DEBUG
 from functools import cached_property
 from typing import Generic, TypeVar
 import scipy.stats

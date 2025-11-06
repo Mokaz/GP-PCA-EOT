@@ -2,10 +2,10 @@ import numpy as np
 
 from src.tracker.tracker import Tracker
 from src.utils.tools import ssa, initialize_centroid
-from src.utils.ekf_config import EKFConfig
+from utils.config_classes import TrackerConfig
 
 class GaussNewton(Tracker):
-    def __init__(self, process_model, timestep: float, rng, max_iterations=10, convergence_threshold=1e-3, config: EKFConfig=None):
+    def __init__(self, process_model, timestep: float, rng, max_iterations=10, convergence_threshold=1e-3, config: TrackerConfig=None):
         super().__init__(process_model, timestep, rng, config)
 
         self.max_iterations = max_iterations
@@ -23,7 +23,7 @@ class GaussNewton(Tracker):
         - self.P: Predicted covariance estimate
         """
         # Compute the predicted state using the process model
-        self.state = self.process_model(self.state, self.T)
+        self.state = self.dynamic_model(self.state, self.T)
 
         # Compute the Jacobian of the transition model
         F = F_jacobian(self.state, self.T, self.N_pca)

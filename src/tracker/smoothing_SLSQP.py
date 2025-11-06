@@ -6,7 +6,7 @@ from queue import Queue
 
 from src.tracker.tracker import Tracker
 from src.utils.tools import ssa, cart2pol, ur, initialize_centroid, compute_angle_range, generate_fourier_function
-from src.utils.ekf_config import EKFConfig
+from utils.config_classes import TrackerConfig
 
 class SmoothingSLSQP(Tracker):
     def __init__(self, process_model, timestep: float, rng, max_iterations=10, convergence_threshold=1e-3, config=None):
@@ -57,7 +57,7 @@ class SmoothingSLSQP(Tracker):
         # Compute the predicted state using the process model
         prev_state = np.array([*self.state[-6:], *self.state[:self.N_extent]])
 
-        new_state = self.process_model(prev_state, self.T)
+        new_state = self.dynamic_model(prev_state, self.T)
 
         if self.state_window.full():
             self.state_window.get()

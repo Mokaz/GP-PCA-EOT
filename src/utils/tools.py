@@ -14,8 +14,11 @@ def pol2cart(angle, r):
     y = r * np.sin(angle)
     return x, y
 
-def ssa(angle):
-    # Smallest Signed Angle
+def ssa(angle: float | np.ndarray) -> float | np.ndarray:
+    """
+    Calculates the Smallest Signed Angle, wrapping the input to the range [-pi, pi].
+    This function is vectorized and works on both scalars and NumPy arrays.
+    """
     return np.pi - np.mod(np.pi - angle, 2 * np.pi)
 
 def rot2D(angle):
@@ -54,6 +57,30 @@ def generate_fourier_function(N_f: int) -> Callable[[np.ndarray], np.ndarray]:
         return np.vstack((constant, cos_terms))  # shape (N_f, N)
 
     return g_vectorized
+
+def fourier_basis_matrix(angles: np.ndarray, N_fourier: int) -> np.ndarray:
+    """
+    Computes the Fourier basis matrix g(theta) for a given set of angles. Assumes symmetry in vessel shape and thus only cosine terms are used.
+
+    Parameters:
+    angles (np.ndarray): A 1D array of angles.
+    N_fourier (int): The number of Fourier coefficients.
+
+    Returns:
+    np.ndarray: An (N_fourier, N) array, where N is the number of angles.
+    """
+    angles = np.atleast_1d(angles)  # ensure angles is an array
+    
+    # The first coefficient is a constant
+    constant_term = np.full((1, angles.shape[0]), 0.5)
+    if N_fourier == 1:
+        return constant_term
+
+    # The rest are cosine terms
+    n = np.arange(1, N_fourier).reshape(-1, 1)
+    cos_terms = np.cos(n * angles.reshape(1, -1))
+
+    return np.vstack((constant_term, cos_terms))
 
 def fourier_transform(angles: np.ndarray, func: np.ndarray, num_coeff: int = 64, symmetry: bool = True) -> np.ndarray:
     """
@@ -311,6 +338,29 @@ def compute_iou_radial(r1, r2, theta=None):
 
     iou = intersection_area / union_area if union_area > 0 else 0.0
     return iou
+
+def calculate_body_angles(lidar_measurements: np.ndarray, state: np.ndarray) -> np.ndarray:
+    """
+    Calculate the angles of LiDAR measurements in the body frame of an object.
+
+    Args:
+        lidar_measurements (np.ndarray): A Nx2 array of LiDAR measurement points (x, y).
+        state (np.ndarray): A 1D array representing the object's state
+                                    [x_pos, y_pos, heading].
+
+    Returns:
+        np.ndarray: A 1D array of angles in the body frame.
+    """
+    # Calculate angles of measurements relative to the object's position in the world frame
+    world_angles = np.arctan2(
+        lidar_measurements[:, 1] - state[1],
+        lidar_measurements[:, 0] - state[0]
+    )
+    
+    # Transform world frame angles to body frame angles by subtracting the object's heading
+    body_angles = ssa(world_angles - state[2])
+    
+    return body_angles
 
 class StateIdxToName(IntEnum):
     """

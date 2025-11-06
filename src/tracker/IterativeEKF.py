@@ -33,7 +33,7 @@ class IterativeEKF(Tracker):
         - self.P: Predicted covariance estimate
         """
         # Compute the predicted state using the process model
-        self.state = self.process_model(self.state, self.T)
+        self.state = self.dynamic_model(self.state, self.T)
 
         # Compute the Jacobian of the transition model
         F = F_jacobian(self.state, self.T, self.N_pca)

@@ -1,134 +1,114 @@
 import numpy as np
 from scipy.optimize import minimize
 
-from src.tracker.tracker import Tracker
-from src.utils.tools import ssa, initialize_centroid, compute_angle_range
-from src.utils.ekf_config import EKFConfig
+from typing import Optional
+
+from senfuslib import MultiVarGauss
+from src.tracker.tracker import Tracker, TrackerUpdateResult
+from src.utils.tools import ssa, initialize_centroid, compute_angle_range, calculate_body_angles
+from src.states.states import State_PCA, LidarScan
+from src.dynamics.process_models import Model_PCA_CV
+from sensors.lidar import LidarModel
+from src.utils.config_classes import Config
 
 class BFGS(Tracker):
-    def __init__(self, process_model, timestep: float, rng, max_iterations=10, convergence_threshold=1e-9, config=None):
+    def __init__(self, 
+                 dynamic_model: Model_PCA_CV, 
+                 lidar_model: LidarModel,
+                 config: Config,
+                 max_iterations=10, 
+                 convergence_threshold=1e-9):
         """
         Initializes the BFGS tracker.
-
-        Parameters:
-        - process_model: The process model to be used.
-        - timestep: The time step for the tracker.
-        - config: Configuration object containing parameters for the tracker.
         """
-        super().__init__(process_model, timestep, rng, config)
+        super().__init__(dynamic_model=dynamic_model, sensor_model=lidar_model, config=config)
         
         # Parameters
         self.max_iterations = max_iterations
         self.convergence_threshold = convergence_threshold
 
-        self.measurements_polar = None
-        self.mean_lidar_measurement_angle = None
-        self.upper_diff = None
-        self.lower_diff = None
-    
-    def predict(self, F_jacobian):
+    def predict(self):
         """
         Prediction step.
-        
-        Parameters:
-        - F_jacobian: Function to calculate the Jacobian of the state transition model w.r.t. state (F)
-        
-        Updates:
-        - self.state: Predicted state estimate
-        - self.P: Predicted covariance estimate
+        Updates the internal state estimate.
         """
         # Compute the predicted state using the process model
-        self.state = self.process_model(self.state, self.T)
+        self.state_estimate = self.dynamic_model.pred_from_est(self.state_estimate, self.T)
 
-        # Compute the Jacobian of the transition model
-        F = F_jacobian(self.state, self.T, self.N_pca)
+    def update(self, measurements: LidarScan, ground_truth: State_PCA = None) -> TrackerUpdateResult:
+        """
+        Update step using BFGS optimization.
         
-        # Compute the predicted covariance
-        self.P = F @ self.P @ F.T + self.Q 
-
-    def update(self, lidar_measurements_polar, lidar_pos, ais_measurements=None, ground_truth=None):
-        state_vector = self.state.copy()
-
-        ais_available = ais_measurements is not None
-
-        # LiDAR update preparation
-        lidar_pos = np.array(lidar_pos)  # Ensure lidar_pos is defined
-        lidar_measurements_polar = np.array(lidar_measurements_polar)
-        num_meas = len(lidar_measurements_polar)
-
-        if ais_available:
-            z_dim = 2 * num_meas + 5
-        else:
-            z_dim = 2 * num_meas
-
-        ssa_vec = np.vectorize(ssa)
-
-        # Consistency Analysis
-        v_combined = None
-        S_combined = None
-
-        # Find correct initialization point for vessel position
-        state_vector[:2] = initialize_centroid(state_vector[:2], lidar_pos, lidar_measurements_polar, L_est=state_vector[6], W_est=state_vector[7]) # TODO Martin This is weird
-
-        # Extract the angles from the measurements
-        angles = np.array([ssa(measurement[0]) for measurement in lidar_measurements_polar])
-
-        # Calculate the minimum and maximum angles from the measurements
-        lower_diff, upper_diff, mean_lidar_angle = compute_angle_range(angles)
-
-        self.mean_lidar_measurement_angle = mean_lidar_angle
-
-        # LiDAR measurement points in cartesian coordinates and global frame
-        lidar_measurements = lidar_pos + lidar_measurements_polar[:, 1].reshape(-1, 1) * np.array([np.cos(lidar_measurements_polar[:, 0]), np.sin(lidar_measurements_polar[:, 0])]).T
-
-        # Get measurement vector
-        if ais_available:
-            z_combined = np.array([*lidar_measurements.flatten(), *ais_measurements])
-        else:
-            z_combined = lidar_measurements.flatten()
-
-        # State vector updates
-        state_iterates = [state_vector.copy()]
-
-        if ais_available:
-            R = np.block([[np.kron(np.eye(num_meas), self.R_lidar), np.zeros((2*num_meas, 5))],
-                      [np.zeros((5, 2*num_meas)), self.R_ais]
-                      ])
-        else:
-            R = np.kron(np.eye(num_meas), self.R_lidar)
-
-        P_pred = self.P.copy()
-
-        # Test the 'trust-exact' optimizer to potentially improve convergence and accuracy
-        # of the state estimation by minimizing the negative log-posterior.
-        res = minimize(self.prob_with_penalty, state_vector, 
-                       args=(z_combined, self.h, R, state_vector, P_pred, ssa_vec, ais_available, ground_truth, mean_lidar_angle, lower_diff, upper_diff, lidar_pos), 
-                       method='BFGS')#, options={'ftol': self.convergence_threshold})
+        Args:
+            measurements: A LidarScan of measurements
         
-        state_pred = self.state.copy()
+        Returns:
+            A TrackerUpdateResult dataclass containing the results of the update step.
+        """
 
-        # Update final state
-        self.state = res.x
+        # Extract angles from the measurement and set them on the sensor model
+        angles_world = measurements.angle
+        self.sensor_model.body_angles = calculate_body_angles(angles_world, ground_truth) # NOTE Martin Using ground truth
 
-        state_post = self.state.copy()
+        lower_diff, upper_diff, mean_lidar_angle = compute_angle_range(angles_world)
 
-        x_dim = self.state_dim
+        # Convert measurements to Cartesian world coordinates for the measurement vector z
+        lidar_pos = self.sensor_model.lidar_position.reshape(2, 1)
+        z = (lidar_pos + measurements).flatten()
 
-        self.P = res.hess_inv
+        # Find a good initialization point for the optimization
+        initial_state_guess = self.state_estimate.mean.copy()
+        initial_state_guess.pos = initialize_centroid(
+            initial_state_guess.pos, 
+            lidar_pos, 
+            measurements, 
+            L_est=initial_state_guess.length, 
+            W_est=initial_state_guess.width
+        ) # TODO Martin: Investigate if this should be used in penalty too
 
-        return state_pred, state_post, z_combined, v_combined, S_combined, P_pred, self.P, z_dim, x_dim
+        x_pred = initial_state_guess.mean.copy() # NOTE Using initial_state_guess as state_pred
+        P_pred = self.state_estimate.cov.copy()
 
-    def penalty_function(self, x, z, h, mean_angle, lower_diff, upper_diff, lidar_pos):
+        # Run the optimization
+        res = minimize(
+            fun=self.prob_with_penalty, 
+            x0=initial_state_guess, # TODO Martin HOPE THIS WORKS
+            args=(z, x_pred, P_pred, ground_truth, mean_lidar_angle, lower_diff, upper_diff),
+            method='BFGS',
+            # jac='3-point', # Use numerical differentiation for the gradient
+            # options={'maxiter': self.max_iterations, 'gtol': self.convergence_threshold}
+        )
+        
+        state_post_mean = State_PCA.from_array(res.x)
+        state_post_cov = res.hess_inv # The inverse Hessian is an approximation of the posterior covariance
+        
+        state_pred = MultiVarGauss(mean=x_pred, cov=P_pred) # NOTE Martin: Has adjusted initial centroid for optimization!!
+        self.state_estimate = MultiVarGauss(mean=state_post_mean, cov=state_post_cov)
+
+        # Calculate innovation and innovation covariance for analysis (optional but good practice)
+        # z_pred = self.sensor_model.h(state_post_mean)
+        # innovation = z - z_pred
+
+        return TrackerUpdateResult(
+            estimate_pred=state_pred,
+            estimate_post=self.state_estimate,
+            z=z,
+            innovation=None,  # Proper innovation calculation omitted for brevity
+            S=None,  # Proper S calculation omitted for brevity
+        )
+
+    def penalty_function(self, x, mean_angle, lower_diff, upper_diff):
+        lidar_pos = self.sensor_model.lidar_position
+
         L = x[6]
         W = x[7]
         angles = np.array([0.0, np.arctan2(W, L), np.pi/2, np.arctan2(W, -L), np.pi, np.arctan2(-W, -L), -np.pi / 2, np.arctan2(-W, L)])
 
-        pred_meas = h(x, angles, False)
+        pred_meas = self.sensor_model.h_lidar(x, angles)
         pred_meas = np.array(pred_meas).reshape(-1, 2)
 
         # Ensure the angles of prediced measurements are within the range
         pred_angles = np.arctan2(pred_meas[:, 1] - lidar_pos[1], pred_meas[:, 0] - lidar_pos[0])
-        pred_angles = np.array([ssa(angle) for angle in pred_angles])
 
         alpha_min = mean_angle + lower_diff
         alpha_max = mean_angle + upper_diff
@@ -141,5 +121,5 @@ class BFGS(Tracker):
 
         return penalty
 
-    def prob_with_penalty(self, x, z, h, R, x_pred, P_pred, ssa_func, ais_received, ground_truth, mean_angle, lower_diff, upper_diff, lidar_pos):
-        return self.object_function(x, z, h, R, x_pred, P_pred, ssa_func, ais_received, ground_truth) + self.penalty_function(x, z, h, mean_angle, lower_diff, upper_diff, lidar_pos)
+    def prob_with_penalty(self, x, z, x_pred, P_pred, ground_truth, mean_lidar_angle, lower_diff, upper_diff):
+        return self.object_function(x, x_pred, P_pred, z, ground_truth) + self.penalty_function(mean_lidar_angle, lower_diff, upper_diff)

@@ -4,7 +4,7 @@ from typing import Sequence, TypeVar, Generic
 
 from senfuslib import MultiVarGauss
 from .named_array import NamedArray
-from config import DEBUG
+from senfuslib.debug_config import DEBUG
 
 
 S = TypeVar('S', bound=np.ndarray)  # State type

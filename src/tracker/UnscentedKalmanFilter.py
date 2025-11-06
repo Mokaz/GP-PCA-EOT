@@ -21,7 +21,7 @@ class UKF(Tracker):
     def predict(self):
         x = self.state
         sigma_pts = self._generate_sigma_points(x, self.P)
-        sigma_pts_pred = np.array([self.process_model(pt.copy(), self.T) for pt in sigma_pts])
+        sigma_pts_pred = np.array([self.dynamic_model(pt.copy(), self.T) for pt in sigma_pts])
         x_pred, self.P = self._unscented_transform_state(sigma_pts_pred, self.Q)
 
         self.state = x_pred

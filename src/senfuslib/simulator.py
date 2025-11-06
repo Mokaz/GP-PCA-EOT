@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, fields
-from typing import Callable, Optional, Sequence
+from typing import Callable, Optional, Sequence, Tuple
 import numpy as np
 from zlib import crc32
 from pathlib import Path
@@ -8,7 +8,7 @@ from typing import ClassVar, TypeVar
 from senfuslib import DynamicModel, SensorModel, MultiVarGauss, TimeSequence
 import logging
 try:
-    from config import sim_output_dir as out_dir
+    from senfuslib.debug_config import sim_output_dir as out_dir
 except ImportError:
     out_dir = None
 import tqdm
@@ -107,7 +107,7 @@ class Simulator:
 
         return meas_data
 
-    def get_gt_and_meas(self):
+    def get_gt_and_meas(self) -> Tuple[TimeSequence[S], TimeSequence[M]]:
         """Returns ground truth and measurements"""
         self._gt_data = self._gt_data or self.simulate()
         if self.sensor_setter is not None:

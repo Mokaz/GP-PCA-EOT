@@ -14,9 +14,9 @@ from global_project_paths import SIMDATA_PATH, FIGURES_PATH
 from src.extent_model.geometry_utils import compute_estimated_shape_from_params
 
 # Import necessary classes from main.py to access configuration dataclasses
-from src.config_classes import Config, SimulationParams
-from src.sensors.lidar import LidarConfig
-from src.utils.ekf_config import EKFConfig
+from utils.config_classes import Config, SimulationConfig
+from sensors.lidar import LidarConfig
+from utils.config_classes import TrackerConfig
 from src.utils.SimulationResult import SimulationResult
 
 
