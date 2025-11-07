@@ -60,7 +60,7 @@ eigenvectors = prior_data_pca["eigenvectors"]
 eigenvalues = prior_data_pca["eigenvalues"]
 
 # === Shape generation params ===
-l_types = ["box", "ellipsis", "box_elliptic_sides", "box_parabolic_bow_and_stern", "elliptic_bow_and_stern"]
+l_types = ["box", "ellipse", "box_elliptic_sides", "box_parabolic_bow_and_stern", "elliptic_bow_and_stern"]
 L = 1.0
 W = 1.0
 P = 0.25

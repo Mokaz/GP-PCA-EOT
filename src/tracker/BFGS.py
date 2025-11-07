@@ -8,7 +8,7 @@ from src.tracker.tracker import Tracker, TrackerUpdateResult
 from src.utils.tools import ssa, initialize_centroid, compute_angle_range, calculate_body_angles
 from src.states.states import State_PCA, LidarScan
 from src.dynamics.process_models import Model_PCA_CV
-from sensors.lidar import LidarModel
+from sensors.LidarModel import LidarModel
 from src.utils.config_classes import Config
 
 class BFGS(Tracker):
@@ -47,32 +47,35 @@ class BFGS(Tracker):
         """
 
         # Extract angles from the measurement and set them on the sensor model
-        angles_world = measurements.angle
-        self.sensor_model.body_angles = calculate_body_angles(angles_world, ground_truth) # NOTE Martin Using ground truth
+        self.body_angles = calculate_body_angles(measurements, ground_truth) # NOTE Martin Using ground truth
 
+        angles_world = measurements.angle
         lower_diff, upper_diff, mean_lidar_angle = compute_angle_range(angles_world)
 
         # Convert measurements to Cartesian world coordinates for the measurement vector z
-        lidar_pos = self.sensor_model.lidar_position.reshape(2, 1)
-        z = (lidar_pos + measurements).flatten()
+        z = np.array([measurements.x, measurements.y]).flatten()
 
-        # Find a good initialization point for the optimization
+        # --- Prepare measurements for initialize_centroid ---
+        # The function expects a list of (angle, distance) tuples.
+        polar_measurements = list(zip(measurements.angle, measurements.range))
+
+        # Initialize the centroid for the optimization
         initial_state_guess = self.state_estimate.mean.copy()
         initial_state_guess.pos = initialize_centroid(
-            initial_state_guess.pos, 
-            lidar_pos, 
-            measurements, 
-            L_est=initial_state_guess.length, 
+            position=initial_state_guess.pos,
+            lidar_pos=self.sensor_model.lidar_position,
+            measurements=polar_measurements,
+            L_est=initial_state_guess.length,
             W_est=initial_state_guess.width
         ) # TODO Martin: Investigate if this should be used in penalty too
 
-        x_pred = initial_state_guess.mean.copy() # NOTE Using initial_state_guess as state_pred
+        x_pred = initial_state_guess # NOTE Using initial_state_guess as state_pred
         P_pred = self.state_estimate.cov.copy()
 
         # Run the optimization
         res = minimize(
             fun=self.prob_with_penalty, 
-            x0=initial_state_guess, # TODO Martin HOPE THIS WORKS
+            x0=initial_state_guess,
             args=(z, x_pred, P_pred, ground_truth, mean_lidar_angle, lower_diff, upper_diff),
             method='BFGS',
             # jac='3-point', # Use numerical differentiation for the gradient
@@ -90,11 +93,10 @@ class BFGS(Tracker):
         # innovation = z - z_pred
 
         return TrackerUpdateResult(
-            estimate_pred=state_pred,
-            estimate_post=self.state_estimate,
-            z=z,
-            innovation=None,  # Proper innovation calculation omitted for brevity
-            S=None,  # Proper S calculation omitted for brevity
+            estimate_prior=state_pred,
+            estimate_posterior=self.state_estimate,
+            measurements=z,
+            innovation_gauss=None,  # Proper innovation calculation omitted for brevity
         )
 
     def penalty_function(self, x, mean_angle, lower_diff, upper_diff):
@@ -122,4 +124,6 @@ class BFGS(Tracker):
         return penalty
 
     def prob_with_penalty(self, x, z, x_pred, P_pred, ground_truth, mean_lidar_angle, lower_diff, upper_diff):
-        return self.object_function(x, x_pred, P_pred, z, ground_truth) + self.penalty_function(mean_lidar_angle, lower_diff, upper_diff)
+        penalty = self.penalty_function(x, mean_lidar_angle, lower_diff, upper_diff)
+        objective = self.object_function(x, x_pred, P_pred, z, ground_truth)
+        return objective + penalty

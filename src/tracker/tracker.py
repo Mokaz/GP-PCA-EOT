@@ -6,17 +6,20 @@ from src.utils.tools import ssa
 from src.utils.config_classes import Config
 
 from src.states.states import State_PCA
-from sensors.lidar import LidarModel
+from sensors.LidarModel import LidarModel
 from src.dynamics.process_models import Model_PCA_CV
 
 from src.senfuslib.gaussian import MultiVarGauss
+
+from dataclasses import dataclass
+from typing import Any
 
 class Tracker:
     def __init__(self, dynamic_model: Model_PCA_CV, sensor_model: LidarModel, config: Config):
 
         self.dynamic_model: Model_PCA_CV = dynamic_model
         self.sensor_model: LidarModel = sensor_model
-        self.T: float = config.sim.timestep
+        self.T: float = config.sim.dt
         self.N_pca = config.tracker.N_pca
         self.N_extent = 2 + self.N_pca # NOTE Only smoothing_SLSQP uses this
 
@@ -28,7 +31,7 @@ class Tracker:
         initial_mean: State_PCA = config.tracker.initial_state
         
         kinematic_extent_std_devs = config.tracker.initial_std_devs.copy()
-        kinematic_extent_variances = kinematic_extent_std_devs.as_array()[:8]**2
+        kinematic_extent_variances = kinematic_extent_std_devs[:8]**2
         initial_cov_diag = np.concatenate([
             kinematic_extent_variances,
             PCA_eigenvalues
@@ -36,6 +39,7 @@ class Tracker:
         initial_cov = np.diag(initial_cov_diag)
 
         self.state_estimate = MultiVarGauss(mean=initial_mean, cov=initial_cov)
+        self.body_angles: np.ndarray = None
 
     def predict(self):
         raise NotImplementedError("Predict method not implemented for the Tracker class.")
@@ -57,12 +61,11 @@ class Tracker:
         Returns:
         float: Negative log-posterior value.
         """
-        lidar_measurements = z.reshape(-1, 2)
-        R = self.sensor_model.R(x_pred)
-        body_angles = self.sensor_model.body_angles
+        num_measurements = len(self.body_angles)
+        R = self.sensor_model.R(num_measurements)
 
         # Residuals
-        z_residual = z - self.sensor_model.h_lidar(x, body_angles).flatten()
+        z_residual = z - self.sensor_model.h_lidar(x, self.body_angles).flatten()
         x_residual = x - x_pred
         
         # Negative log of each term
@@ -114,3 +117,21 @@ class Tracker:
                            - self.object_function(x_imjp, z, h, R, x_pred, P_pred, ground_truth) 
                            + self.object_function(x_ijm, z, h, R, x_pred, P_pred, ground_truth)) / (4 * epsilon ** 2)
         return J, H
+
+@dataclass
+class TrackerUpdateResult:
+    """
+    Holds all relevant data from a single tracker update step.
+    """
+    # Core filter states
+    estimate_prior: MultiVarGauss       # State estimate before the update (x_k|k-1)
+    estimate_posterior: MultiVarGauss   # State estimate after the update (x_k|k)
+
+    # Measurement and Innovation
+    measurements: np.ndarray             # The raw measurement vector used (z_k)
+    innovation_gauss: MultiVarGauss     # The innovation (y_k) and its covariance (S_k)
+
+    # Optional Debugging / Analysis Info
+    iterations: int = None              # For iterative optimizers
+    cost: float = None                  # Final value of the objective function
+    raw_optimizer_result: Any = None    # The full result object from scipy.minimize

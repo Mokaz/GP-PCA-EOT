@@ -22,7 +22,7 @@ M = TypeVar('M', bound=np.ndarray)  # Measurement type
 class Simulator:
     dynamic_model: DynamicModel[S]
     sensor_model: SensorModel[M]
-    init_state: MultiVarGauss[S]
+    init_state: S | MultiVarGauss[S]
 
     end_time: float
     dt: float
@@ -62,7 +62,7 @@ class Simulator:
         self.set_random_state()
 
         logging.info('Generating ground truth data...')
-        self._gt_data = TimeSequence[np.ndarray]()
+        self._gt_data = TimeSequence()
         if isinstance(self.init_state, MultiVarGauss):
             self._gt_data.insert(0, self.init_state.sample())
         else:

@@ -33,7 +33,7 @@ class Model_PCA_CV(DynamicModel):
         F[:6, :6] = F_kin
         return F
 
-    def Q_d(self, x: State_PCA, dt: float) -> np.ndarray:
+    def Q_d(self, x: State_PCA = None, dt: float = 0.1) -> np.ndarray:
         """
         Discrete-time process noise covariance (Q).
         """

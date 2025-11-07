@@ -11,12 +11,11 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir
 sys.path.append(PROJECT_ROOT)
 
 from global_project_paths import SIMDATA_PATH, FIGURES_PATH
-from src.extent_model.geometry_utils import compute_estimated_shape_from_params
+from utils.geometry_utils import compute_estimated_shape_from_params
 
 # Import necessary classes from main.py to access configuration dataclasses
 from utils.config_classes import Config, SimulationConfig
-from sensors.lidar import LidarConfig
-from utils.config_classes import TrackerConfig
+from utils.config_classes import TrackerConfig, LidarConfig
 from src.utils.SimulationResult import SimulationResult
 
 
@@ -245,5 +244,5 @@ def create_sim_figure(fig, frames, num_frames):
     return fig
 
 if __name__ == "__main__":
-    filename = "bfgs_ellipsis_100frames.pkl"
+    filename = "bfgs_ellipse_100frames.pkl"
     generate_plotly_html_from_pickle(filename, sim_selection=0)

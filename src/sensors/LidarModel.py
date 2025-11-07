@@ -1,67 +1,61 @@
 import numpy as np
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Tuple, Sequence, List
-from src.utils.tools import cast_rays, add_noise_to_distances
 
-from senfuslib import SensorModel, MultiVarGauss
+from senfuslib import SensorModel
 from src.states.states import State_PCA, LidarScan
-from src.extent_model.geometry_utils import get_vessel_shape_from_state
+from utils.geometry_utils import compute_exact_vessel_shape_global
 from src.utils.tools import cast_rays, add_noise_to_distances, ur, rot2D, drot2D, fourier_basis_matrix, pol2cart
+from utils.config_classes import ExtentConfig
 
 @dataclass
 class LidarModel(SensorModel[Sequence[LidarScan]]):
     """
     A sensor model for a LiDAR that measures the shape of a vessel.
     """
-    # --- Sensor Configuration ---
     lidar_position: np.ndarray
     num_rays: int
     max_distance: float
     lidar_std_dev: float
-    
-    # --- Model Dependencies ---
     pca_mean: np.ndarray
     pca_eigenvectors: np.ndarray
+    rng: np.random.Generator
+    extent_cfg: ExtentConfig
 
-    # --- Measurement-dependent state ---
-    body_angles: np.ndarray = field(default=None, init=False, repr=False)
+    # def h(self, x: State_PCA) -> np.ndarray:
+    #     """
+    #     Analytical Measurement function (h). Should be same as h_lidar (TODO Martin: confirm this)
+    #     Predicts Cartesian coordinates for a fixed set of body angles.
+    #     This is the correct logic for the EKF update step.
+    #     """
+    #     if self.body_angles is None:
+    #         raise ValueError("LidarModel.body_angles must be set before calling h()")
 
-    rng: np.random.Generator = field(default_factory=lambda: np.random.default_rng(), repr=False)
+    #     # Normalize the angles based on the current state's estimated L and W
+    #     normalized_angles = np.arctan2(np.sin(self.body_angles) / x.width, np.cos(self.body_angles) / x.length)
 
-    def h(self, x: State_PCA) -> np.ndarray:
-        """
-        Analytical Measurement function (h). Should be same as h_lidar (TODO Martin: confirm this)
-        Predicts Cartesian coordinates for a fixed set of body angles.
-        This is the correct logic for the EKF update step.
-        """
-        if self.body_angles is None:
-            raise ValueError("LidarModel.body_angles must be set before calling h()")
+    #     # Reconstruct Fourier coefficients from PCA coefficients
+    #     fourier_coeffs = self.pca_mean + self.pca_eigenvectors @ x.pca_coeffs
 
-        # Normalize the angles based on the current state's estimated L and W
-        normalized_angles = np.arctan2(np.sin(self.body_angles) / x.width, np.cos(self.body_angles) / x.length)
+    #     # Vectorized basis functions and direction vectors
+    #     g_all = fourier_basis_matrix(normalized_angles)
+    #     ur_all = ur(normalized_angles)
 
-        # Reconstruct Fourier coefficients from PCA coefficients
-        fourier_coeffs = self.pca_mean + self.pca_eigenvectors @ x.pca_coeffs
+    #     # Calculate radius for each angle using the Fourier model
+    #     radii = g_all.T @ fourier_coeffs
 
-        # Vectorized basis functions and direction vectors
-        g_all = fourier_basis_matrix(normalized_angles)
-        ur_all = ur(normalized_angles)
-
-        # Calculate radius for each angle using the Fourier model
-        radii = g_all.T @ fourier_coeffs
-
-        # Analytically calculate the global position of each point
-        pos = np.array([x.x, x.y])
-        R_heading = rot2D(x.yaw)
-        LW_scaling = np.diag([x.length, x.width])
+    #     # Analytically calculate the global position of each point
+    #     pos = np.array([x.x, x.y])
+    #     R_heading = rot2D(x.yaw)
+    #     LW_scaling = np.diag([x.length, x.width])
         
-        # Calculate all points in the vessel's body frame and rotate to global
-        points_body_frame = ur_all * radii
-        points_global_frame = pos[:, np.newaxis] + R_heading @ LW_scaling @ points_body_frame
+    #     # Calculate all points in the vessel's body frame and rotate to global
+    #     points_body_frame = ur_all * radii
+    #     points_global_frame = pos[:, np.newaxis] + R_heading @ LW_scaling @ points_body_frame
         
-        # Return as a flattened vector [x1, y1, x2, y2, ...]
-        return points_global_frame.T.flatten()
+    #     # Return as a flattened vector [x1, y1, x2, y2, ...]
+    #     return points_global_frame.T.flatten()
     
     def h_lidar(self, x, body_angles: list[float]):
         L = x[6]
@@ -81,7 +75,7 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
         ur_all = ur(normalized_angles)  # shape (2, N) if ur returns [cos(θ); sin(θ)]
 
         # Vectorized g(theta): shape (N_f, N)
-        g_all = fourier_basis_matrix(normalized_angles)  # shape (N_f, N)
+        g_all = fourier_basis_matrix(normalized_angles, N_fourier=self.extent_cfg.N_fourier)  # shape (N_f, N)
 
         # Compute predicted measurement points in global frame
         #   ur_all * (g_all.T @ fourier_coeffs): shape (2, N)
@@ -137,30 +131,31 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
 
         return np.vstack(jacobians)
 
-    def R(self, x: State_PCA) -> np.ndarray:
+    def R(self, num_measurements: int) -> np.ndarray:
         """
         Measurement noise covariance (R).
         Assumes independent noise for each point's x and y coordinate.
         """
-        if self.body_angles is None:
-            raise ValueError("Cannot compute R without knowing the number of measurements (body_angles is not set).")
 
-        num_measurements = len(self.body_angles)
-        R_single_point = np.eye(2) * self.lidar_std_dev**2
-        
-        # Create the full block-diagonal R matrix
+        R_single_point = self.R_single_point()
         return np.kron(np.eye(num_measurements), R_single_point)
+    
+    def R_single_point(self) -> np.ndarray:
+        """
+        Measurement noise covariance for a single point.
+        May be used externally
+        """
+        return np.eye(2) * self.lidar_std_dev**2
 
 
     def sample_from_state(self, x_gt: State_PCA) -> LidarScan:
         """
         Overrides the base method to simulate LiDAR measurements from the ground truth state.
         """
-        shape_x_coords, shape_y_coords = get_vessel_shape_from_state(
-            x_gt, self.pca_mean, self.pca_eigenvectors
+        shape_x_coords, shape_y_coords = compute_exact_vessel_shape_global(
+            x_gt, self.extent_cfg.shape_coords_body
         )
 
-        # polar_measurements is an (N, 2) NumPy array: [angles, distances]
         polar_measurements = np.array(self.simulate_lidar_measurements(shape_x_coords, shape_y_coords))
         assert polar_measurements.shape[1] == 2, "Expected polar_measurements to have shape (N, 2)"
 
@@ -168,7 +163,7 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
         
         return LidarScan(x=x_coords, y=y_coords)
 
-    def simulate_lidar_measurements(self, shape_x, shape_y) -> List[List[float, float]]:
+    def simulate_lidar_measurements(self, shape_x, shape_y) -> List[Tuple[float, float]]:
         """
         Simulate LiDAR measurements by casting rays from the LiDAR position to the vessel shape.
         Returns noisy distance measurements in polar coordinates.
@@ -183,15 +178,3 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
         angles, distances = cast_rays(lidar_position, num_rays, max_distance, shape_x, shape_y)
         noisy_measurements = add_noise_to_distances(self.rng, distances, angles, lidar_noise_mean, lidar_noise_std_dev)
         return noisy_measurements
-
-@dataclass
-class LidarConfig:
-    """
-    Configuration parameters for the LiDAR sensor.
-    """
-    # LiDAR Parameters
-    lidar_position: Tuple[float, float] = (30.0, 0.0)
-    num_rays: int = 360
-    max_distance: float = 140.0
-    noise_mean: float = 0.0
-    lidar_std_dev: float = 0.0

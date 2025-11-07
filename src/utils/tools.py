@@ -4,6 +4,8 @@ import random
 from typing import Tuple, List, Optional, Callable
 from enum import IntEnum
 
+from states.states import LidarScan
+
 def cart2pol(x, y):
     r = np.sqrt(x**2 + y**2)
     angle = np.arctan2(y, x)
@@ -226,8 +228,8 @@ def add_noise_to_distances(rng: np.random.Generator,
     for angle, dist in zip(angles, distances):
         noise = rng.normal(noise_mean, noise_std_dev)
         noisy_dist = dist + noise
-        noisy_measurements.append([angle, noisy_dist])
-    
+        noisy_measurements.append((angle, noisy_dist))
+
     return noisy_measurements
     
 def compute_angle_range(angles):
@@ -339,12 +341,12 @@ def compute_iou_radial(r1, r2, theta=None):
     iou = intersection_area / union_area if union_area > 0 else 0.0
     return iou
 
-def calculate_body_angles(lidar_measurements: np.ndarray, state: np.ndarray) -> np.ndarray:
+def calculate_body_angles(measurements: LidarScan, state: np.ndarray) -> np.ndarray:
     """
     Calculate the angles of LiDAR measurements in the body frame of an object.
 
     Args:
-        lidar_measurements (np.ndarray): A Nx2 array of LiDAR measurement points (x, y).
+        lidar_scan (LidarScan): A LidarScan object containing measurement points.
         state (np.ndarray): A 1D array representing the object's state
                                     [x_pos, y_pos, heading].
 
@@ -353,8 +355,8 @@ def calculate_body_angles(lidar_measurements: np.ndarray, state: np.ndarray) -> 
     """
     # Calculate angles of measurements relative to the object's position in the world frame
     world_angles = np.arctan2(
-        lidar_measurements[:, 1] - state[1],
-        lidar_measurements[:, 0] - state[0]
+        measurements.y - state[1],
+        measurements.x - state[0]
     )
     
     # Transform world frame angles to body frame angles by subtracting the object's heading

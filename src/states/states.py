@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-from senfuslib import AtIndex, NamedArray, MetaData
 import numpy as np
+from senfuslib.named_array import NamedArray, AtIndex
 
 @dataclass
 class State_PCA(NamedArray):
@@ -18,20 +18,29 @@ class State_PCA(NamedArray):
     pca_coeffs -- PCA coefficients for shape representation
 
     """
-    # Kinematic part (6 dimensions)
+    # --- Field definitions are unchanged ---
     x: AtIndex[0]
     y: AtIndex[1]
     yaw: AtIndex[2]
     vel_x: AtIndex[3]
     vel_y: AtIndex[4]
     yaw_rate: AtIndex[5]
-
-    # Extent part (2 dimensions)
     length: AtIndex[6]
     width: AtIndex[7]
-
-    # PCA coefficients part (dynamic size)
     pca_coeffs: AtIndex[slice(8, None)]
+
+    # --- Replace the custom __init__ with a custom __new__ method ---
+    def __new__(cls, x, y, yaw, vel_x, vel_y, yaw_rate, length, width, pca_coeffs):
+        # Assemble the full state array from the input arguments
+        kinematics = np.array([x, y, yaw, vel_x, vel_y, yaw_rate])
+        extent = np.array([length, width])
+        pca_coeffs = np.atleast_1d(pca_coeffs)
+        full_state = np.concatenate([kinematics, extent, pca_coeffs])
+
+        # Create the final object by viewing the data as an instance of this class
+        obj = np.asarray(full_state).view(cls)
+        return obj
+
 
     # --- Convenient group accessors ---
     pos: AtIndex[slice(0, 2)] = field(init=False)
@@ -50,12 +59,25 @@ class LidarScan(NamedArray):
     x: AtIndex[0]
     y: AtIndex[1]
 
+    # --- Add a custom __new__ method to correctly construct the array ---
+    def __new__(cls, x: np.ndarray, y: np.ndarray):
+        # Ensure inputs are arrays
+        x = np.atleast_1d(x)
+        y = np.atleast_1d(y)
+
+        # Stack the coordinates into a single (2, N) array
+        full_scan_data = np.stack([x, y], axis=0)
+
+        # Create the final object by viewing the data as an instance of this class
+        obj = np.asarray(full_scan_data).view(cls)
+        return obj
+
     @property
-    def range(self) -> float:
-        """Computes the range (distance from the origin)."""
+    def range(self) -> np.ndarray:
+        """Computes the range (distance from the origin) for all points."""
         return np.sqrt(self.x**2 + self.y**2)
 
     @property
-    def angle(self) -> float:
-        """Computes the angle in radians."""
+    def angle(self) -> np.ndarray:
+        """Computes the angle in radians for all points."""
         return np.arctan2(self.y, self.x)

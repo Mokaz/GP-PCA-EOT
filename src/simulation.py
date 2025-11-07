@@ -2,8 +2,6 @@ import os
 import sys
 import numpy as np
 import pickle
-from copy import deepcopy
-from tqdm import trange
 from pathlib import Path
 
 from global_project_paths import PROJECT_ROOT
@@ -11,14 +9,10 @@ sys.path.append(PROJECT_ROOT)
 
 from global_project_paths import SIMDATA_PATH
 
-from src.dynamics.vessel import Vessel
-from src.dynamics.kinematic_state import KinematicState
-from src.dynamics.process_models import GroundTruthModel, Model_PCA_CV, decoupled_CV_model, decoupled_CV_model_jacobian
-from sensors.lidar import LidarModel
+from src.dynamics.process_models import GroundTruthModel, Model_PCA_CV
+from sensors.LidarModel import LidarModel
 
-from src.extent_model.extent import Extent, PCAExtentModel
-from src.extent_model.geometry_utils import get_vessel_shape, compute_estimated_shape
-
+from src.tracker.tracker import TrackerUpdateResult
 from src.tracker.ExtendedKalmanFilter import EKF
 from src.tracker.IterativeEKF import IterativeEKF
 from src.tracker.gauss_newton import GaussNewton
@@ -32,9 +26,10 @@ from src.senfuslib.simulator import Simulator
 from src.senfuslib.timesequence import TimeSequence
 
 from src.utils.SimulationResult import SimulationResult
-from src.states.states import State_PCA
 
 from src.utils.config_classes import Config
+from tqdm import tqdm
+
 
 def run_single_simulation(config: Config, method: str):
     """
@@ -43,6 +38,7 @@ def run_single_simulation(config: Config, method: str):
     sim_cfg = config.sim
     tracker_cfg = config.tracker
     lidar_cfg = config.lidar
+    extent_cfg = config.extent
 
     # --- 1. Initialize Models ---
     # The FILTER's belief model
@@ -63,8 +59,9 @@ def run_single_simulation(config: Config, method: str):
         num_rays=lidar_cfg.num_rays,
         max_distance=lidar_cfg.max_distance,
         lidar_std_dev=lidar_cfg.lidar_std_dev,
+        extent_cfg=extent_cfg,
         pca_mean=pca_params['mean'],
-        pca_eigenvectors=pca_params['eigenvectors'],
+        pca_eigenvectors=pca_params['eigenvectors'][:, :tracker_cfg.N_pca].real,
         rng=rng
     )
 
@@ -79,32 +76,40 @@ def run_single_simulation(config: Config, method: str):
         dynamic_model=gt_dynamic_model,
         sensor_model=sensor_model,
         sensor_setter=None,  # No special sensor setter needed
-        init_state=tracker_cfg.initial_state,  # TODO Martin the GT initial state should be separate
-        dt=sim_cfg.timestep,
-        end_time=sim_cfg.num_frames * sim_cfg.timestep,
-        seed=sim_cfg.seed
+        init_state=tracker_cfg.initial_state,  # TODO Martin the GT initial tracker state should be separate
+        dt=sim_cfg.dt,
+        end_time=sim_cfg.num_frames * sim_cfg.dt,
+        seed=str(sim_cfg.seed)  # Ensure seed is a string for crc32
     )
 
     # Generate a TimeSequence of ground truth states
+    print(f"Generating simulation data for {sim_cfg.num_frames} frames...")
     ground_truth_ts, measurements_ts = simulator.get_gt_and_meas()
 
     # --- 4. Run Filtering Loop ---
-    results_ts = TimeSequence() # Store results in a TimeSequence as well
+    results_ts: TimeSequence[TrackerUpdateResult] = TimeSequence() # Store results in a TimeSequence as well
     
-    print(f"Filtering {len(measurements_ts)} measurements...")
-    for ts, measurement in measurements_ts.items():
+    for ts, measurement in tqdm(measurements_ts.items(), desc="Filtering measurements"):
         tracker.predict()
         update_result = tracker.update(measurement, ground_truth=ground_truth_ts.get_t(ts))
         results_ts.insert(ts, update_result)
 
     # --- 5. Save the results ---
     filename = os.path.join(SIMDATA_PATH, f"{sim_cfg.name}.pkl")
-    data_to_save = {
-        "config": config,
-        "ground_truth_ts": ground_truth_ts,
-        "measurements_ts": measurements_ts,
-        "results_ts": results_ts,
+    
+    # Create a dictionary for the static covariances for clarity
+    static_covariances = {
+        "Q": filter_dyn_model.Q_d(dt=sim_cfg.dt),
+        "R_point": sensor_model.R_single_point()
     }
+
+    data_to_save = SimulationResult(
+        config=config,
+        ground_truth_ts=ground_truth_ts,
+        measurements_ts=measurements_ts,
+        results_ts=results_ts,
+        static_covariances=static_covariances
+    )
     with open(filename, "wb") as f:
         pickle.dump(data_to_save, f)
     print(f"Simulation run data saved to {filename}")
@@ -119,7 +124,7 @@ def run_single_simulation(config: Config, method: str):
 #     seed = sim_params.seed
 #     name = sim_params.name
 #     timestep = sim_params.timestep
-#     param_true = sim_params.param_true
+#     shape_params_true = sim_params.shape_params_true
 #     d_angle = sim_params.d_angle
 #     angles = sim_params.angles
 
@@ -145,7 +150,7 @@ def run_single_simulation(config: Config, method: str):
 #     rng = np.random.default_rng(seed=seed)
 
 #     my_config = deepcopy(ekfconfig)
-#     extent_true = Extent(param_true, d_angle)
+#     extent_true = Extent(shape_params_true, d_angle)
 #     pca_extent_true = PCAExtentModel(extent_true, my_config.N_pca)
 #     kinematics_true = KinematicState()
 #     target_vessel = Vessel(extent_true, pca_extent_true, kinematics_true)
@@ -203,7 +208,7 @@ def run_single_simulation(config: Config, method: str):
 #     all_shape_x.append(shape_x_list)
 #     all_shape_y.append(shape_y_list)
 
-#     true_extent = Extent(param_true, d_angle)
+#     true_extent = Extent(shape_params_true, d_angle)
 #     true_extent_pca = PCAExtentModel(true_extent, ekfconfig.N_pca)
 #     static_covariances = [tracker.Q, tracker.R_ais, tracker.R_lidar]
 

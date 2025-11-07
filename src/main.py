@@ -1,33 +1,30 @@
 import os
 import sys
 import numpy as np
-
+from pathlib import Path
 
 # Correct the path to be relative to this file's location
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-sys.path.append(PROJECT_ROOT)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_ROOT))
 
 from global_project_paths import SIMDATA_PATH, FIGURES_PATH
-from utils.config_classes import TrackerConfig
-from sensors.lidar import LidarConfig
+from utils.config_classes import TrackerConfig, SimulationConfig, Config, ExtentConfig, LidarConfig
+# Import the State_PCA class
+from src.states.states import State_PCA
 from src.visualization.plotly_offline_generator import generate_plotly_html_from_pickle
 
-from src.simulation import run_single_simulation_old
-from utils.config_classes import SimulationConfig, Config
+from src.simulation import run_single_simulation
 
 if __name__ == "__main__":
-    GENERATE_PLOTLY_HTML = True
+    GENERATE_PLOTLY_HTML = False
 
     # Simulation Parameters
-    sim_params = SimulationConfig(
+    sim_config = SimulationConfig(
         name = "",
         num_simulations=1,
         num_frames=100,
-        timestep=0.1,
+        dt=0.1,
         seed=42,
-        d_angle=np.deg2rad(1.0),
-        L_gt=20.0,
-        W_gt=6.0,
     )
 
     # LiDAR Parameters
@@ -35,8 +32,48 @@ if __name__ == "__main__":
         lidar_position=(30.0, 0.0),
         num_rays=360,
         max_distance=140.0,
-        noise_mean=0.0,
+        lidar_noise_mean=0.0,
+        lidar_std_dev=0.15,
+    )
+
+    # Tracker Parameters
+    N_pca = 4
+    
+    initial_state_obj = State_PCA(
+        x=0.0,          # North position
+        y=-40.0,        # East position
+        yaw=np.pi / 2,  # Heading angle
+        vel_x=0.0,      # North Velocity
+        vel_y=3.0,      # East Velocity
+        yaw_rate=0.0,   # Yaw Rate
+        length=20.0,    # Length
+        width=6.0,      # Width
+        pca_coeffs=np.zeros(N_pca)
+    )
+
+    tracker_config = TrackerConfig(
+        N_pca=N_pca,
+        pos_north_std_dev=0.3,
+        pos_east_std_dev=0.3,
+        heading_std_dev=0.1,
         lidar_std_dev=0.0,
+        initial_state=initial_state_obj,
+        lidar_pos=np.array(lidar_config.lidar_position)
+    )
+    
+    # Extent config
+    L_gt = 20.0
+    W_gt = 6.0
+    extent_config = ExtentConfig(
+        N_fourier=64,
+        d_angle=np.deg2rad(1.0),
+        shape_params_true = {
+            "type": "ellipse", 
+            "L": L_gt, 
+            "W": W_gt, 
+            "P": L_gt * 0.2, 
+            "S": L_gt * 0.1
+        }
     )
 
     # method_list = ["iekf", "ukf", "bfgs", "slsqp", "gauss_newton", "levenberg_marquardt", "smoothing_slsqp"]
@@ -44,34 +81,12 @@ if __name__ == "__main__":
 
     for method in method_list:
         print(f"Running method: {method}")
-        
-        # Tracker Parameters
-        N_pca = 4
-        initial_state = np.zeros(8 + N_pca)
-        initial_state[0] = 0.0      # North position
-        initial_state[1] = -40.0    # East position
-        initial_state[2] = np.pi / 2# Heading angle
-        initial_state[3] = 0.0      # North Velocity
-        initial_state[4] = 3.0      # East Velocity
-        initial_state[5] = 0.0      # Yaw Rate
-        initial_state[6] = 20.0     # Length
-        initial_state[7] = 6.0      # Width
-
-        tracker_config = TrackerConfig(
-            N_pca=N_pca,
-            pos_north_std_dev=0.3,
-            pos_east_std_dev=0.3,
-            heading_std_dev=0.1,
-            lidar_std_dev=0.0,
-            initial_state=initial_state,
-            lidar_pos=np.array(lidar_config.lidar_position)
-        )
 
         # Combine into a single config object
-        config = Config(sim=sim_params, lidar=lidar_config, tracker=tracker_config)
-        config.sim.name = f"{method}_{sim_params.param_true.get('type')}_{sim_params.num_frames}frames"
+        config = Config(sim=sim_config, lidar=lidar_config, tracker=tracker_config, extent=extent_config)
+        config.sim.name = f"{method}_{extent_config.shape_params_true.get('type')}_{sim_config.num_frames}frames"
 
-        run_single_simulation_old(config=config, method=method)
+        run_single_simulation(config=config, method=method)
 
         if GENERATE_PLOTLY_HTML:
             pickle_filename = os.path.join(SIMDATA_PATH, f"{config.sim.name}.pkl")

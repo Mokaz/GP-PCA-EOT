@@ -91,7 +91,10 @@ class NamedArray(np.ndarray):
     def __new__(cls: Type[T], *args, **kwargs):
         if cls not in NamedArray._cls_initialized:
             cls._cls_init()
-        obj = np.zeros(cls._cls_min_shape).view(cls)
+        
+        # Let the dataclass __init__ handle argument processing.
+        # We create the object first, and the __init__ will populate it.
+        obj = np.asarray([]).view(cls) 
         return obj
 
     def with_new_data(self, data):

@@ -1,39 +1,21 @@
-from dataclasses import dataclass, field
-from typing import List, Any, Dict
+from dataclasses import dataclass
+from typing import Dict, Any, List
 import numpy as np
+
+from senfuslib.timesequence import TimeSequence
+from src.states.states import State_PCA, LidarScan
+from src.tracker.tracker import TrackerUpdateResult
+from src.utils.config_classes import Config
+
 
 @dataclass
 class SimulationResult:
     """
-    A data class to store the results of a simulation run.
+    A data class to store the results of a complete simulation run.
+    It holds the configuration and the time-indexed sequences of data.
     """
-    # --- Simulation run data ---
-    state_predictions: List[Any]
-    state_posteriors: List[Any]
-    ground_truth: List[Any]
-    P_prior: List[Any]
-    P_post: List[Any]
-    S: List[Any]
-    y: List[Any]
-    z: List[Any]
-    x_dim: List[int]
-    z_dim: List[int]
-    shape_x: List[Any]
-    shape_y: List[Any]
-    initial_condition: List[Any]
-
-    # --- Config data ---
-    config: Any
-    lidar_position: np.ndarray
-    lidar_max_distance: float
-    true_extent: np.ndarray
-    true_extent_radius: np.ndarray
-    N_pca: int
-    angles: np.ndarray
-    num_simulations: int
-    num_frames: int
-
-    # --- Static data ---
-    PCA_mean: np.ndarray
-    PCA_eigenvectors: np.ndarray
-    static_covariances: List[np.ndarray]
+    config: Config
+    ground_truth_ts: TimeSequence[State_PCA]
+    measurements_ts: TimeSequence[LidarScan]
+    results_ts: TimeSequence[TrackerUpdateResult]
+    static_covariances: Dict[str, np.ndarray]

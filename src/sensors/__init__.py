@@ -1,1 +1,1 @@
-from . import lidar
+from . import LidarModel

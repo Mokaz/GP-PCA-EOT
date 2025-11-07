@@ -31,7 +31,7 @@ Nparam = 6  # Number of PCA components to use
 
 if generate_model:
     # Types and ranges for sampling
-    l_types = ["box", "ellipsis", "box_elliptic_sides", "box_parabolic_bow_and_stern", "elliptic_bow_and_stern"]
+    l_types = ["box", "ellipse", "box_elliptic_sides", "box_parabolic_bow_and_stern", "elliptic_bow_and_stern"]
     num_samples = 20
     L_array = np.linspace(0.7, 1.3, num=num_samples)
     W_per_L_array = np.linspace(0.7, 1.3, num=num_samples)
@@ -107,8 +107,8 @@ else:
 # plot_mean_and_principal_components(extent_vector_mean, eigenvectors, d_angle, add_title, save_figures, num_fourier_coeff)
 
 # # PCA and Fourier comparison
-# param_true = {"type": "box_parabolic_bow_and_stern", "L": 1.0, "W": 0.8, "P": 0.15, "S": 0.6}
-# extent_true = Extent(param_true, d_angle)
+# shape_params_true = {"type": "box_parabolic_bow_and_stern", "L": 1.0, "W": 0.8, "P": 0.15, "S": 0.6}
+# extent_true = Extent(shape_params_true, d_angle)
 # extent_true_vec = fourier_transform(extent_true.angles, extent_true.radii, num_coeff=num_fourier_coeff, symmetry=True)
 
 # Sigma = eigenvectors[:, :Nparam]
