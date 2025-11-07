@@ -6,49 +6,56 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pickle
 
-# Go up two levels to the project root (GP-PCA-EOT)
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
-sys.path.append(PROJECT_ROOT)
+from pathlib import Path
 
-from global_project_paths import SIMDATA_PATH, FIGURES_PATH
-from utils.geometry_utils import compute_estimated_shape_from_params
+# Go up TWO levels to the 'src' directory
+SRC_ROOT = Path(__file__).resolve().parent.parent
+# Add the 'src' directory to the path to match the pickling environment
+sys.path.append(str(SRC_ROOT))
 
-# Import necessary classes from main.py to access configuration dataclasses
-from utils.config_classes import Config, SimulationConfig
-from utils.config_classes import TrackerConfig, LidarConfig
+# Now that 'src' is on the path, these imports will fail.
+# We must add the project root for the 'from src...' imports to work for type hinting.
+PROJECT_ROOT = SRC_ROOT.parent
+sys.path.append(str(PROJECT_ROOT))
+
+
+from src.global_project_paths import SIMDATA_PATH, FIGURES_PATH
+from src.utils.geometry_utils import compute_estimated_shape_from_params, compute_exact_vessel_shape_global
+
+# These imports are for type hinting; the actual classes are found by pickle
 from src.utils.SimulationResult import SimulationResult
+from src.senfuslib.timesequence import TimeSequence
+from src.tracker.tracker import TrackerUpdateResult
 
 
-def generate_plotly_html_from_pickle(filename: str, sim_selection: int = 0):
-
+def generate_plotly_html_from_pickle(filename: str):
     with open(os.path.join(SIMDATA_PATH, filename), "rb") as f:
-        sim_data = pickle.load(f)
+        sim_result: SimulationResult = pickle.load(f)
 
-    # Extract the data
-    state_posteriors = sim_data.state_posteriors[sim_selection]
-    ground_truth    = sim_data.ground_truth[sim_selection]
-    static_covariances = sim_data.static_covariances[sim_selection]
-    true_extent     = sim_data.true_extent[sim_selection]
-    P_prior         = sim_data.P_prior[sim_selection]
-    P_post          = sim_data.P_post[sim_selection]
-    S               = sim_data.S[sim_selection]
-    y               = sim_data.y[sim_selection]
-    z_flattened     = sim_data.z[sim_selection]
-    x_dim           = sim_data.x_dim[sim_selection]
-    z_dim           = sim_data.z_dim[sim_selection]
-    shape_x_list    = sim_data.shape_x[sim_selection]
-    shape_y_list    = sim_data.shape_y[sim_selection]
+    # Extract config objects for convenience
+    config = sim_result.config
+    name = config.sim.name
+    num_frames = config.sim.num_frames
+    lidar_max_distance = config.lidar.max_distance
+    lidar_position = config.lidar.lidar_position
+    angles = config.extent.angles
+    N_fourier = config.extent.N_fourier
+    shape_coords_body = config.extent.shape_coords_body
 
-    PCA_eigenvectors_M = sim_data.PCA_eigenvectors
-    fourier_coeff_mean = sim_data.PCA_mean
-    initial_condition  = sim_data.initial_condition
-    num_frames         = sim_data.num_frames
-    angles             = sim_data.angles
-    lidar_max_distance = sim_data.lidar_max_distance
-    lidar_position     = sim_data.lidar_position
+    # Extract static PCA parameters from the config within the simulation result
+    pca_params = np.load(Path(config.tracker.PCA_parameters_path))
+    PCA_eigenvectors_M = pca_params['eigenvectors'][:, :config.tracker.N_pca].real
+    fourier_coeff_mean = pca_params['mean']
 
-    config = sim_data.config
-    name = config.sim.name # TODO Martin: fix this hacky way to get the name
+    # Extract TimeSequences
+    tracker_results_ts = sim_result.tracker_results_ts
+    ground_truth_ts = sim_result.ground_truth_ts
+
+    # Iterate through TimeSequences to create lists of data for each frame
+    # Access .values as a property, not a method
+    state_posteriors = [r.estimate_posterior.mean for r in tracker_results_ts.values]
+    z = [r.measurements for r in tracker_results_ts.values]
+    ground_truth_states = list(ground_truth_ts.values)
 
     # Initialize the figure
     fig = go.Figure()
@@ -82,23 +89,28 @@ def generate_plotly_html_from_pickle(filename: str, sim_selection: int = 0):
 
     for frame_idx in range(num_frames):
         # Create plot frame
-        locationx.append(ground_truth[frame_idx][0])
-        locationy.append(ground_truth[frame_idx][1])
+        gt_state = ground_truth_states[frame_idx]
+        est_state = state_posteriors[frame_idx]
+        
+        locationx.append(gt_state.x)
+        locationy.append(gt_state.y)
 
-        x_pos_est = state_posteriors[frame_idx][0]
-        y_pos_est = state_posteriors[frame_idx][1]
-        heading_est = state_posteriors[frame_idx][2]
-        L = state_posteriors[frame_idx][6]
-        W = state_posteriors[frame_idx][7]
-        PCA_coeffs = state_posteriors[frame_idx][8:]
+        # Use named attributes for clarity and correctness
+        x_pos_est = est_state.x
+        y_pos_est = est_state.y
+        heading_est = est_state.yaw
+        L = est_state.length
+        W = est_state.width
+        PCA_coeffs = est_state.pca_coeffs
 
-        shape_x = shape_x_list[frame_idx]
-        shape_y = shape_y_list[frame_idx]
+        shape_x, shape_y = compute_exact_vessel_shape_global(
+            gt_state, shape_coords_body
+        )
 
-        z_lidar_cart = z_flattened[frame_idx].reshape((-1, 2))
+        z_lidar_cart = z[frame_idx].reshape((-1, 2))
 
         plot_frame = create_frame_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, z_lidar_cart, (frame_idx+1), locationx, locationy, 
-                                shape_x, shape_y, lidar_max_distance, lidar_position, angles, fourier_coeff_mean, PCA_eigenvectors_M)
+                                shape_x, shape_y, lidar_max_distance, lidar_position, angles, fourier_coeff_mean, PCA_eigenvectors_M, N_fourier)
         plot_frames.append(plot_frame)
 
     fig = create_sim_figure(fig, plot_frames, len(plot_frames))
@@ -107,9 +119,9 @@ def generate_plotly_html_from_pickle(filename: str, sim_selection: int = 0):
     plotly.offline.plot(fig, filename=plot_filename, auto_open=False)
     print(f"Plot for first simulation run saved to {plot_filename}")
 
-def create_frame_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, z_lidar_cart, current_timestep, locationx, locationy, shape_x, shape_y, lidar_max_distance, lidar_position, angles, fourier_coeff_mean, PCA_eigenvectors_M):
+def create_frame_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, z_lidar_cart, current_timestep, locationx, locationy, shape_x, shape_y, lidar_max_distance, lidar_position, angles, fourier_coeff_mean, PCA_eigenvectors_M, N_fourier):
     # Compute estimated shape based on current state estimate
-    est_shape_x, est_shape_y = compute_estimated_shape_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, fourier_coeff_mean, PCA_eigenvectors_M, angles)
+    est_shape_x, est_shape_y = compute_estimated_shape_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, fourier_coeff_mean, PCA_eigenvectors_M, angles, N_fourier)
 
     lidar_ray_x = []
     lidar_ray_y = []
@@ -245,4 +257,4 @@ def create_sim_figure(fig, frames, num_frames):
 
 if __name__ == "__main__":
     filename = "bfgs_ellipse_100frames.pkl"
-    generate_plotly_html_from_pickle(filename, sim_selection=0)
+    generate_plotly_html_from_pickle(filename)

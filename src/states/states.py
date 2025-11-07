@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import numpy as np
-from senfuslib.named_array import NamedArray, AtIndex
+from src.senfuslib.named_array import NamedArray, AtIndex
 
 @dataclass
 class State_PCA(NamedArray):

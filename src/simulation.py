@@ -84,12 +84,12 @@ def run_single_simulation(config: Config, method: str):
 
     # Generate a TimeSequence of ground truth states
     print(f"Generating simulation data for {sim_cfg.num_frames} frames...")
-    ground_truth_ts, measurements_ts = simulator.get_gt_and_meas()
+    ground_truth_ts, measurements_lidar_frame_ts = simulator.get_gt_and_meas()
 
     # --- 4. Run Filtering Loop ---
     results_ts: TimeSequence[TrackerUpdateResult] = TimeSequence() # Store results in a TimeSequence as well
     
-    for ts, measurement in tqdm(measurements_ts.items(), desc="Filtering measurements"):
+    for ts, measurement in tqdm(measurements_lidar_frame_ts.items(), desc="Filtering measurements"):
         tracker.predict()
         update_result = tracker.update(measurement, ground_truth=ground_truth_ts.get_t(ts))
         results_ts.insert(ts, update_result)
@@ -106,8 +106,8 @@ def run_single_simulation(config: Config, method: str):
     data_to_save = SimulationResult(
         config=config,
         ground_truth_ts=ground_truth_ts,
-        measurements_ts=measurements_ts,
-        results_ts=results_ts,
+        measurements_lidar_frame_ts=measurements_lidar_frame_ts,
+        tracker_results_ts=results_ts,
         static_covariances=static_covariances
     )
     with open(filename, "wb") as f:

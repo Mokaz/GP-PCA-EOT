@@ -1,11 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Generic, Optional, Sequence, TypeVar
+from typing import Optional, TypeVar
 import numpy as np
-from senfuslib import DynamicModel
-from scipy.linalg import expm
 
-from states.states import State_PCA
-from utils.tools import rot2D, ssa
+from src.senfuslib import DynamicModel
+from src.states.states import State_PCA
+from src.utils.tools import rot2D, ssa
 
 S = TypeVar('S', bound=np.ndarray)  # State type
 

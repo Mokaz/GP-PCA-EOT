@@ -5,7 +5,8 @@ from scipy.linalg import expm
 from dataclasses import dataclass
 
 import numpy as np
-from senfuslib import MultiVarGauss, NamedArray
+from .gaussian import MultiVarGauss
+from .named_array import NamedArray
 from scipy.integrate import solve_ivp
 
 S = TypeVar('S', bound=np.ndarray)  # State type

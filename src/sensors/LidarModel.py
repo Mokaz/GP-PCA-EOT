@@ -3,11 +3,11 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Tuple, Sequence, List
 
-from senfuslib import SensorModel
+from src.senfuslib import SensorModel
 from src.states.states import State_PCA, LidarScan
-from utils.geometry_utils import compute_exact_vessel_shape_global
+from src.utils.geometry_utils import compute_exact_vessel_shape_global
 from src.utils.tools import cast_rays, add_noise_to_distances, ur, rot2D, drot2D, fourier_basis_matrix, pol2cart
-from utils.config_classes import ExtentConfig
+from src.utils.config_classes import ExtentConfig
 
 @dataclass
 class LidarModel(SensorModel[Sequence[LidarScan]]):
@@ -173,8 +173,10 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
         num_rays = self.num_rays
         max_distance = self.max_distance
         lidar_noise_mean = 0.0 # Assuming zero-mean noise # TODO Martin: Consider if needed
-        lidar_noise_std_dev = self.lidar_std_dev
+        lidar_noise_std_dev = 0.0
 
         angles, distances = cast_rays(lidar_position, num_rays, max_distance, shape_x, shape_y)
         noisy_measurements = add_noise_to_distances(self.rng, distances, angles, lidar_noise_mean, lidar_noise_std_dev)
+        # print( "Noisy measurements:", noisy_measurements)
+        # exit()
         return noisy_measurements

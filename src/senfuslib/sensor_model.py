@@ -1,6 +1,7 @@
 from dataclasses import dataclass, fields
 import numpy as np
-from senfuslib import MultiVarGauss, TimeSequence
+from .gaussian import MultiVarGauss
+from .timesequence import TimeSequence
 from typing import TypeVar, Generic
 
 M = TypeVar('M', bound=np.ndarray)  # Measurement type

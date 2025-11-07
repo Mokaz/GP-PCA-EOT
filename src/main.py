@@ -16,7 +16,7 @@ from src.visualization.plotly_offline_generator import generate_plotly_html_from
 from src.simulation import run_single_simulation
 
 if __name__ == "__main__":
-    GENERATE_PLOTLY_HTML = False
+    GENERATE_PLOTLY_HTML = True
 
     # Simulation Parameters
     sim_config = SimulationConfig(
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         heading_std_dev=0.1,
         lidar_std_dev=0.0,
         initial_state=initial_state_obj,
-        lidar_pos=np.array(lidar_config.lidar_position)
+        lidar_position=np.array(lidar_config.lidar_position)
     )
     
     # Extent config
@@ -90,4 +90,4 @@ if __name__ == "__main__":
 
         if GENERATE_PLOTLY_HTML:
             pickle_filename = os.path.join(SIMDATA_PATH, f"{config.sim.name}.pkl")
-            generate_plotly_html_from_pickle(pickle_filename, sim_selection=0)
+            generate_plotly_html_from_pickle(pickle_filename)

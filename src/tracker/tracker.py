@@ -1,12 +1,9 @@
 import numpy as np
 from pathlib import Path
-from utils.tools import generate_fourier_function, ur, ut, rot2D, drot2D, initialize_centroid, compute_angle_range
-from scipy.optimize import minimize, LinearConstraint, NonlinearConstraint
-from src.utils.tools import ssa 
-from src.utils.config_classes import Config
 
+from src.utils.config_classes import Config
 from src.states.states import State_PCA
-from sensors.LidarModel import LidarModel
+from src.sensors.LidarModel import LidarModel
 from src.dynamics.process_models import Model_PCA_CV
 
 from src.senfuslib.gaussian import MultiVarGauss

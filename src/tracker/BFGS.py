@@ -3,12 +3,12 @@ from scipy.optimize import minimize
 
 from typing import Optional
 
-from senfuslib import MultiVarGauss
+from src.senfuslib import MultiVarGauss
 from src.tracker.tracker import Tracker, TrackerUpdateResult
 from src.utils.tools import ssa, initialize_centroid, compute_angle_range, calculate_body_angles
 from src.states.states import State_PCA, LidarScan
 from src.dynamics.process_models import Model_PCA_CV
-from sensors.LidarModel import LidarModel
+from src.sensors.LidarModel import LidarModel
 from src.utils.config_classes import Config
 
 class BFGS(Tracker):
@@ -40,7 +40,7 @@ class BFGS(Tracker):
         Update step using BFGS optimization.
         
         Args:
-            measurements: A LidarScan of measurements
+            measurements: A LidarScan of measurements (2, N)
         
         Returns:
             A TrackerUpdateResult dataclass containing the results of the update step.
@@ -52,8 +52,6 @@ class BFGS(Tracker):
         angles_world = measurements.angle
         lower_diff, upper_diff, mean_lidar_angle = compute_angle_range(angles_world)
 
-        # Convert measurements to Cartesian world coordinates for the measurement vector z
-        z = np.array([measurements.x, measurements.y]).flatten()
 
         # --- Prepare measurements for initialize_centroid ---
         # The function expects a list of (angle, distance) tuples.
@@ -68,6 +66,11 @@ class BFGS(Tracker):
             L_est=initial_state_guess.length,
             W_est=initial_state_guess.width
         ) # TODO Martin: Investigate if this should be used in penalty too
+
+        # Convert local measurements to global Cartesian coordinates for the measurement vector z
+        global_measurements = (measurements + self.sensor_model.lidar_position.reshape(2, 1)).T # Shape (N, 2)
+
+        z = np.array(global_measurements.flatten())
 
         x_pred = initial_state_guess # NOTE Using initial_state_guess as state_pred
         P_pred = self.state_estimate.cov.copy()

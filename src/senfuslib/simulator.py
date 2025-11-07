@@ -5,10 +5,13 @@ from zlib import crc32
 from pathlib import Path
 import pickle
 from typing import ClassVar, TypeVar
-from senfuslib import DynamicModel, SensorModel, MultiVarGauss, TimeSequence
+from .dynamic_model import DynamicModel
+from .sensor_model import SensorModel
+from .gaussian import MultiVarGauss
+from .timesequence import TimeSequence
 import logging
 try:
-    from senfuslib.debug_config import sim_output_dir as out_dir
+    from .debug_config import sim_output_dir as out_dir
 except ImportError:
     out_dir = None
 import tqdm

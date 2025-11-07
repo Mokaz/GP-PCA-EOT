@@ -17,8 +17,8 @@ def compute_estimated_shape(tracker, angles):
     est_shape_coords = np.matmul(rot2D(tracker.state[2]), est_shape_coords)
     return est_shape_coords[0] + tracker.state[0], est_shape_coords[1] + tracker.state[1]
 
-def compute_estimated_shape_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, fourier_coeff_mean, PCA_eigenvectors_M, angles, N_f = 64):
-    g_func = generate_fourier_function(N_f=N_f)
+def compute_estimated_shape_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, fourier_coeff_mean, PCA_eigenvectors_M, angles, N_fourier):
+    g_func = generate_fourier_function(N_f=N_fourier)
     est_shape_coords = np.array([
         (g_func(angle).T @ (fourier_coeff_mean + PCA_eigenvectors_M @ PCA_coeffs.reshape(-1, 1))).item()
         for angle in angles

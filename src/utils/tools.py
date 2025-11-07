@@ -4,7 +4,7 @@ import random
 from typing import Tuple, List, Optional, Callable
 from enum import IntEnum
 
-from states.states import LidarScan
+from src.states.states import LidarScan
 
 def cart2pol(x, y):
     r = np.sqrt(x**2 + y**2)

@@ -141,7 +141,7 @@ class TrackerConfig:
     initial_std_devs: Optional[State_PCA] = None
     
     # Lidar position, to be set from LidarConfig
-    lidar_pos: Optional[np.ndarray] = None
+    lidar_position: Optional[np.ndarray] = None
 
     PCA_parameters_path : str = 'data/input_parameters/FourierPCAParameters_scaled.npz'
 
