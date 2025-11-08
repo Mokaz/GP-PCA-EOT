@@ -1,6 +1,6 @@
 import numpy as np
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Tuple, Sequence, List
 
 from src.senfuslib import SensorModel
@@ -20,7 +20,7 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
     lidar_std_dev: float
     pca_mean: np.ndarray
     pca_eigenvectors: np.ndarray
-    rng: np.random.Generator
+    rng: np.random.Generator = field(repr=False)
     extent_cfg: ExtentConfig
 
     # def h(self, x: State_PCA) -> np.ndarray:

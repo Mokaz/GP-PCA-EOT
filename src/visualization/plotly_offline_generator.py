@@ -118,7 +118,7 @@ def generate_plotly_html_from_pickle(filename: str):
     plot_filename = os.path.join(FIGURES_PATH, f"{name}.html")
     os.makedirs(os.path.dirname(plot_filename), exist_ok=True)
     plotly.offline.plot(fig, filename=plot_filename, auto_open=False)
-    print(f"Plot for first simulation run saved to {plot_filename}")
+    print(f"HTML plot simulation run saved to {plot_filename}")
 
 def create_frame_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, z_lidar_cart, current_timestep, locationx, locationy, shape_x, shape_y, lidar_max_distance, lidar_position, angles, fourier_coeff_mean, PCA_eigenvectors_M, N_fourier):
     # Compute estimated shape based on current state estimate

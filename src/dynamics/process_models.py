@@ -57,7 +57,7 @@ class Model_PCA_CV(DynamicModel):
 
 @dataclass
 class GroundTruthModel(DynamicModel):
-    rng: np.random.Generator
+    rng: np.random.Generator = field(repr=False)
 
     # Noise parameters
     yaw_rate_std_dev: float = 0.01
