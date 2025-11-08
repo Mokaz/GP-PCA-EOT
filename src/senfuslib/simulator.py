@@ -100,7 +100,7 @@ class Simulator:
                 with open(meas_path, 'rb')as f:
                     return pickle.load(f)
 
-        logging.info('Generating measurements...')
+        # logging.info('Generating measurements...')
         self._gt_data = self._gt_data or self.simulate()
         meas_data = sensor_model.from_states(self._gt_data[1:])
 

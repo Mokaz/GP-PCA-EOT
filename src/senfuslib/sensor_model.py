@@ -4,6 +4,10 @@ from .gaussian import MultiVarGauss
 from .timesequence import TimeSequence
 from typing import TypeVar, Generic
 
+from .debug_config import SHOW_PROGRESSBAR
+if SHOW_PROGRESSBAR:
+    import tqdm
+
 M = TypeVar('M', bound=np.ndarray)  # Measurement type
 S = TypeVar('S', bound=np.ndarray)  # State type
 
@@ -43,5 +47,9 @@ class SensorModel(Generic[M]):
 
     def from_states(self, x_tseq: TimeSequence[S]) -> TimeSequence[M]:
         """Perform measurements on a time sequence of states."""
+        items = x_tseq.items()
+        if SHOW_PROGRESSBAR:
+            items = tqdm.tqdm(items, desc="Generating measurements")
+            
         return TimeSequence((t, self.sample_from_state(x))
-                            for (t, x) in x_tseq.items())
+                            for (t, x) in items)

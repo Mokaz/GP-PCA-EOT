@@ -35,7 +35,7 @@ class BFGS(Tracker):
         # Compute the predicted state using the process model
         self.state_estimate = self.dynamic_model.pred_from_est(self.state_estimate, self.T)
 
-    def update(self, measurements: LidarScan, ground_truth: State_PCA = None) -> TrackerUpdateResult:
+    def update(self, measurements_local: LidarScan, ground_truth: State_PCA = None) -> TrackerUpdateResult:
         """
         Update step using BFGS optimization.
         
@@ -46,16 +46,10 @@ class BFGS(Tracker):
             A TrackerUpdateResult dataclass containing the results of the update step.
         """
 
-        # Extract angles from the measurement and set them on the sensor model
-        self.body_angles = calculate_body_angles(measurements, ground_truth) # NOTE Martin Using ground truth
+        angles_local = measurements_local.angle
+        lower_diff, upper_diff, mean_lidar_angle = compute_angle_range(angles_local)
 
-        angles_world = measurements.angle
-        lower_diff, upper_diff, mean_lidar_angle = compute_angle_range(angles_world)
-
-
-        # --- Prepare measurements for initialize_centroid ---
-        # The function expects a list of (angle, distance) tuples.
-        polar_measurements = list(zip(measurements.angle, measurements.range))
+        polar_measurements = list(zip(measurements_local.angle, measurements_local.range))
 
         # Initialize the centroid for the optimization
         initial_state_guess = self.state_estimate.mean.copy()
@@ -67,15 +61,16 @@ class BFGS(Tracker):
             W_est=initial_state_guess.width
         ) # TODO Martin: Investigate if this should be used in penalty too
 
-        # Convert local measurements to global Cartesian coordinates for the measurement vector z
-        global_measurements = (measurements + self.sensor_model.lidar_position.reshape(2, 1)).T # Shape (N, 2)
+        measurements_global_coords = measurements_local + self.sensor_model.lidar_position.reshape(2, 1)
 
-        z = np.array(global_measurements.flatten())
+        self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth) # NOTE Martin Using ground truth
 
-        x_pred = initial_state_guess # NOTE Using initial_state_guess as state_pred
+        # Use 'F' (column-major) order to get the interleaved [x1, y1, x2, y2, ...] format.
+        z = measurements_global_coords.flatten('F')
+        
+        x_pred = initial_state_guess # NOTE Using initial_state_guess (centroid-corrected) as state_pred
         P_pred = self.state_estimate.cov.copy()
 
-        # Run the optimization
         res = minimize(
             fun=self.prob_with_penalty, 
             x0=initial_state_guess,

@@ -86,6 +86,10 @@ def run_single_simulation(config: Config, method: str):
     print(f"Generating simulation data for {sim_cfg.num_frames} frames...")
     ground_truth_ts, measurements_lidar_frame_ts = simulator.get_gt_and_meas()
 
+    print("Simulation data generation complete.")
+    print(f"Ground truth has {len(ground_truth_ts)} entries.")
+    print(f"Measurements have {len(measurements_lidar_frame_ts)} entries.")
+
     # --- 4. Run Filtering Loop ---
     results_ts: TimeSequence[TrackerUpdateResult] = TimeSequence() # Store results in a TimeSequence as well
     

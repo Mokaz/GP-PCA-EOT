@@ -58,6 +58,9 @@ class Tracker:
         Returns:
         float: Negative log-posterior value.
         """
+        
+        assert self.body_angles is not None, "Body angles must be set before computing the object function."
+
         num_measurements = len(self.body_angles)
         R = self.sensor_model.R(num_measurements)
 
