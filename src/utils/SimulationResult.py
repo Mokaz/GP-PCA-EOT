@@ -15,6 +15,6 @@ class SimulationResult:
     """
     config: Config
     ground_truth_ts: TimeSequence[State_PCA]
-    measurements_lidar_frame_ts: TimeSequence[LidarScan]
+    measurements_global_ts: TimeSequence[LidarScan] # Lidarscans with shape (2, N)
     tracker_results_ts: TimeSequence[TrackerUpdateResult]
     static_covariances: Dict[str, np.ndarray]

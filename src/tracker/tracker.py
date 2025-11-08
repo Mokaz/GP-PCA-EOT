@@ -128,7 +128,7 @@ class TrackerUpdateResult:
     estimate_posterior: MultiVarGauss   # State estimate after the update (x_k|k)
 
     # Measurement and Innovation
-    measurements: np.ndarray             # The raw measurement vector used (z_k)
+    measurements: np.ndarray            # The raw measurement vector used (z_k)
     innovation_gauss: MultiVarGauss     # The innovation (y_k) and its covariance (S_k)
 
     # Optional Debugging / Analysis Info

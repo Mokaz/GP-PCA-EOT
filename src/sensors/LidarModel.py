@@ -22,40 +22,6 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
     pca_eigenvectors: np.ndarray
     rng: np.random.Generator = field(repr=False)
     extent_cfg: ExtentConfig
-
-    # def h(self, x: State_PCA) -> np.ndarray:
-    #     """
-    #     Analytical Measurement function (h). Should be same as h_lidar (TODO Martin: confirm this)
-    #     Predicts Cartesian coordinates for a fixed set of body angles.
-    #     This is the correct logic for the EKF update step.
-    #     """
-    #     if self.body_angles is None:
-    #         raise ValueError("LidarModel.body_angles must be set before calling h()")
-
-    #     # Normalize the angles based on the current state's estimated L and W
-    #     normalized_angles = np.arctan2(np.sin(self.body_angles) / x.width, np.cos(self.body_angles) / x.length)
-
-    #     # Reconstruct Fourier coefficients from PCA coefficients
-    #     fourier_coeffs = self.pca_mean + self.pca_eigenvectors @ x.pca_coeffs
-
-    #     # Vectorized basis functions and direction vectors
-    #     g_all = fourier_basis_matrix(normalized_angles)
-    #     ur_all = ur(normalized_angles)
-
-    #     # Calculate radius for each angle using the Fourier model
-    #     radii = g_all.T @ fourier_coeffs
-
-    #     # Analytically calculate the global position of each point
-    #     pos = np.array([x.x, x.y])
-    #     R_heading = rot2D(x.yaw)
-    #     LW_scaling = np.diag([x.length, x.width])
-        
-    #     # Calculate all points in the vessel's body frame and rotate to global
-    #     points_body_frame = ur_all * radii
-    #     points_global_frame = pos[:, np.newaxis] + R_heading @ LW_scaling @ points_body_frame
-        
-    #     # Return as a flattened vector [x1, y1, x2, y2, ...]
-    #     return points_global_frame.T.flatten()
     
     def h_lidar(self, x, body_angles: list[float]):
         L = x[6]

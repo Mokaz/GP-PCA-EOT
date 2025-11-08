@@ -31,7 +31,7 @@ from src.utils.config_classes import Config
 from tqdm import tqdm
 
 
-def run_single_simulation(config: Config, method: str):
+def run_single_simulation(config: Config, method: str) -> SimulationResult:
     """
     Runs a single simulation using the senfuslib.Simulator and new architecture.
     """
@@ -84,6 +84,9 @@ def run_single_simulation(config: Config, method: str):
     print(f"Generating simulation data for {sim_cfg.num_frames} frames...")
     ground_truth_ts, measurements_lidar_frame_ts = simulator.get_gt_and_meas()
 
+    lidar_pos_global = np.array(lidar_cfg.lidar_position).reshape(2, 1)
+    measurements_global_ts = measurements_lidar_frame_ts.map(lambda scan: scan + lidar_pos_global)
+
     # --- Run Filtering Loop ---
     results_ts: TimeSequence[TrackerUpdateResult] = TimeSequence() 
     
@@ -102,10 +105,12 @@ def run_single_simulation(config: Config, method: str):
     data_to_save = SimulationResult(
         config=config,
         ground_truth_ts=ground_truth_ts,
-        measurements_lidar_frame_ts=measurements_lidar_frame_ts,
+        measurements_global_ts=measurements_global_ts,
         tracker_results_ts=results_ts,
         static_covariances=static_covariances
     )
     with open(filename, "wb") as f:
         pickle.dump(data_to_save, f)
     print(f"Simulation run data saved to {filename}")
+
+    return data_to_save
