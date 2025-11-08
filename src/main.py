@@ -3,6 +3,7 @@ import sys
 import pickle
 import numpy as np
 from pathlib import Path
+from zlib import crc32
 
 import logging
 
@@ -31,7 +32,7 @@ from src.utils import SimulationResult
 if __name__ == "__main__":
     GENERATE_PLOTLY_HTML = True
     CONSISTENCY_ANALYSIS = True
-    LOAD_SIM_RESULT = False
+    LOAD_SIM_RESULT = True
 
     # Simulation Parameters
     sim_config = SimulationConfig(
@@ -99,7 +100,10 @@ if __name__ == "__main__":
 
         # Combine into a single config object
         config = Config(sim=sim_config, lidar=lidar_config, tracker=tracker_config, extent=extent_config)
-        config.sim.name = f"{method}_{extent_config.shape_params_true.get('type')}_{sim_config.num_frames}frames"
+
+        id_number = crc32(repr(config).encode())
+
+        config.sim.name = f"{method}_{config.sim.seed}_{extent_config.shape_params_true.get('type')}_{sim_config.num_frames}frames_{id_number:010d}"
 
         filename = f"{config.sim.name}.pkl"
         pickle_path = Path(SIMDATA_PATH) / filename
