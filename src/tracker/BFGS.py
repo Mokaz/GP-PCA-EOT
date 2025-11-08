@@ -52,13 +52,13 @@ class BFGS(Tracker):
         polar_measurements = list(zip(measurements_local.angle, measurements_local.range))
 
         # Initialize the centroid for the optimization
-        initial_state_guess = self.state_estimate.mean.copy()
-        initial_state_guess.pos = initialize_centroid(
-            position=initial_state_guess.pos,
+        state_prior = self.state_estimate.mean.copy()
+        state_prior.pos = initialize_centroid(
+            position=state_prior.pos,
             lidar_pos=self.sensor_model.lidar_position,
             measurements=polar_measurements,
-            L_est=initial_state_guess.length,
-            W_est=initial_state_guess.width
+            L_est=state_prior.length,
+            W_est=state_prior.width
         ) # TODO Martin: Investigate if this should be used in penalty too
 
         measurements_global_coords = measurements_local + self.sensor_model.lidar_position.reshape(2, 1)
@@ -68,12 +68,12 @@ class BFGS(Tracker):
         # Use 'F' (column-major) order to get the interleaved [x1, y1, x2, y2, ...] format.
         z = measurements_global_coords.flatten('F')
         
-        x_pred = initial_state_guess # NOTE Using initial_state_guess (centroid-corrected) as state_pred
+        x_pred = state_prior # NOTE Using initial_state_guess (centroid-corrected) as state_pred
         P_pred = self.state_estimate.cov.copy()
 
         res = minimize(
             fun=self.prob_with_penalty, 
-            x0=initial_state_guess,
+            x0=state_prior,
             args=(z, x_pred, P_pred, ground_truth, mean_lidar_angle, lower_diff, upper_diff),
             method='BFGS',
             # jac='3-point', # Use numerical differentiation for the gradient
@@ -86,14 +86,19 @@ class BFGS(Tracker):
         state_pred = MultiVarGauss(mean=x_pred, cov=P_pred) # NOTE Martin: Has adjusted initial centroid for optimization!!
         self.state_estimate = MultiVarGauss(mean=state_post_mean, cov=state_post_cov)
 
+        z_pred = self.sensor_model.h_lidar(state_prior, self.body_angles).flatten()
+        z_pred_gauss = MultiVarGauss(mean=z_pred, cov=None) # Covariance omitted for brevity
+
         # Calculate innovation and innovation covariance for analysis (optional but good practice)
-        # z_pred = self.sensor_model.h(state_post_mean)
         # innovation = z - z_pred
+        # innovation_cov = H @ P @ H.T + R
+        # innovation_gauss = MultiVarGauss(mean=innovation, cov=innovation_cov)
 
         return TrackerUpdateResult(
-            estimate_prior=state_pred,
-            estimate_posterior=self.state_estimate,
+            state_prior=state_pred,
+            state_posterior=self.state_estimate,
             measurements=z,
+            predicted_measurement=z_pred_gauss,
             innovation_gauss=None,  # Proper innovation calculation omitted for brevity
         )
 

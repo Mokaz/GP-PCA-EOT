@@ -49,8 +49,8 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
         yaw_std_dev=tracker_cfg.heading_std_dev,
         N_pca=tracker_cfg.N_pca
     )
-    
-    gt_dynamic_model = GroundTruthModel(rng=rng, yaw_rate_std_dev=0.01)
+
+    gt_dynamic_model = GroundTruthModel(rng=rng, yaw_rate_std_dev=sim_cfg.gt_yaw_rate_std_dev)
 
     pca_params = np.load(Path(tracker_cfg.PCA_parameters_path))
     sensor_model = LidarModel(

@@ -16,6 +16,8 @@ class SimulationConfig:
     dt: float = 0.1
     seed: int = 42
 
+    gt_yaw_rate_std_dev: float = 0.1
+
 @dataclass
 class ExtentConfig:
     N_fourier: int = 64

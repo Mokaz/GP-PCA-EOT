@@ -53,7 +53,7 @@ def generate_plotly_html_from_pickle(filename: str):
 
     # Iterate through TimeSequences to create lists of data for each frame
     # Access .values as a property, not a method
-    state_posteriors = [r.estimate_posterior.mean for r in tracker_results_ts.values]
+    state_posteriors = [r.state_posterior.mean for r in tracker_results_ts.values]
     z = [r.measurements for r in tracker_results_ts.values]
     ground_truth_states = list(ground_truth_ts.values)
 

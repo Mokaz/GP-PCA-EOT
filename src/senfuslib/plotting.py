@@ -153,7 +153,8 @@ def show_consistency(analysis: ConsistencyAnalysis,
 
         if not fields:
             continue
-        if not axs:
+        # Check the size of axs to handle numpy arrays correctly
+        if not hasattr(axs, 'size') or axs.size == 0:
             _, axs = plt.subplots(len(fields), 1, sharex=True)
         for ax, field in zip(axs, fields):
             if name == 'NIS':

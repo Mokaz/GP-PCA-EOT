@@ -1,9 +1,11 @@
 import os
 import sys
+import pickle
 import numpy as np
 from pathlib import Path
 
 import logging
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,22 +17,27 @@ logging.basicConfig(
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-from global_project_paths import SIMDATA_PATH, FIGURES_PATH
+from global_project_paths import SIMDATA_PATH
 from utils.config_classes import TrackerConfig, SimulationConfig, Config, ExtentConfig, LidarConfig
 # Import the State_PCA class
 from src.states.states import State_PCA
 from src.visualization.plotly_offline_generator import generate_plotly_html_from_pickle
 
 from src.simulation import run_single_simulation
+from src.analysis.analysis_utils import create_consistency_analysis_from_sim_result
+from src.analysis.consistency_analysis import PlotterTrackerPCA
+from src.utils import SimulationResult
 
 if __name__ == "__main__":
     GENERATE_PLOTLY_HTML = True
+    CONSISTENCY_ANALYSIS = True
+    LOAD_SIM_RESULT = False
 
     # Simulation Parameters
     sim_config = SimulationConfig(
         name = "",
         num_simulations=1,
-        num_frames=100,
+        num_frames=300,
         dt=0.1,
         seed=42,
     )
@@ -94,8 +101,20 @@ if __name__ == "__main__":
         config = Config(sim=sim_config, lidar=lidar_config, tracker=tracker_config, extent=extent_config)
         config.sim.name = f"{method}_{extent_config.shape_params_true.get('type')}_{sim_config.num_frames}frames"
 
-        run_single_simulation(config=config, method=method)
+        filename = f"{config.sim.name}.pkl"
+        pickle_path = Path(SIMDATA_PATH) / filename
+        if pickle_path.exists() and LOAD_SIM_RESULT:
+            # Load existing simulation data
+            with open(pickle_path, "rb") as f:
+                sim_result: SimulationResult = pickle.load(f)
+        else:
+            sim_result = run_single_simulation(config=config, method=method)
 
         if GENERATE_PLOTLY_HTML:
             pickle_filename = os.path.join(SIMDATA_PATH, f"{config.sim.name}.pkl")
             generate_plotly_html_from_pickle(pickle_filename)
+
+        if CONSISTENCY_ANALYSIS:
+            analysis = create_consistency_analysis_from_sim_result(sim_result)
+            plotter = PlotterTrackerPCA(sim_result, analysis)
+            plotter.show()

@@ -124,14 +124,15 @@ class TrackerUpdateResult:
     Holds all relevant data from a single tracker update step.
     """
     # Core filter states
-    estimate_prior: MultiVarGauss       # State estimate before the update (x_k|k-1)
-    estimate_posterior: MultiVarGauss   # State estimate after the update (x_k|k)
+    state_prior: MultiVarGauss           # State estimate before the update (x_k|k-1)
+    state_posterior: MultiVarGauss       # State estimate after the update (x_k|k)
 
     # Measurement and Innovation
-    measurements: np.ndarray            # The raw measurement vector used (z_k)
-    innovation_gauss: MultiVarGauss     # The innovation (y_k) and its covariance (S_k)
+    measurements: np.ndarray                # The flattened measurement vector used (z_k)
+    predicted_measurement: MultiVarGauss    # The predicted measurement as a MultiVarGauss, where mean=z_hat (flattened) and cov=S_k (innovation covariance)
+    innovation_gauss: MultiVarGauss         # The innovation (z_k - z_hat_k) as a MultiVarGauss. Mean = innovation, Cov = innovation covariance (S_k)
 
     # Optional Debugging / Analysis Info
-    iterations: int = None              # For iterative optimizers
-    cost: float = None                  # Final value of the objective function
-    raw_optimizer_result: Any = None    # The full result object from scipy.minimize
+    iterations: int = None                  # For iterative optimizers
+    cost: float = None                      # Final value of the objective function
+    raw_optimizer_result: Any = None        # The full result object from scipy.minimize
