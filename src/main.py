@@ -32,7 +32,7 @@ from src.utils import SimulationResult
 if __name__ == "__main__":
     GENERATE_PLOTLY_HTML = True
     CONSISTENCY_ANALYSIS = True
-    LOAD_SIM_RESULT = True
+    LOAD_SIM_RESULT = False # TODO MARTIN: BROKEN DO NOT USE
 
     # Simulation Parameters
     sim_config = SimulationConfig(

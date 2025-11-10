@@ -83,14 +83,14 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
         jacobians = []
 
         for angle in normalized_angles:
-            fourier_approx = (fourier_basis_matrix(angle).T @ fourier_coeffs).item()
+            fourier_approx = (fourier_basis_matrix(angle, self.extent_cfg.N_fourier).T @ fourier_coeffs).item()
 
             dp_dpc = np.eye(2)
             dp_dphi = drot2D(x[2]) @ np.diag([L, W]) @ (ur(angle) * fourier_approx).reshape(-1, 1)
             dp_dv = np.zeros([2, 2])
             dp_dr = np.zeros([2, 1])
             dp_dLW = rot2D(x[2]) @ np.diag(ur(angle).flatten()) * fourier_approx
-            dp_de = rot2D(x[2]) @ np.diag([L, W]) @ ur(angle).T * (fourier_basis_matrix(angle).T @ self.pca_eigenvectors).flatten()
+            dp_de = rot2D(x[2]) @ np.diag([L, W]) @ ur(angle).T * (fourier_basis_matrix(angle, self.extent_cfg.N_fourier).T @ self.pca_eigenvectors).flatten()
 
             H_i = np.hstack([dp_dpc, dp_dphi, dp_dv, dp_dr, dp_dLW, dp_de])
             jacobians.append(H_i)

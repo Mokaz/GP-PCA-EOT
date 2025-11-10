@@ -67,6 +67,8 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
     # --- Initialize the Tracker ---
     if method == "bfgs":
         tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
+    elif method == "ekf":
+        tracker = EKF(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
     else:
         raise NotImplementedError(f"Tracker method '{method}' is not yet refactored.")
     

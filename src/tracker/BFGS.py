@@ -18,9 +18,6 @@ class BFGS(Tracker):
                  config: Config,
                  max_iterations=10, 
                  convergence_threshold=1e-9):
-        """
-        Initializes the BFGS tracker.
-        """
         super().__init__(dynamic_model=dynamic_model, sensor_model=lidar_model, config=config)
         
         # Parameters
@@ -70,6 +67,7 @@ class BFGS(Tracker):
         
         x_pred = state_prior # NOTE Using initial_state_guess (centroid-corrected) as state_pred
         P_pred = self.state_estimate.cov.copy()
+        state_pred = MultiVarGauss(mean=x_pred, cov=P_pred) # NOTE Martin: Has adjusted initial centroid for optimization!!
 
         res = minimize(
             fun=self.prob_with_penalty, 
@@ -79,20 +77,19 @@ class BFGS(Tracker):
             # jac='3-point', # Use numerical differentiation for the gradient
             # options={'maxiter': self.max_iterations, 'gtol': self.convergence_threshold}
         )
-        
-        state_post_mean = State_PCA.from_array(res.x)
-        state_post_cov = res.hess_inv # The inverse Hessian is an approximation of the posterior covariance
-        
-        state_pred = MultiVarGauss(mean=x_pred, cov=P_pred) # NOTE Martin: Has adjusted initial centroid for optimization!!
-        self.state_estimate = MultiVarGauss(mean=state_post_mean, cov=state_post_cov)
 
         z_pred = self.sensor_model.h_lidar(state_prior, self.body_angles).flatten()
         z_pred_gauss = MultiVarGauss(mean=z_pred, cov=None) # Covariance omitted for brevity
-
         # Calculate innovation and innovation covariance for analysis (optional but good practice)
         # innovation = z - z_pred
         # innovation_cov = H @ P @ H.T + R
         # innovation_gauss = MultiVarGauss(mean=innovation, cov=innovation_cov)
+        
+        # Update internal state estimate
+        state_post_mean = State_PCA.from_array(res.x)
+        state_post_cov = res.hess_inv # The inverse Hessian is an approximation of the posterior covariance
+        self.state_estimate = MultiVarGauss(mean=state_post_mean, cov=state_post_cov)
+
 
         return TrackerUpdateResult(
             state_prior=state_pred,
