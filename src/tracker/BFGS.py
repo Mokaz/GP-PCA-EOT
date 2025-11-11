@@ -78,25 +78,54 @@ class BFGS(Tracker):
             # options={'maxiter': self.max_iterations, 'gtol': self.convergence_threshold}
         )
 
-        z_pred = self.sensor_model.h_lidar(state_prior, self.body_angles).flatten()
-        z_pred_gauss = MultiVarGauss(mean=z_pred, cov=None) # Covariance omitted for brevity
-        # Calculate innovation and innovation covariance for analysis (optional but good practice)
-        # innovation = z - z_pred
-        # innovation_cov = H @ P @ H.T + R
-        # innovation_gauss = MultiVarGauss(mean=innovation, cov=innovation_cov)
+        # --- NEW DEBUGGING CALCULATIONS ---
+        state_post_mean = State_PCA.from_array(res.x)
+        
+        # Recalculate components at the final solution (res.x)
+        num_meas = len(self.body_angles)
+        R = self.sensor_model.R(num_meas)
+        P_pred_inv = np.linalg.inv(P_pred)
+        R_inv = np.linalg.inv(R)
+
+        z_residual = z - self.sensor_model.h_lidar(state_post_mean, self.body_angles).flatten()
+        x_residual = state_post_mean - x_pred
+
+        cost_likelihood = 0.5 * z_residual.T @ R_inv @ z_residual
+        cost_prior = 0.5 * x_residual.T @ P_pred_inv @ x_residual
+        cost_penalty = self.penalty_function(state_post_mean, mean_lidar_angle, lower_diff, upper_diff)
+
+        # Calculate Jacobian at the solution
+        H = self.sensor_model.lidar_jacobian(state_post_mean, self.body_angles)
+        
+        # Calculate innovation and innovation covariance for analysis
+        z_pred = self.sensor_model.h_lidar(state_post_mean, self.body_angles).flatten()
+        innovation = z - z_pred
+        S = H @ P_pred @ H.T + R
+        
+        z_pred_gauss = MultiVarGauss(mean=z_pred, cov=S)
+        innovation_gauss = MultiVarGauss(mean=innovation, cov=S)
+        # --- END NEW DEBUGGING CALCULATIONS ---
         
         # Update internal state estimate
-        state_post_mean = State_PCA.from_array(res.x)
         state_post_cov = res.hess_inv # The inverse Hessian is an approximation of the posterior covariance
         self.state_estimate = MultiVarGauss(mean=state_post_mean, cov=state_post_cov)
-
 
         return TrackerUpdateResult(
             state_prior=state_pred,
             state_posterior=self.state_estimate,
             measurements=z,
             predicted_measurement=z_pred_gauss,
-            innovation_gauss=None,  # Proper innovation calculation omitted for brevity
+            innovation_gauss=innovation_gauss,
+            # Populate new fields
+            cost_prior=cost_prior,
+            cost_likelihood=cost_likelihood,
+            cost_penalty=cost_penalty,
+            H_jacobian=H,
+            R_covariance=R,
+            # Populate existing optional fields
+            iterations=res.nit,
+            cost=res.fun,
+            raw_optimizer_result=res,
         )
 
     def penalty_function(self, x, mean_angle, lower_diff, upper_diff):

@@ -133,6 +133,17 @@ class TrackerUpdateResult:
     predicted_measurement: MultiVarGauss    # The predicted measurement as a MultiVarGauss, where mean=z_hat (flattened) and cov=S_k (innovation covariance)
     innovation_gauss: MultiVarGauss         # The innovation (z_k - z_hat_k) as a MultiVarGauss. Mean = innovation, Cov = innovation covariance (S_k)
 
+    # --- NEW DEBUGGING VALUES ---
+    # Cost function components
+    cost_prior: float = None                # The prior term of the cost: 0.5 * x_res.T @ P_pred_inv @ x_res
+    cost_likelihood: float = None           # The likelihood term of the cost: 0.5 * z_res.T @ R_inv @ z_res
+    cost_penalty: float = None              # The penalty term from the optimizer
+
+    # Covariance and Jacobians
+    H_jacobian: np.ndarray = None           # The measurement Jacobian (H) at the solution
+    R_covariance: np.ndarray = None         # The measurement noise covariance (R) used in the update
+    # --- END NEW DEBUGGING VALUES ---
+
     # Optional Debugging / Analysis Info
     iterations: int = None                  # For iterative optimizers
     cost: float = None                      # Final value of the objective function
