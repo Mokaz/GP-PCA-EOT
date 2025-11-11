@@ -122,4 +122,5 @@ if __name__ == "__main__":
         if CONSISTENCY_ANALYSIS:
             analysis = create_consistency_analysis_from_sim_result(sim_result)
             plotter = PlotterTrackerPCA(sim_result, analysis)
+            plotter.test_export_NEES_all_to_csv("nees_data.csv")
             plotter.show()

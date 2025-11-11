@@ -112,3 +112,27 @@ class PlotterTrackerPCA:
                          title="Filter Consistency (NEES)")
                          
         fig_config(fig, 'Consistency Analysis (NEES)')
+
+    def test_export_NEES_all_to_csv(self, filepath: str):
+        """
+        Exports the NEES data for all state components to a CSV file.
+        """
+        nees_fields = [
+            None                    # Total NEES for the entire state vector
+        ]
+
+        nees_data = {}
+        for fields in nees_fields:
+            data = self.ca.get_nees(fields)
+            key = 'total' if fields is None else '_'.join(fields)
+            nees_data[key] = data.mahal_dist_tseq.values
+
+        # Combine into a single array for saving
+        times = self.ca.x_ests.times
+        combined_data = np.column_stack([nees_data[key] for key in nees_data])
+
+        # Save to CSV
+        header = ','.join(nees_data.keys())
+        np.savetxt(filepath, np.column_stack((times, combined_data)), delimiter=',', header='time,' + header, comments='')
+
+        print(f"NEES data exported to {filepath}")
