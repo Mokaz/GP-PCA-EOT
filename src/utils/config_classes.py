@@ -128,6 +128,7 @@ class ExtentConfig:
 
 @dataclass
 class TrackerConfig:
+    use_gt_state_for_bodyangles_calc: bool = True
     N_pca: int = 4
 
     # Standard deviations for process noise

@@ -32,7 +32,7 @@ from src.utils import SimulationResult
 if __name__ == "__main__":
     GENERATE_PLOTLY_HTML = True
     CONSISTENCY_ANALYSIS = True
-    LOAD_SIM_RESULT = False # TODO MARTIN: BROKEN DO NOT USE
+    LOAD_SIM_RESULT = False # TODO MARTIN: ONLY USES CONFIG FOR ID GENERATION FOR NOW
 
     # Simulation Parameters
     sim_config = SimulationConfig(
@@ -68,6 +68,7 @@ if __name__ == "__main__":
     )
 
     tracker_config = TrackerConfig(
+        use_gt_state_for_bodyangles_calc = True, # NOTE using gt for bodyangles calc 
         N_pca=N_pca,
         pos_north_std_dev=0.3,
         pos_east_std_dev=0.3,

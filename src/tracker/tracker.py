@@ -19,6 +19,7 @@ class Tracker:
         self.T: float = config.sim.dt
         self.N_pca = config.tracker.N_pca
         self.N_extent = 2 + self.N_pca # NOTE Only smoothing_SLSQP uses this
+        self.use_gt_state_for_bodyangles_calc = config.tracker.use_gt_state_for_bodyangles_calc
 
         # Extent and Fourier parameters
         PCA_parameters = np.load(Path(config.tracker.PCA_parameters_path))

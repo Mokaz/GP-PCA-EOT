@@ -41,7 +41,7 @@ class EKF(Tracker):
 
         measurements_global_coords = measurements_local + self.sensor_model.lidar_position.reshape(2, 1)
         
-        self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth) # NOTE Martin Using ground truth
+        self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth if self.use_gt_state_for_bodyangles_calc else state_prior)
 
         z = measurements_global_coords.flatten('F')
 
