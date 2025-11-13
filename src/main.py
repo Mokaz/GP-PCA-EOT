@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
         id_number = crc32(repr(config).encode())
 
-        config.sim.name = f"{method}_{config.sim.seed}_{extent_config.shape_params_true.get('type')}_{sim_config.num_frames}frames_{id_number:010d}"
+        config.sim.name = f"{method}_{config.sim.seed}_{extent_config.shape_params_true.get('type')}_{sim_config.num_frames}frames_{"gt_bodyangles_" if tracker_config.use_gt_state_for_bodyangles_calc else ""}{id_number:010d}"
 
         filename = f"{config.sim.name}.pkl"
         pickle_path = Path(SIMDATA_PATH) / filename
