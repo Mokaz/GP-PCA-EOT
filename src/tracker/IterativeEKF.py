@@ -1,174 +1,111 @@
 import numpy as np
-from utils.tools import ssa, initialize_centroid
-from src.tracker.tracker import Tracker
+
+from src.senfuslib import MultiVarGauss
+from src.tracker.tracker import Tracker, TrackerUpdateResult
+from src.utils.tools import ssa, initialize_centroid, calculate_body_angles
+from src.states.states import State_PCA, LidarScan
+from src.dynamics.process_models import Model_PCA_CV
+from src.sensors.LidarModel import LidarModel
+from src.utils.config_classes import Config
 
 class IterativeEKF(Tracker):
-    def __init__(self, process_model, timestep, rng, max_iterations=100, convergence_threshold=1e-6, config=None):
-        """
-        Initializes the Iterative Extended Kalman Filter (EKF) tracker.
-
-        Parameters:
-        - process_model: The process model to be used.
-        - timestep: The time step for the tracker.
-        - rng: Random number generator for noise.
-        - max_iterations: Maximum number of iterations for the update step.
-        - convergence_threshold: Threshold for convergence of the state estimate.
-        - config: Configuration object containing parameters for the tracker.
-        """
-        super().__init__(process_model, timestep, rng, config)
+    def __init__(self, 
+                 dynamic_model: Model_PCA_CV, 
+                 lidar_model: LidarModel,
+                 config: Config,
+                 max_iterations=10, 
+                 convergence_threshold=1e-6):
+        super().__init__(dynamic_model=dynamic_model, sensor_model=lidar_model, config=config)
         
         # Parameters
         self.max_iterations = max_iterations
         self.convergence_threshold = convergence_threshold
 
-    def predict(self, F_jacobian):
+    def predict(self):
         """
-        Prediction step of the EKF.
-        
-        Parameters:
-        - F_jacobian: Function to calculate the Jacobian of the state transition model w.r.t. state (F)
-        
-        Updates:
-        - self.state: Predicted state estimate
-        - self.P: Predicted covariance estimate
+        Prediction step.
+        Updates the internal state estimate.
         """
-        # Compute the predicted state using the process model
-        self.state = self.dynamic_model(self.state, self.T)
+        self.state_estimate = self.dynamic_model.pred_from_est(self.state_estimate, self.T)
 
-        # Compute the Jacobian of the transition model
-        F = F_jacobian(self.state, self.T, self.N_pca)
+    def update(self, measurements_local: LidarScan, ground_truth: State_PCA = None) -> TrackerUpdateResult:
+        num_meas = len(measurements_local.angle)
+        polar_measurements = list(zip(measurements_local.angle, measurements_local.range))
+
+        # Initialize the centroid for the optimization
+        state_prior_mean = self.state_estimate.mean.copy()
+        state_prior_mean.pos = initialize_centroid(
+            position=state_prior_mean.pos,
+            lidar_pos=self.sensor_model.lidar_position,
+            measurements=polar_measurements,
+            L_est=state_prior_mean.length,
+            W_est=state_prior_mean.width
+        )
         
-        # Compute the predicted covariance
-        self.P = F @ self.P @ F.T + self.Q 
+        P_pred = self.state_estimate.cov.copy()
+        state_pred = MultiVarGauss(mean=state_prior_mean, cov=P_pred)
 
-    def update(self, lidar_measurements_polar, lidar_pos, ais_measurements=None, ground_truth=None):
-        iteration = 0
-        state_vector = self.state.copy()
+        measurements_global_coords = measurements_local + self.sensor_model.lidar_position.reshape(2, 1)
+        
+        z = measurements_global_coords.flatten('F')
 
-        prev_state = state_vector.copy()
+        # Iterative part
+        state_iter_mean = state_prior_mean.copy()
+        prev_state_iter_mean = state_prior_mean.copy()
 
-        ais_available = ais_measurements is not None
-
-        # LiDAR update preparation
-        lidar_pos = np.array(lidar_pos)  # Ensure lidar_pos is defined
-        lidar_measurements_polar = np.array(lidar_measurements_polar)
-        num_meas = len(lidar_measurements_polar)
-
-        if ais_available:
-            z_dim = 2 * num_meas + 5
-        else:
-            z_dim = 2 * num_meas
-
-        ssa_vec = np.vectorize(ssa)
-
-        # Consistency Analysis
-        y_combined = None
-        S_combined = None
-
-        # Find correct initialization point for vessel position
-        state_vector[:2] = initialize_centroid(state_vector[:2], lidar_pos, lidar_measurements_polar, L_est=state_vector[6], W_est=state_vector[7])
-
-        # LiDAR measurement points in cartesian coordinates and global frame
-        lidar_measurements = lidar_pos + lidar_measurements_polar[:, 1].reshape(-1, 1) * np.array([np.cos(lidar_measurements_polar[:, 0]), np.sin(lidar_measurements_polar[:, 0])]).T
-
-        # Get measurement vector
-        if ais_available:
-            z_combined = np.array([*lidar_measurements.flatten(), *ais_measurements])
-        else:
-            z_combined = lidar_measurements.flatten()
-
-        # State vector updates
-        state_iterates = [state_vector.copy()]
-
-        while iteration < self.max_iterations:
-            # Compute body angles
-            body_angles = ssa_vec(np.arctan2(
-                lidar_measurements[:, 1] - state_vector[1], 
-                lidar_measurements[:, 0] - state_vector[0]
-            ) - state_vector[2])
+        for i in range(self.max_iterations):
+            self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth if self.use_gt_state_for_bodyangles_calc else state_iter_mean)
 
             # Predict LiDAR measurement
-            z_pred_lidar = self.h_lidar(state_vector, body_angles)
-            y_lidar = (lidar_measurements - z_pred_lidar).reshape(-1, 1)
+            z_pred = self.sensor_model.h_lidar(state_iter_mean, self.body_angles).flatten()
+            innovation = z - z_pred
             
             # Compute Jacobian and Kalman gain for LiDAR
-            H_lidar = self.lidar_jacobian(state_vector, body_angles)
-            S_lidar = H_lidar @ self.P @ H_lidar.T + np.kron(np.eye(num_meas), self.R_lidar)
-            K_lidar = self.P @ H_lidar.T @ np.linalg.inv(S_lidar)
-            
-            if ais_measurements is not None:
-                # AIS Update if AIS data is available
-                pos = state_vector[:2]
-                heading = state_vector[2]
-                L = state_vector[6]
-                W = state_vector[7]
+            H_lidar = self.sensor_model.lidar_jacobian(state_iter_mean, self.body_angles)
+            R_lidar = self.sensor_model.R(num_meas)
+            S_lidar = H_lidar @ P_pred @ H_lidar.T + R_lidar
+            K_lidar = np.linalg.solve(S_lidar.T, (H_lidar @ P_pred.T)).T
 
-                # Predict AIS measurement
-                z_pred_ais = np.array([*pos, heading, L, W])
-                y_ais = ais_measurements - z_pred_ais
-                y_ais[2] = ssa(y_ais[2])
-                y_ais = y_ais.reshape(-1, 1)
-
-                # Construct the Jacobian for AIS
-                H_ais = self.ais_jacobian()
-
-                # Combine LiDAR and AIS updates
-                y_combined = np.vstack([y_lidar, y_ais])
-                H_combined = np.vstack([H_lidar, H_ais])
-                R_combined = np.block([
-                    [np.kron(np.eye(num_meas), self.R_lidar), np.zeros((2*num_meas, 5))],
-                    [np.zeros((5, 2*num_meas)), self.R_ais]
-                ])
-                S_combined = H_combined @ self.P @ H_combined.T + R_combined
-                K_combined = self.P @ H_combined.T @ np.linalg.inv(S_combined)
-
-                # Apply update
-                update_vector = K_combined @ y_combined
-
-                z_dim = 2 * num_meas + 5
-            else:
-                # Only LiDAR is available
-                update_vector = K_lidar @ y_lidar
-                y_combined = y_lidar
-                K_combined = K_lidar  # Fallback to LiDAR-only Kalman gain
-                H_combined = H_lidar  # Fallback to LiDAR-only measurement Jacobian
-                R_combined = np.kron(np.eye(num_meas), self.R_lidar)
-                S_combined = S_lidar  # Fallback to LiDAR-only innovation covariance
-
-                z_dim = 2 * num_meas
-
-            # Apply the update to the state
-            state_vector += update_vector.flatten()
-
-            # Ensure heading angle remains within -π to π range
-            state_vector[2] = ssa(state_vector[2])
-
-            #state_iterates.append(state_vector.copy())
+            # Update state mean
+            state_iter_mean = state_prior_mean + K_lidar @ (innovation + H_lidar @ (state_iter_mean - state_prior_mean))
+            state_iter_mean.yaw = ssa(state_iter_mean.yaw)
 
             # Check for convergence
-            diff = state_vector - prev_state
-            diff[2] = ssa(diff[2])
-            change = np.linalg.norm(diff)
-            if np.max(change) < self.convergence_threshold:
+            diff = state_iter_mean - prev_state_iter_mean
+            diff.yaw = ssa(diff.yaw)
+            if np.linalg.norm(diff) < self.convergence_threshold:
                 break
+            
+            prev_state_iter_mean = state_iter_mean.copy()
 
-            # print("Eigenvalues of Hessian: ", np.all(np.linalg.eigvals(H_combined.T @ np.linalg.inv(R_combined) @ H_combined) > 0))
+        state_post_mean = state_iter_mean
 
-            prev_state = state_vector.copy()
-            iteration += 1
+        # Recalculate for final state
+        self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth if self.use_gt_state_for_bodyangles_calc else state_post_mean)
+        z_pred = self.sensor_model.h_lidar(state_post_mean, self.body_angles).flatten()
+        innovation = z - z_pred
+        H_lidar = self.sensor_model.lidar_jacobian(state_post_mean, self.body_angles)
+        R_lidar = self.sensor_model.R(num_meas)
+        S_lidar = H_lidar @ P_pred @ H_lidar.T + R_lidar
+        K_lidar = np.linalg.solve(S_lidar.T, (H_lidar @ P_pred.T)).T
 
-        # Update final state
-        self.state = state_vector
+        # Update covariance (Joseph form for stability)
+        I = np.eye(len(state_post_mean))
+        state_post_cov = (I - K_lidar @ H_lidar) @ P_pred @ (I - K_lidar @ H_lidar).T + K_lidar @ R_lidar @ K_lidar.T
+        
+        self.state_estimate = MultiVarGauss(mean=state_post_mean, cov=state_post_cov)
 
-        state_iterates.append(self.state.copy())
+        z_pred_gauss = MultiVarGauss(mean=z_pred, cov=S_lidar)
+        innovation_gauss = MultiVarGauss(mean=innovation, cov=S_lidar)
 
-        x_dim = self.state_dim
+        return TrackerUpdateResult(
+            state_prior=state_pred,
+            state_posterior=self.state_estimate,
+            measurements=z,
+            predicted_measurement=z_pred_gauss,
+            innovation_gauss=innovation_gauss,
+            iterations=i + 1,
+            H_jacobian=H_lidar,
+            R_covariance=R_lidar,
+        )
 
-        P_pred = self.P.copy()
-
-        # Update covariance matrix with the combined Kalman gain
-        I = np.eye(self.state_dim)
-        self.P = (I - K_combined @ H_combined) @ self.P @ (I - K_combined @ H_combined).T + K_combined @ S_combined @ K_combined.T
-
-        return state_iterates, z_combined, y_combined, S_combined, P_pred, self.P, z_dim, x_dim
-    
