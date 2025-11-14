@@ -17,6 +17,7 @@ from src.analysis.analysis_utils import create_consistency_analysis_from_sim_res
 from src.global_project_paths import SIMDATA_PATH
 from src.utils.geometry_utils import compute_estimated_shape_from_params, compute_exact_vessel_shape_global
 from src.senfuslib.plotting import show_consistency
+from src.visualization.plotly_offline_generator import generate_plotly_fig_for_frame, generate_initial_plotly_fig
 
 # --- 1. Setup ---
 pn.extension('plotly', 'tabulator')
@@ -45,28 +46,32 @@ def load_data(filename):
 
 # --- 3. Create Widgets in a shared scope ---
 pickle_files = sorted([f.name for f in Path(SIMDATA_PATH).glob("*.pkl")], reverse=True)
-file_selector = pn.widgets.Select(name='Select Simulation File', options=pickle_files)
+# Add a placeholder to prompt user selection. The default value will be None.
+file_selector = pn.widgets.Select(
+    name='Select Simulation File', 
+    options=[None] + pickle_files, 
+    sizing_mode='stretch_width'
+)
 
-# These widgets are created once and will be updated
-frame_slider = pn.widgets.IntSlider(name='Frame', start=0, end=0, step=1, visible=False)
-nees_states_checklist = pn.widgets.CheckBoxGroup(name='NEES States', options=[], visible=False)
+# Replace IntSlider with Player for playback controls
+frame_player = pn.widgets.Player(name='Frame', start=0, end=0, step=1, visible=False, loop_policy='loop', interval=50, sizing_mode='stretch_width')
+nees_states_checklist = pn.widgets.CheckBoxGroup(name='NEES States', options=[], visible=False, sizing_mode='stretch_width')
 
 
 # --- 4. Define Interactive Plotting Functions ---
-
-# This function now ONLY updates the widgets when the file changes
 @pn.depends(file_selector.param.value, watch=True)
 def update_widgets(filename):
     loaded_data = load_data(filename)
     if not loaded_data:
-        frame_slider.visible = False
+        frame_player.visible = False
         nees_states_checklist.visible = False
         return
 
     sim_result = loaded_data["sim_result"]
-    frame_slider.end = sim_result.config.sim.num_frames - 1
-    frame_slider.value = 0 # Reset slider to start
-    frame_slider.visible = True
+    # The player now represents all states, including the initial one (frame 0)
+    frame_player.end = sim_result.config.sim.num_frames
+    frame_player.value = 0 # Reset player to start
+    frame_player.visible = True
     
     state_names = ['x', 'y', 'yaw', 'vel_x', 'vel_y', 'yaw_rate', 'length', 'width', 'pca_coeffs']
     nees_states_checklist.options = state_names
@@ -74,7 +79,7 @@ def update_widgets(filename):
     nees_states_checklist.visible = True
 
 
-@pn.depends(frame_slider.param.value, file_selector.param.value)
+@pn.depends(frame_player.param.value, file_selector.param.value)
 def get_plotly_view(frame_idx, filename):
     loaded_data = load_data(filename)
     if not loaded_data: return pn.pane.Markdown("### Select a file to begin.")
@@ -83,38 +88,33 @@ def get_plotly_view(frame_idx, filename):
     sim_result = loaded_data["sim_result"]
     config = loaded_data["config"]
     pca_params = loaded_data["pca_params"]
-    PCA_eigenvectors_M = pca_params['eigenvectors'][:, :config.tracker.N_pca].real
-    fourier_coeff_mean = pca_params['mean']
     ground_truth_states = list(sim_result.ground_truth_ts.values)
 
-    # --- Plotting logic ---
-    gt_state = ground_truth_states[frame_idx + 1]
-    tracker_result = sim_result.tracker_results_ts.values[frame_idx]
-    est_state = tracker_result.state_posterior.mean
-    z_lidar_cart = tracker_result.measurements.reshape((-1, 2))
-    locationx = [s.x for s in ground_truth_states[:frame_idx + 2]]
-    locationy = [s.y for s in ground_truth_states[:frame_idx + 2]]
-    shape_x, shape_y = compute_exact_vessel_shape_global(gt_state, config.extent.shape_coords_body)
-    est_shape_x, est_shape_y = compute_estimated_shape_from_params(
-        est_state.x, est_state.y, est_state.yaw, est_state.length, est_state.width, est_state.pca_coeffs,
-        fourier_coeff_mean, PCA_eigenvectors_M, config.extent.angles, config.extent.N_fourier
-    )
-    lidar_ray_x, lidar_ray_y = [], []
-    for z_pos in z_lidar_cart:
-        dist = np.linalg.norm(z_pos - np.array(config.lidar.lidar_position))
-        if dist < config.lidar.max_distance:
-            lidar_ray_x.extend([config.lidar.lidar_position[0], z_pos[0], None])
-            lidar_ray_y.extend([config.lidar.lidar_position[1], z_pos[1], None])
-    est_pos = np.array([est_state.x, est_state.y])
-    est_heading = est_state.yaw
-    arrow_length = 5.0
-    arrow_end = est_pos + arrow_length * np.array([np.cos(est_heading), np.sin(est_heading)])
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=locationy, y=locationx, mode='lines', name='Vessel Path', line=dict(color='royalblue')))
-    fig.add_trace(go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent (GT)', line=dict(color='black')))
-    fig.add_trace(go.Scatter(x=est_shape_y, y=est_shape_x, mode='lines', name='Estimated Extent', line=dict(color='green')))
-    fig.add_trace(go.Scatter(x=lidar_ray_y, y=lidar_ray_x, mode='lines+markers', name='LiDAR Rays', line=dict(color='red', width=1)))
-    fig.add_trace(go.Scatter(x=[est_pos[1], arrow_end[1]], y=[est_pos[0], arrow_end[0]], mode='lines', name='Estimated Heading', line=dict(color='purple', width=2)))
+
+    if frame_idx == 0:
+        # --- Initial State (Frame 0) ---
+        gt_state = ground_truth_states[0]
+        est_state = sim_result.tracker_results_ts.values[0].state_prior.mean
+        fig = generate_initial_plotly_fig(gt_state, est_state, config, pca_params)
+
+    else:
+        # --- Regular Update Step (Frames 1 and onwards) ---
+        tracker_frame_idx = frame_idx - 1 
+        gt_state = ground_truth_states[frame_idx]
+        tracker_result = sim_result.tracker_results_ts.values[tracker_frame_idx]
+        
+        fig = generate_plotly_fig_for_frame(
+            frame_idx=frame_idx,
+            gt_state=gt_state,
+            est_state=tracker_result.state_posterior.mean,
+            z_lidar_cart=tracker_result.measurements.reshape((-1, 2)),
+            ground_truth_history=ground_truth_states[:frame_idx + 1],
+            config=config,
+            pca_params=pca_params
+        )
+
+    # Common layout for all frames
     fig.update_layout(
         title=f"Frame: {frame_idx}", plot_bgcolor='white', paper_bgcolor='white',
         xaxis=dict(range=[-60, 60], constrain='domain', gridcolor='rgb(200, 200, 200)', zerolinecolor='rgb(200, 200, 200)', title='East [m]'),
@@ -144,7 +144,7 @@ dashboard = pn.template.FastListTemplate(
     sidebar=[
         pn.pane.Markdown("## Controls"),
         file_selector,
-        frame_slider,
+        frame_player,
         nees_states_checklist,
     ],
     main=[

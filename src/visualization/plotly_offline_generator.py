@@ -256,6 +256,74 @@ def create_sim_figure(fig, frames, num_frames):
     )
     return fig
 
+
+def generate_initial_plotly_fig(gt_state, est_state, config, pca_params):
+    """Generates the Plotly figure for the initial state (Frame 0)."""
+    fig = go.Figure()
+    PCA_eigenvectors_M = pca_params['eigenvectors'][:, :config.tracker.N_pca].real
+    fourier_coeff_mean = pca_params['mean']
+
+    # Add GT shape
+    shape_x, shape_y = compute_exact_vessel_shape_global(gt_state, config.extent.shape_coords_body)
+    fig.add_trace(go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent (GT)', line=dict(color='black')))
+    
+    # Add Estimated shape
+    est_shape_x, est_shape_y = compute_estimated_shape_from_params(
+        est_state.x, est_state.y, est_state.yaw, est_state.length, est_state.width, est_state.pca_coeffs,
+        fourier_coeff_mean, PCA_eigenvectors_M, config.extent.angles, config.extent.N_fourier
+    )
+    fig.add_trace(go.Scatter(x=est_shape_y, y=est_shape_x, mode='lines', name='Estimated Extent', line=dict(color='green')))
+    
+    return fig
+
+def generate_plotly_fig_for_frame(frame_idx, gt_state, est_state, z_lidar_cart, ground_truth_history, config, pca_params):
+    """Generates the Plotly figure for a given frame's data."""
+    fig = go.Figure()
+    PCA_eigenvectors_M = pca_params['eigenvectors'][:, :config.tracker.N_pca].real
+    fourier_coeff_mean = pca_params['mean']
+
+    # Vessel Path
+    locationx = [s.x for s in ground_truth_history]
+    locationy = [s.y for s in ground_truth_history]
+    fig.add_trace(go.Scatter(x=locationy, y=locationx, mode='lines', name='Vessel Path', line=dict(color='royalblue')))
+
+    # Ground Truth Shape
+    shape_x, shape_y = compute_exact_vessel_shape_global(gt_state, config.extent.shape_coords_body)
+    fig.add_trace(go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent (GT)', line=dict(color='black')))
+
+    # Estimated Shape
+    est_shape_x, est_shape_y = compute_estimated_shape_from_params(
+        est_state.x, est_state.y, est_state.yaw, est_state.length, est_state.width, est_state.pca_coeffs,
+        fourier_coeff_mean, PCA_eigenvectors_M, config.extent.angles, config.extent.N_fourier
+    )
+    fig.add_trace(go.Scatter(x=est_shape_y, y=est_shape_x, mode='lines', name='Estimated Extent', line=dict(color='green')))
+
+    # LiDAR Rays
+    lidar_ray_x, lidar_ray_y = [], []
+    for z_pos in z_lidar_cart:
+        dist = np.linalg.norm(z_pos - np.array(config.lidar.lidar_position))
+        if dist < config.lidar.max_distance:
+            lidar_ray_x.extend([config.lidar.lidar_position[0], z_pos[0], None])
+            lidar_ray_y.extend([config.lidar.lidar_position[1], z_pos[1], None])
+    fig.add_trace(go.Scatter(x=lidar_ray_y, y=lidar_ray_x, mode='lines+markers', name='LiDAR Rays', line=dict(color='red', width=1)))
+
+    # Estimated Heading
+    est_pos = np.array([est_state.x, est_state.y])
+    est_heading = est_state.yaw
+    arrow_length = 5.0
+    arrow_end = est_pos + arrow_length * np.array([np.cos(est_heading), np.sin(est_heading)])
+
+    # Compute arrowhead points
+    arrowhead_length = arrow_length * 0.3  # Shorter than main arrow
+    arrowhead_angle = np.pi / 6  # 30 degrees for arrowhead
+    arrowhead_left = arrow_end - arrowhead_length * np.array([np.cos(est_heading - arrowhead_angle), np.sin(est_heading - arrowhead_angle)])
+    arrowhead_right = arrow_end - arrowhead_length * np.array([np.cos(est_heading + arrowhead_angle), np.sin(est_heading + arrowhead_angle)])
+    fig.add_trace(go.Scatter(x=[est_pos[1], arrow_end[1]], y=[est_pos[0], arrow_end[0]], mode='lines', name='Estimated Heading', line=dict(color='purple', width=2)))
+    fig.add_trace(go.Scatter(x=[arrow_end[1], arrowhead_left[1]], y=[arrow_end[0], arrowhead_left[0]], mode='lines', showlegend=False, line=dict(color='purple', width=2)))
+    fig.add_trace(go.Scatter(x=[arrow_end[1], arrowhead_right[1]], y=[arrow_end[0], arrowhead_right[0]], mode='lines', showlegend=False, line=dict(color='purple', width=2)))
+
+    return fig
+
 if __name__ == "__main__":
-    filename = "bfgs_ellipse_100frames.pkl"
+    filename = "bfgs_42_ellipse_300frames_2760336220.pkl"
     generate_plotly_html_from_pickle(filename)
