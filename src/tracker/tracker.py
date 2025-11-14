@@ -39,6 +39,18 @@ class Tracker:
         self.state_estimate = MultiVarGauss(mean=initial_mean, cov=initial_cov)
         self.body_angles: np.ndarray = None
 
+    def get_initial_update_result(self) -> "TrackerUpdateResult":
+        """
+        Creates a TrackerUpdateResult for the initial state (t=0).
+        """
+        return TrackerUpdateResult(
+            state_prior=None, # No prior at t=0
+            state_posterior=self.state_estimate, # This is the initial state x_0|0
+            measurements=None,
+            predicted_measurement=None,
+            innovation_gauss=None
+        )
+
     def predict(self):
         raise NotImplementedError("Predict method not implemented for the Tracker class.")
 

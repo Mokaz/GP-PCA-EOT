@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import pickle
 from pathlib import Path
+from tqdm import tqdm
 
 from global_project_paths import PROJECT_ROOT
 sys.path.append(PROJECT_ROOT)
@@ -10,7 +11,7 @@ sys.path.append(PROJECT_ROOT)
 from global_project_paths import SIMDATA_PATH
 
 from src.dynamics.process_models import GroundTruthModel, Model_PCA_CV
-from sensors.LidarModel import LidarModel
+from src.sensors.LidarModel import LidarModel
 
 from src.tracker.tracker import TrackerUpdateResult
 from src.tracker.ExtendedKalmanFilter import EKF
@@ -28,7 +29,6 @@ from src.senfuslib.timesequence import TimeSequence
 from src.utils.SimulationResult import SimulationResult
 
 from src.utils.config_classes import Config
-from tqdm import tqdm
 
 
 def run_single_simulation(config: Config, method: str) -> SimulationResult:
@@ -94,6 +94,10 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
     # --- Run Filtering Loop ---
     results_ts: TimeSequence[TrackerUpdateResult] = TimeSequence() 
     
+    # --- Insert the initial state at t=0 ---
+    initial_result = tracker.get_initial_update_result()
+    results_ts.insert(0.0, initial_result)
+
     for ts, measurement in tqdm(measurements_lidar_frame_ts.items(), desc="Filtering measurements"):
         tracker.predict()
         update_result = tracker.update(measurement, ground_truth=ground_truth_ts.get_t(ts))

@@ -1,10 +1,14 @@
 import logging
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable, List, Optional, Sequence, Union
 from matplotlib import pyplot as plt
 import numpy as np
 from . import TimeSequence, MultiVarGauss, ConsistencyAnalysis, ConsistencyData
 import itertools
 import matplotlib as mpl
+
+from bokeh.plotting import figure, show
+from bokeh.layouts import gridplot
+from bokeh.models import HoverTool, ColumnDataSource
 
 FactoryType = Callable[[float, Any, float, Any, str, str], tuple[tuple, dict]]
 t = np.linspace(0, np.pi*2, 100)
@@ -135,7 +139,7 @@ def show_consistency(analysis: ConsistencyAnalysis,
 
     def add_stuff(ax, data: ConsistencyData):
         all_axs.append(ax)
-        sym = rf"$\chi^2_{data.dofs[0]}$"
+        sym = rf"$\chi^2_{{{data.dofs[0]}}}$"
         labels = [
             (f"{sym}, {data.in_interval:.0%}$\\in$"
              f"CI$_{{{data.alpha*100:.0f}\\%}}$"),
@@ -169,7 +173,11 @@ def show_consistency(analysis: ConsistencyAnalysis,
             ax.plot(data.mahal_dist_tseq.times,
                     data.mahal_dist_tseq.values, label=lab)
             add_stuff(ax, data)
-            ax_config(ax, y_label=f'{field}', y_scale='log')
+            
+            # Use a more descriptive label if the field is 'all'
+            y_label = 'Total' if field == 'all' else f'{field}'
+            ax_config(ax, y_label=y_label, y_scale='log')
+            
         ax_config(axs[0], title=f'{name} {title}')
         ax_config(axs[-1], x_label='Time [s]')
         fig_config(axs[0].figure, f'{name} {title}')
@@ -198,3 +206,134 @@ def show_consistency(analysis: ConsistencyAnalysis,
         fig_config(axs_err[0].figure, err_name)
 
     return all_axs
+
+def interactive_show_consistency(
+    analysis: Any,
+    fields_nis: Sequence[Union[str, List[str]]] = tuple(),
+    fields_nees: Sequence[Union[str, List[str]]] = tuple(),
+    fields_err: Sequence[str] = tuple(),
+    title: str = '',
+) -> gridplot:
+    """
+    Creates an interactive Bokeh plot to show consistency analysis results.
+    """
+    all_plots = []
+    
+    tooltips = [
+        ("Name", "$name"),
+        ("Timestep", "@timesteps"),
+        ("Time", "@times{0.00}s"),
+        ("Value", "@values{0.000}"),
+    ]
+
+    # --- 1. Process NIS and NEES plots ---
+    for fields, name in zip((fields_nis, fields_nees), ('NIS', 'NEES')):
+        if not fields:
+            continue
+        
+        plots_group = []
+        for i, field in enumerate(fields):
+            data = analysis.get_nis(field) if name == 'NIS' else analysis.get_nees(field)
+            
+            plot_title = f'{name} {title}' if i == 0 else ''
+            p = figure(title=plot_title, y_axis_type="log")
+            
+            times = data.mahal_dist_tseq.times
+            values = data.mahal_dist_tseq.values
+            timesteps = np.arange(len(values))
+            source = ColumnDataSource(data={'timesteps': timesteps, 'times': times, 'values': values})
+
+            aconf = data.aconf
+            insym = '∈' if aconf[0] < data.a < aconf[1] else '∉'
+            lab = f"{name}, A={data.a:.3f} {insym} ({aconf[0]:.3f}, {aconf[1]:.3f})"
+            
+            main_line_renderer = p.line(
+                x='timesteps', y='values', source=source, 
+                legend_label=lab, name=lab, color="royalblue", line_width=2
+            )
+            
+            subscript_map = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+            dofs_sub = str(data.dofs[0]).translate(subscript_map)
+            sym = f"χ²{dofs_sub}"
+            
+            # --- FIX: Re-added the detailed statistics to the legend labels ---
+            ci_label = (f"{sym}, {data.in_interval:.0%} ∈ "
+                        f"CI at {data.alpha*100:.0f}%")
+            median_label = f"{sym}, {data.above_median:.0%} > median"
+            
+            lmu = data.low_med_upp_tseq.values_as_array()
+            p.line(timesteps, lmu[:, 0], legend_label=ci_label, name="CI Bound", color="darkorange", line_dash='dashed')
+            p.line(timesteps, lmu[:, 2], color="darkorange", line_dash='dashed')
+            p.line(timesteps, lmu[:, 1], legend_label=median_label, name="Median", color="green", line_dash='dashed')
+            
+            hover_tool = HoverTool(
+                renderers=[main_line_renderer], 
+                tooltips=tooltips, 
+                mode='vline', 
+                point_policy='snap_to_data'
+            )
+            p.add_tools(hover_tool)
+
+            p.yaxis.axis_label = ', '.join(field) if isinstance(field, (list, tuple)) else str(field)
+            p.legend.location = "bottom_right"
+            p.legend.click_policy = "hide"
+            plots_group.append(p)
+
+        if plots_group:
+            plots_group[-1].xaxis.axis_label = 'Timestep'
+            all_plots.extend(plots_group)
+
+    # --- 2. Process Error plots ---
+    if fields_err:
+        err_plots = []
+        rmse_total_sq = 0
+        for i, field in enumerate(fields_err):
+            err_gauss_tseq = analysis.get_x_err(field)
+            err_tseq = err_gauss_tseq.map(lambda e: e.mean)
+            std_tseq = err_gauss_tseq.map(lambda e: np.sqrt(e.cov).item())
+            rmse = np.sqrt(np.mean(np.array(err_tseq.values)**2))
+            rmse_total_sq += rmse**2
+            
+            plot_title = f'Error {title}' if i == 0 else ''
+            p = figure(height=300, width=800, title=plot_title)
+
+            times = err_tseq.times
+            values = err_tseq.values
+            timesteps = np.arange(len(values))
+            source_err = ColumnDataSource(data={'timesteps': timesteps, 'times': times, 'values': values})
+
+            err_label = f'err, rmse={rmse:.2e}'
+            err_line_renderer = p.line(x='timesteps', y='values', source=source_err, legend_label=err_label, name=err_label, color='royalblue')
+            
+            p.varea(x=timesteps, y1=-np.array(std_tseq.values), y2=np.array(std_tseq.values), 
+                    fill_alpha=0.3, fill_color='royalblue', legend_label='±1σ', name='±1σ')
+            
+            p.line([timesteps[0], timesteps[-1]], [0, 0], color='black', line_dash='dashed', alpha=0.7)
+            
+            hover_tool = HoverTool(
+                renderers=[err_line_renderer], 
+                tooltips=tooltips, 
+                mode='vline', 
+                point_policy='snap_to_data'
+            )
+            p.add_tools(hover_tool)
+
+            p.yaxis.axis_label = field
+            p.legend.location = "bottom_right"
+            p.legend.click_policy = "hide"
+            err_plots.append(p)
+        
+        if err_plots:
+            total_rmse = np.sqrt(rmse_total_sq / len(fields_err))
+            err_plots[0].title.text = f'Error {title}, total rmse={total_rmse:.2e}'
+            err_plots[-1].xaxis.axis_label = 'Timestep'
+            all_plots.extend(err_plots)
+
+    # --- 3. Arrange all plots into a final grid layout ---
+    if not all_plots:
+        return None
+        
+    for plot in all_plots[1:]:
+        plot.x_range = all_plots[0].x_range
+        
+    return gridplot(all_plots, ncols=1, sizing_mode='stretch_both')

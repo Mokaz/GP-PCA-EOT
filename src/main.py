@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 from global_project_paths import SIMDATA_PATH
-from utils.config_classes import TrackerConfig, SimulationConfig, Config, ExtentConfig, LidarConfig
+from src.utils.config_classes import TrackerConfig, SimulationConfig, Config, ExtentConfig, LidarConfig
 # Import the State_PCA class
 from src.states.states import State_PCA
 from src.visualization.plotly_offline_generator import generate_plotly_html_from_pickle
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     )
 
     tracker_config = TrackerConfig(
-        use_gt_state_for_bodyangles_calc = True, # NOTE using gt for bodyangles calc 
+        use_gt_state_for_bodyangles_calc = False, # NOTE using gt for bodyangles calc 
         N_pca=N_pca,
         pos_north_std_dev=0.3,
         pos_east_std_dev=0.3,
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     )
 
     # method_list = ["iekf", "ukf", "bfgs", "slsqp", "gauss_newton", "levenberg_marquardt", "smoothing_slsqp"]
-    method_list = ["bfgs"]
+    method_list = ["ekf", "iekf"]
 
     for method in method_list:
         print(f"Running method: {method}")

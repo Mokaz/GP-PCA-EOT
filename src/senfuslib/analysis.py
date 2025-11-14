@@ -66,11 +66,15 @@ class ConsistencyAnalysis:
 
     def get_nis(self, indices: Sequence[Union[int, str]] = None,
                 alpha=0.95) -> ConsistencyData:
+        if indices == 'all':
+            indices = None
         err_gauss_tseq = self._get_err(self.z_err_gauss, indices)
         return self._get_nisornees(err_gauss_tseq, alpha)
 
     def get_nees(self, indices: Sequence[Union[int, str]] = None,
                  alpha=0.95) -> ConsistencyData:
+        if indices == 'all':
+            indices = None
         err_gauss_tseq = self._get_err(self.x_err_gauss, indices)
         return self._get_nisornees(err_gauss_tseq, alpha)
 
@@ -85,17 +89,28 @@ class ConsistencyAnalysis:
                  indices: Sequence[Union[int, str]]
                  ) -> TimeSequence[MultiVarGauss[NamedArray]]:
         if indices is None:
+            # If no indices, use all dimensions of the state vector
             indices = np.arange(err_gauss_tseq.values[0].ndim)
-
         elif isinstance(indices, (int, str)):
             indices = [indices]
 
         def marginalize(err_gauss: MultiVarGauss[NamedArray]):
-            def idx_map(idx):
-                if isinstance(idx, str):
-                    idx = attrgetter(idx)(err_gauss.mean.indices)[0]
-                return idx
-            _indices = np.r_[tuple(idx_map(idx) for idx in indices)]
+            # This inner function correctly resolves string names to integer indices
+            def resolve_indices(idx_or_slice):
+                if isinstance(idx_or_slice, str):
+                    # Get the AtIndex object (e.g., AtIndex[2] or AtIndex[slice(8, None)])
+                    resolved = attrgetter(idx_or_slice)(err_gauss.mean.indices)[0]
+                else:
+                    resolved = idx_or_slice
+
+                # If it's a slice, convert it to a range of integers
+                if isinstance(resolved, slice):
+                    return np.arange(resolved.start, resolved.stop if resolved.stop is not None else err_gauss.ndim)
+                return resolved
+
+            # Build the final flat list of integer indices
+            _indices = np.concatenate([np.atleast_1d(resolve_indices(i)) for i in indices])
+
             return err_gauss.get_marginalized(_indices)
 
         return err_gauss_tseq.map(marginalize)
@@ -108,28 +123,34 @@ class ConsistencyAnalysis:
         def get_mahal(x: MultiVarGauss[NamedArray]):
             return x.mahalanobis_distance(np.zeros_like(x.mean))
 
+        # If the sequence is empty, do nothing.
+        if not err_gauss_tseq:
+            # Return a dummy object or raise an error
+            return None # Or some sensible default
+
         mahal_dist_tseq = err_gauss_tseq.map(get_mahal)
 
+        dof = err_gauss_tseq.values[0].ndim
+        dofs = [dof] * len(err_gauss_tseq)
+
+        lower, upper = chi2_interval(alpha, dof)
+        median = chi2.mean(dof)
+        
         low_med_upp_tseq = TimeSequence()
-        dofs = []
-        for t, err in err_gauss_tseq.items():
-            dofs.append(err.mean.shape[0])
-            lower, upper = chi2_interval(alpha, dofs[0])
-            low_med_upp_tseq.insert(t, (lower, chi2_mean(dofs[0]), upper))
+        for t in err_gauss_tseq.times:
+            low_med_upp_tseq.insert(t, (lower, median, upper))
 
         n = len(mahal_dist_tseq)
-        above_median = 0
-        in_interval = 0
-        for mahal_dist, lmu in zip(mahal_dist_tseq.values, low_med_upp_tseq.values):
-            above_median += mahal_dist > lmu[1]
-            in_interval += lmu[0] <= mahal_dist <= lmu[2]
+        mahal_dists = mahal_dist_tseq.values_as_array()
 
-        above_median = above_median / n
-        in_interval = in_interval / n
+        above_median = np.sum(mahal_dists > median) / n
+        in_interval = np.sum((mahal_dists > lower) & (mahal_dists < upper)) / n
 
-        a = np.mean(mahal_dist_tseq.values)
-        adof = sum(dofs)
-        aconf = tuple(i/n for i in chi2_interval(alpha, adof))
+        a = np.mean(mahal_dists)
+        adof = n * dof
+        a_lower, a_upper = chi2_interval(alpha, adof)
+        aconf = (a_lower / n, a_upper / n)
+
         return ConsistencyData(mahal_dist_tseq, low_med_upp_tseq,
-                               above_median, in_interval, alpha, dofs,
-                               a, adof, aconf)
+                               above_median, in_interval, alpha,
+                               [dof], a, adof, aconf)

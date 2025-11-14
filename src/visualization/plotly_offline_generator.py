@@ -87,10 +87,9 @@ def generate_plotly_html_from_pickle(filename: str):
     )
     plot_frames, locationx, locationy = [], [], []
 
-    for frame_idx in range(num_frames):
+    for frame_idx in range(1, num_frames+1):
         # Create plot frame
-        # The first update is at t=dt, which corresponds to the second GT state (index 1).
-        gt_state = ground_truth_states[frame_idx + 1]
+        gt_state = ground_truth_states[frame_idx]
         est_state = state_posteriors[frame_idx]
         
         locationx.append(gt_state.x)
