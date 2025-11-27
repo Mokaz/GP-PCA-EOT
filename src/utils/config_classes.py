@@ -17,6 +17,7 @@ class SimulationConfig:
     seed: int = 42
 
     gt_yaw_rate_std_dev: float = 0.1
+    initial_state_gt: State_PCA = None
 
 @dataclass
 class ExtentConfig:

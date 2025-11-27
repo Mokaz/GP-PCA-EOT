@@ -78,10 +78,10 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
         dynamic_model=gt_dynamic_model,
         sensor_model=sensor_model,
         sensor_setter=None,
-        init_state=tracker_cfg.initial_state,  # TODO Martin the GT initial tracker state should be separate
+        init_state=sim_cfg.initial_state_gt,
         dt=sim_cfg.dt,
         end_time=sim_cfg.num_frames * sim_cfg.dt,
-        seed=str(sim_cfg.seed)  # Ensure seed is a string for crc32
+        seed=str(sim_cfg.seed)
     )
 
     # --- Generate Simulation Data ---

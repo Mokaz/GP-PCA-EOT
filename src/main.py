@@ -35,12 +35,27 @@ if __name__ == "__main__":
     LOAD_SIM_RESULT = False # TODO MARTIN: ONLY USES CONFIG FOR ID GENERATION FOR NOW
 
     # Simulation Parameters
+    N_pca = 4
+    
+    initial_state_gt = State_PCA(
+        x=0.0,          # North position
+        y=-40.0,        # East position
+        yaw=np.pi / 2,  # Heading angle
+        vel_x=0.0,      # North Velocity
+        vel_y=3.0,      # East Velocity
+        yaw_rate=0.0,   # Yaw Rate
+        length=20.0,    # Length
+        width=6.0,      # Width
+        pca_coeffs=np.zeros(N_pca)
+    )
+
     sim_config = SimulationConfig(
         name = "",
         num_simulations=1,
         num_frames=300,
         dt=0.1,
         seed=42,
+        initial_state_gt=initial_state_gt,
     )
 
     # LiDAR Parameters
@@ -53,9 +68,7 @@ if __name__ == "__main__":
     )
 
     # Tracker Parameters
-    N_pca = 4
-    
-    initial_state_obj = State_PCA(
+    initial_state_tracker = State_PCA(
         x=0.0,          # North position
         y=-40.0,        # East position
         yaw=np.pi / 2,  # Heading angle
@@ -74,7 +87,7 @@ if __name__ == "__main__":
         pos_east_std_dev=0.3,
         heading_std_dev=0.1,
         lidar_std_dev=0.0,
-        initial_state=initial_state_obj,
+        initial_state=initial_state_tracker,
         lidar_position=np.array(lidar_config.lidar_position)
     )
     
