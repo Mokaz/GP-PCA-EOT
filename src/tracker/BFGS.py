@@ -48,31 +48,34 @@ class BFGS(Tracker):
 
         polar_measurements = list(zip(measurements_local.angle, measurements_local.range))
 
-        # Initialize the centroid for the optimization
-        state_prior = self.state_estimate.mean.copy()
-        state_prior.pos = initialize_centroid(
-            position=state_prior.pos,
-            lidar_pos=self.sensor_model.lidar_position,
-            measurements=polar_measurements,
-            L_est=state_prior.length,
-            W_est=state_prior.width
-        ) # TODO Martin: Investigate if this should be used in penalty too
+        state_prior_mean = self.state_estimate.mean.copy()
+        P_pred = self.state_estimate.cov.copy()
+        state_pred = MultiVarGauss(mean=state_prior_mean, cov=P_pred)
 
         measurements_global_coords = measurements_local + self.sensor_model.lidar_position.reshape(2, 1)
 
-        self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth if self.use_gt_state_for_bodyangles_calc else state_prior)
-
         # Use 'F' (column-major) order to get the interleaved [x1, y1, x2, y2, ...] format.
         z = measurements_global_coords.flatten('F')
+
+        self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth if self.use_gt_state_for_bodyangles_calc else state_prior_mean)
         
-        x_pred = state_prior # NOTE Using initial_state_guess (centroid-corrected) as state_pred
-        P_pred = self.state_estimate.cov.copy()
-        state_pred = MultiVarGauss(mean=x_pred, cov=P_pred) # NOTE Martin: Has adjusted initial centroid for optimization!!
+        z_pred = self.sensor_model.h_lidar(state_prior_mean, self.body_angles).flatten()
+        innovation = z - z_pred
+
+        # Initialize the centroid for the optimization
+        state_iter_mean = state_prior_mean.copy()
+        state_iter_mean.pos = initialize_centroid(
+            position=state_prior_mean.pos,
+            lidar_pos=self.sensor_model.lidar_position,
+            measurements=polar_measurements,
+            L_est=state_prior_mean.length,
+            W_est=state_prior_mean.width
+        ) # TODO Martin: Investigate if this should be used in penalty too
 
         res = minimize(
             fun=self.prob_with_penalty, 
-            x0=state_prior,
-            args=(z, x_pred, P_pred, ground_truth, mean_lidar_angle, lower_diff, upper_diff),
+            x0=state_iter_mean,
+            args=(z, state_prior_mean, P_pred, ground_truth, mean_lidar_angle, lower_diff, upper_diff),
             method='BFGS',
             # jac='3-point', # Use numerical differentiation for the gradient
             # options={'maxiter': self.max_iterations, 'gtol': self.convergence_threshold}
@@ -80,26 +83,29 @@ class BFGS(Tracker):
 
         # --- NEW DEBUGGING CALCULATIONS ---
         state_post_mean = State_PCA.from_array(res.x)
-        
-        # Recalculate components at the final solution (res.x)
+
+        # 1. Update the body angles based on the posterior state
+        self.body_angles = calculate_body_angles(
+            measurements_global_coords, 
+            ground_truth if self.use_gt_state_for_bodyangles_calc else state_post_mean
+        )
+
+        # 2. Calculate Jacobian and Residuals using consistent angles
+        H = self.sensor_model.lidar_jacobian(state_post_mean, self.body_angles)
+        z_residual = z - self.sensor_model.h_lidar(state_post_mean, self.body_angles).flatten()
+        x_residual = state_post_mean - state_prior_mean
+
+        # 3. Compute Costs
         num_meas = len(self.body_angles)
         R = self.sensor_model.R(num_meas)
         P_pred_inv = np.linalg.inv(P_pred)
         R_inv = np.linalg.inv(R)
 
-        z_residual = z - self.sensor_model.h_lidar(state_post_mean, self.body_angles).flatten()
-        x_residual = state_post_mean - x_pred
-
         cost_likelihood = 0.5 * z_residual.T @ R_inv @ z_residual
         cost_prior = 0.5 * x_residual.T @ P_pred_inv @ x_residual
         cost_penalty = self.penalty_function(state_post_mean, mean_lidar_angle, lower_diff, upper_diff)
-
-        # Calculate Jacobian at the solution
-        H = self.sensor_model.lidar_jacobian(state_post_mean, self.body_angles)
         
-        # Calculate innovation and innovation covariance for analysis
-        z_pred = self.sensor_model.h_lidar(state_post_mean, self.body_angles).flatten()
-        innovation = z - z_pred
+        # 4. S Matrix
         S = H @ P_pred @ H.T + R
         
         z_pred_gauss = MultiVarGauss(mean=z_pred, cov=S)

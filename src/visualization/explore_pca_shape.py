@@ -31,11 +31,11 @@ class ShapeExplorer:
 
         # 2. Define GUI Widgets
         self.slider_L = pn.widgets.FloatSlider(
-            name='Length (L)', start=5.0, end=150.0, step=1.0, value=30.0, 
+            name='Length (L)', start=5.0, end=150.0, step=1.0, value=50.0, 
             sizing_mode='stretch_width'
         )
         self.slider_W = pn.widgets.FloatSlider(
-            name='Width (W)', start=2.0, end=50.0, step=0.5, value=8.0, 
+            name='Width (W)', start=2.0, end=50.0, step=0.5, value=20.0, 
             sizing_mode='stretch_width'
         )
         self.rotate_toggle = pn.widgets.Checkbox(
