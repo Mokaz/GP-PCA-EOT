@@ -132,7 +132,6 @@ def update_widgets(filename):
     sim_result = loaded_data["sim_result"]
 
     # Dynamically get the list of state labels
-    # n_pca = loaded_data["config"].tracker.N_pca
     all_state_labels = ['x', 'y', 'yaw', 'vel_x', 'vel_y', 'yaw_rate', 'length', 'width'] + [f'pca_coeff_{i}' for i in range(sim_result.config.tracker.N_pca)]
 
     frame_player.end = sim_result.config.sim.num_frames
@@ -141,21 +140,52 @@ def update_widgets(filename):
     
     nees_group_selector.value = []
     nees_group_selector.visible = True
+    nees_group_selector.size = len(NEES_GROUP_MAPPING)
+    nees_group_selector.height = min(len(NEES_GROUP_MAPPING) * 20, 400)
 
     custom_nees_selector.options = all_state_labels
     custom_nees_selector.value = []
     custom_nees_selector.visible = True
-    custom_nees_selector.size = len(all_state_labels)
+
+    n_items = len(all_state_labels)
+    calculated_height = n_items * 18
+    custom_nees_selector.height = min(calculated_height, 400) 
+    custom_nees_selector.size = n_items 
 
     cov_matrix_selector.visible = True
     nis_field_selector.visible = True
 
+def create_empty_figure(message="Select a file to begin"):
+    """Helper to create a blank figure with a centered message."""
+    empty_fig = go.Figure()
+    empty_fig.add_annotation(
+        text=message, 
+        xref="paper", yref="paper", 
+        x=0.5, y=0.5, showarrow=False,
+        font=dict(size=20, color="gray")
+    )
+    empty_fig.update_layout(
+        xaxis={'visible': False}, yaxis={'visible': False},
+        plot_bgcolor='white', paper_bgcolor='white'
+    )
+    return empty_fig
 
-@pn.depends(frame_player.param.value, file_selector.param.value)
-def get_plotly_view(frame_idx, filename):
+# 1. Create the pane ONCE, initializing it with the empty figure
+persistent_plotly_pane = pn.pane.Plotly(
+    object=create_empty_figure(),  # <--- Initialize with text
+    sizing_mode='stretch_both', 
+    config={'responsive': True}
+)
+
+# 2. Define the update logic
+def update_plotly_view(frame_idx, filename):
     loaded_data = load_data(filename)
+    
+    # Handle "No Data" without destroying the Plotly pane
     if not loaded_data:
-        return pn.pane.Markdown("### Select a file to begin.")
+        # Use the helper to reset the view to the message
+        persistent_plotly_pane.object = create_empty_figure()
+        return
     
     sim_result = loaded_data["sim_result"]
     config = loaded_data["config"]
@@ -163,12 +193,13 @@ def get_plotly_view(frame_idx, filename):
     ground_truth_states = list(sim_result.ground_truth_ts.values)
     tracker_results = list(sim_result.tracker_results_ts.values)
 
+    # Safety check for frame index
+    if frame_idx >= len(ground_truth_states):
+        return
+
     gt_state = ground_truth_states[frame_idx]
     tracker_result = tracker_results[frame_idx]
-
     est_state = tracker_result.state_posterior.mean
-
-    fig = go.Figure()
 
     if frame_idx == 0:
         fig = generate_initial_plotly_fig(gt_state, est_state, config, pca_params)
@@ -195,8 +226,12 @@ def get_plotly_view(frame_idx, filename):
                    title='North [m]'),
         legend=dict(x=1.05, y=1)
     )
-    return pn.pane.Plotly(fig, config={'responsive': True}, sizing_mode='stretch_both')
+    
+    # Update the object in-place
+    persistent_plotly_pane.object = fig
 
+# 3. Bind the update function to the widgets using watch=True
+pn.bind(update_plotly_view, frame_player, file_selector, watch=True)
 
 @pn.depends(nees_group_selector.param.value, custom_nees_selector.param.value, file_selector.param.value)
 def get_nees_view(selected_groups, custom_states, filename):
@@ -204,10 +239,8 @@ def get_nees_view(selected_groups, custom_states, filename):
     if not loaded_data or (not selected_groups and not custom_states):
         return pn.pane.Markdown("### Select pre-defined groups or custom states to show NEES plot.")
     
-    # Start with the fields from the pre-defined groups
     fields_to_plot = [NEES_GROUP_MAPPING[name] for name in selected_groups]
     
-    # If the user selected any custom states, add them as a new, separate plot
     if custom_states:
         fields_to_plot.append(list(custom_states))
         
@@ -221,7 +254,6 @@ def get_nees_view(selected_groups, custom_states, filename):
       return pn.pane.Markdown("### No data to plot for the selected fields.")
       
     return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
-
 
 
 @pn.depends(cov_matrix_selector.param.value, frame_player.param.value, file_selector.param.value)
@@ -245,7 +277,6 @@ def get_covariance_view(matrix_name, frame_idx, filename):
 
     df = pd.DataFrame(cov_matrix, index=labels, columns=labels)
     
-
     cond_number = np.linalg.cond(cov_matrix)
     heatmap = df.hvplot.heatmap(
         cmap='viridis',
@@ -264,7 +295,6 @@ def get_nis_view(selected_field, filename):
     
     consistency_analyzer = loaded_data["consistency_analyzer"]
     
-    # Use 'all' to trigger the bypass in _get_err and calculate total NIS
     fields_to_plot = ["all"]
     
     bokeh_plot = interactive_show_consistency(
@@ -291,7 +321,7 @@ controls = pn.Column(
     sizing_mode="stretch_width",
 )
 
-plotly_view = pn.Column(get_plotly_view, sizing_mode="stretch_both")
+plotly_view = pn.Column(persistent_plotly_pane, sizing_mode="stretch_both")
 nees_view = pn.Column(get_nees_view, sizing_mode="stretch_both")
 covariance_view = pn.Column(get_covariance_view, sizing_mode="stretch_both")
 nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
@@ -307,10 +337,12 @@ tmpl = pn.Template(template_str)
 
 tmpl.nb_template.globals['get_id'] = make_globally_unique_id
 
-# Add panels to the template with the names used in the 'embed' calls
 tmpl.add_panel('controls', controls)
 tmpl.add_panel('plotly_view', plotly_view)
 tmpl.add_panel('nees_view', nees_view)
 tmpl.add_panel('covariance_view', covariance_view)
 tmpl.add_panel('nis_view', nis_view)
 tmpl.servable(title="GP-PCA-EOT Simulation Analysis Dashboard")
+
+if __name__ == "__main__":
+    pn.serve(tmpl, port=5006, show=True)
