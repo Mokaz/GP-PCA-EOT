@@ -89,8 +89,10 @@ class ConsistencyAnalysis:
                  indices: Sequence[Union[int, str]]
                  ) -> TimeSequence[MultiVarGauss[NamedArray]]:
         if indices is None:
-            # If no indices, use all dimensions of the state vector
-            indices = np.arange(err_gauss_tseq.values[0].ndim)
+            return err_gauss_tseq
+        # if indices is None:
+        #     # If no indices, use all dimensions of the state vector
+        #     indices = np.arange(err_gauss_tseq.values[0].ndim)
         elif isinstance(indices, (int, str)):
             indices = [indices]
 
@@ -116,41 +118,47 @@ class ConsistencyAnalysis:
         return err_gauss_tseq.map(marginalize)
 
     def _get_nisornees(self,
-                       err_gauss_tseq: TimeSequence[MultiVarGauss[NamedArray]],
-                       alpha: float,
-                       ) -> ConsistencyData:
+                        err_gauss_tseq: TimeSequence[MultiVarGauss[NamedArray]],
+                        alpha: float,
+                        ) -> ConsistencyData:
 
         def get_mahal(x: MultiVarGauss[NamedArray]):
             return x.mahalanobis_distance(np.zeros_like(x.mean))
 
-        # If the sequence is empty, do nothing.
         if not err_gauss_tseq:
-            # Return a dummy object or raise an error
-            return None # Or some sensible default
+            return None 
 
         mahal_dist_tseq = err_gauss_tseq.map(get_mahal)
-
-        dof = err_gauss_tseq.values[0].ndim
-        dofs = [dof] * len(err_gauss_tseq)
-
-        lower, upper = chi2_interval(alpha, dof)
-        median = chi2.mean(dof)
-        
-        low_med_upp_tseq = TimeSequence()
-        for t in err_gauss_tseq.times:
-            low_med_upp_tseq.insert(t, (lower, median, upper))
-
-        n = len(mahal_dist_tseq)
         mahal_dists = mahal_dist_tseq.values_as_array()
+        n = len(mahal_dist_tseq)
 
-        above_median = np.sum(mahal_dists > median) / n
-        in_interval = np.sum((mahal_dists > lower) & (mahal_dists < upper)) / n
+        dofs = [val.ndim for val in err_gauss_tseq.values]
 
+        low_med_upp_tseq = TimeSequence()
+        in_interval_count = 0
+        above_median_count = 0
+
+        for t, dof, dist in zip(err_gauss_tseq.times, dofs, mahal_dists):
+            lower, upper = chi2_interval(alpha, dof)
+            median = chi2_mean(dof)
+            
+            low_med_upp_tseq.insert(t, (lower, median, upper))
+            
+            if dist > median:
+                above_median_count += 1
+            if lower < dist < upper:
+                in_interval_count += 1
+
+        above_median = above_median_count / n
+        in_interval = in_interval_count / n
+
+        adof = sum(dofs) 
         a = np.mean(mahal_dists)
-        adof = n * dof
-        a_lower, a_upper = chi2_interval(alpha, adof)
-        aconf = (a_lower / n, a_upper / n)
+        
+        sum_lower, sum_upper = chi2_interval(alpha, adof)
+        
+        aconf = (sum_lower / n, sum_upper / n)
 
         return ConsistencyData(mahal_dist_tseq, low_med_upp_tseq,
-                               above_median, in_interval, alpha,
-                               [dof], a, adof, aconf)
+                            above_median, in_interval, alpha,
+                            dofs, a, adof, aconf)

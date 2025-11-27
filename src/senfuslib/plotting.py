@@ -208,7 +208,7 @@ def show_consistency(analysis: ConsistencyAnalysis,
     return all_axs
 
 def interactive_show_consistency(
-    analysis: Any,
+    analysis: ConsistencyAnalysis,
     fields_nis: Sequence[Union[str, List[str]]] = tuple(),
     fields_nees: Sequence[Union[str, List[str]]] = tuple(),
     fields_err: Sequence[str] = tuple(),

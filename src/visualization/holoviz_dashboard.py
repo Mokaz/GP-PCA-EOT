@@ -110,8 +110,8 @@ cov_matrix_selector = pn.widgets.Select(
 # --- NIS Widgets ---
 nis_field_selector = pn.widgets.Select(
     name='NIS Consistency',
-    options=['Lidar'], # Assuming 'Lidar' is the only sensor for now
-    value='Lidar',
+    options=['all'],
+    value='all',
     visible=False,
     sizing_mode='stretch_width'
 )
@@ -258,22 +258,25 @@ def get_covariance_view(matrix_name, frame_idx, filename):
 
 @pn.depends(nis_field_selector.param.value, file_selector.param.value)
 def get_nis_view(selected_field, filename):
-    return pn.pane.Markdown("### NIS View not yet implemented.")
-    # loaded_data = load_data(filename)
-    # if not loaded_data or not selected_field:
-    #     return pn.pane.Markdown("### Select a file to begin.")
+    loaded_data = load_data(filename)
+    if not loaded_data:
+        return pn.pane.Markdown("### Select a file to begin.")
+    
+    consistency_analyzer = loaded_data["consistency_analyzer"]
+    
+    # Use 'all' to trigger the bypass in _get_err and calculate total NIS
+    fields_to_plot = ["all"]
+    
+    bokeh_plot = interactive_show_consistency(
+        analysis=consistency_analyzer, 
+        fields_nis=fields_to_plot,
+        title="Measurement Consistency"
+    )
 
-    # consistency_analyzer = loaded_data["consistency_analyzer"]
-    
-    # # For NIS, we plot one field at a time.
-    # fig, ax = plt.subplots(1, 1, figsize=(10, 3))
-    
-    # # Ensure 'ax' is treated as an iterable list for the plotting function
-    # axs = np.atleast_1d(ax)
-    
-    # show_consistency(analysis=consistency_analyzer, fields_nis=[selected_field], axs_nis=axs)
-    # plt.tight_layout()
-    # return pn.pane.Matplotlib(fig, tight=True, sizing_mode='stretch_width')
+    if bokeh_plot is None:
+      return pn.pane.Markdown("### No NIS data available.")
+      
+    return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
 
 
 # --- Build Panel objects ---
