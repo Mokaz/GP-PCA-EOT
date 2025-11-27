@@ -27,7 +27,10 @@ class State_PCA(NamedArray):
     yaw_rate: AtIndex[5]
     length: AtIndex[6]
     width: AtIndex[7]
-    pca_coeffs: AtIndex[slice(8, None)]
+    pca_coeff_0: AtIndex[8] = field(init=False)
+    pca_coeff_1: AtIndex[9] = field(init=False)
+    pca_coeff_2: AtIndex[10] = field(init=False)
+    pca_coeff_3: AtIndex[11] = field(init=False) # TODO Martin Adjust number of PCA coeffs as needed
 
     # --- Replace the custom __init__ with a custom __new__ method ---
     def __new__(cls, x, y, yaw, vel_x, vel_y, yaw_rate, length, width, pca_coeffs):
@@ -46,6 +49,7 @@ class State_PCA(NamedArray):
     pos: AtIndex[slice(0, 2)] = field(init=False)
     kinematics: AtIndex[slice(0, 6)] = field(init=False)
     extent: AtIndex[slice(6, 8)] = field(init=False)
+    pca_coeffs: AtIndex[slice(8, None)]
 
 @dataclass
 class LidarScan(NamedArray):
