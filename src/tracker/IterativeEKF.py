@@ -29,7 +29,6 @@ class IterativeEKF(Tracker):
         self.state_estimate = self.dynamic_model.pred_from_est(self.state_estimate, self.T)
 
     def update(self, measurements_local: LidarScan, ground_truth: State_PCA = None) -> TrackerUpdateResult:
-        num_meas = len(measurements_local.angle)
         polar_measurements = list(zip(measurements_local.angle, measurements_local.range))
 
         # Initialize the centroid for the optimization
@@ -65,6 +64,8 @@ class IterativeEKF(Tracker):
             # Predict LiDAR measurement
             z_pred_iter = self.sensor_model.h_lidar(state_iter_mean, self.body_angles).flatten()
             innovation_iter = z - z_pred_iter
+
+            num_meas = len(self.body_angles) 
             
             # Compute Jacobian and Kalman gain for LiDAR
             H_lidar = self.sensor_model.lidar_jacobian(state_iter_mean, self.body_angles)
@@ -88,6 +89,8 @@ class IterativeEKF(Tracker):
 
         # Recalculate for final state
         self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth if self.use_gt_state_for_bodyangles_calc else state_post_mean)
+        
+        num_meas = len(self.body_angles) 
         H_lidar = self.sensor_model.lidar_jacobian(state_post_mean, self.body_angles)
         R_lidar = self.sensor_model.R(num_meas)
         S_lidar = H_lidar @ P_pred @ H_lidar.T + R_lidar

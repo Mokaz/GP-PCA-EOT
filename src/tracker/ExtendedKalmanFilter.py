@@ -2,7 +2,7 @@ import numpy as np
 
 from src.senfuslib import MultiVarGauss
 from src.tracker.tracker import Tracker, TrackerUpdateResult
-from src.utils.tools import ssa, initialize_centroid, calculate_body_angles
+from src.utils.tools import ssa, calculate_body_angles
 from src.states.states import State_PCA, LidarScan
 from src.dynamics.process_models import Model_PCA_CV
 from src.sensors.LidarModel import LidarModel
@@ -26,10 +26,6 @@ class EKF(Tracker):
         """
         Update step of the Extended Kalman Filter
         """
-        num_meas = len(measurements_local[0])
-        polar_measurements = list(zip(measurements_local.angle, measurements_local.range))
-
-        # Initialize the centroid for the optimization
         state_prior_mean = self.state_estimate.mean.copy()
         P_pred = self.state_estimate.cov.copy()
         state_pred = MultiVarGauss(mean=state_prior_mean, cov=P_pred) 
@@ -44,23 +40,15 @@ class EKF(Tracker):
         z_pred = self.sensor_model.h_lidar(state_prior_mean, self.body_angles).flatten()
         innovation = z - z_pred
         
-        state_centroid_corrected_mean = state_prior_mean.copy()
-        state_centroid_corrected_mean.pos = initialize_centroid(
-            position=state_prior_mean.pos,
-            lidar_pos=self.sensor_model.lidar_position,
-            measurements=polar_measurements,
-            L_est=state_prior_mean.length,
-            W_est=state_prior_mean.width
-        )
-        
         # Compute Jacobian and Kalman gain for LiDAR
+        num_meas = len(self.body_angles)
         H_lidar = self.sensor_model.lidar_jacobian(state_prior_mean, self.body_angles)
         R_lidar = self.sensor_model.R(num_meas)
         S_lidar = H_lidar @ P_pred @ H_lidar.T + R_lidar
         K_lidar = np.linalg.solve(S_lidar.T, (H_lidar @ P_pred.T)).T
         
         # Update internal state estimate
-        state_post_mean = state_centroid_corrected_mean + K_lidar @ innovation
+        state_post_mean = state_prior_mean + K_lidar @ innovation
         state_post_mean.yaw = ssa(state_post_mean.yaw)  # Normalize heading angle
         I = np.eye(len(state_prior_mean))
         state_post_cov = (I - K_lidar @ H_lidar) @ P_pred @ (I - K_lidar @ H_lidar).T + K_lidar @ R_lidar @ K_lidar.T
