@@ -85,3 +85,36 @@ class LidarScan(NamedArray):
     def angle(self) -> np.ndarray:
         """Computes the angle in radians for all points."""
         return np.arctan2(self.y, self.x)
+
+@dataclass
+class State_GP(NamedArray):
+    """
+    Defines the full state vector for the GP-EOT tracker (Radial Basis).
+
+    x -- North position
+    y -- East position
+    yaw -- Heading angle
+    vel_x -- Velocity in North direction
+    vel_y -- Velocity in East direction
+    yaw_rate -- Yaw rate
+    radii -- The radial extent states (radius at each test angle)
+    """
+    x: AtIndex[0]
+    y: AtIndex[1]
+    yaw: AtIndex[2]
+    vel_x: AtIndex[3]
+    vel_y: AtIndex[4]
+    yaw_rate: AtIndex[5]
+    
+    # The radii are dynamic in length (N_gp), starting at index 6
+    radii: AtIndex[slice(6, None)]
+
+    # --- Convenient group accessors ---
+    pos: AtIndex[slice(0, 2)] = field(init=False)
+    kinematics: AtIndex[slice(0, 6)] = field(init=False)
+
+    def __new__(cls, x, y, yaw, vel_x, vel_y, yaw_rate, radii):
+        kinematics = np.array([x, y, yaw, vel_x, vel_y, yaw_rate], dtype=float)
+        radii = np.atleast_1d(radii).astype(float)
+        full_state = np.concatenate([kinematics, radii])
+        return np.asarray(full_state).view(cls)
