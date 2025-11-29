@@ -17,6 +17,7 @@ class LidarModelGP(SensorModel[Sequence[LidarScan]]):
     lidar_position: np.ndarray
     num_rays: int
     max_distance: float
+    lidar_gt_std_dev: float
     lidar_std_dev: float
     
     # GP Utilities for interpolation logic
@@ -145,11 +146,10 @@ class LidarModelGP(SensorModel[Sequence[LidarScan]]):
         return LidarScan(x=z_global[:, 0], y=z_global[:, 1])
 
     def simulate_lidar_measurements(self, shape_x, shape_y) -> List[Tuple[float, float]]:
-        lidar_noise_mean = 0.0
         angles, distances = cast_rays(
             self.lidar_position, self.num_rays, self.max_distance, shape_x, shape_y
         )
         noisy_measurements = add_noise_to_distances(
-            self.rng, distances, angles, lidar_noise_mean, self.lidar_std_dev
+            self.rng, distances, angles, 0.0, self.lidar_gt_std_dev
         )
         return noisy_measurements

@@ -20,150 +20,123 @@ sys.path.append(str(PROJECT_ROOT))
 
 
 from src.global_project_paths import SIMDATA_PATH, FIGURES_PATH
-from src.utils.geometry_utils import compute_estimated_shape_from_params, compute_exact_vessel_shape_global
+from src.utils.geometry_utils import compute_estimated_shape_from_params, compute_estimated_shape_global, compute_exact_vessel_shape_global
 
 # These imports are for type hinting; the actual classes are found by pickle
 from src.utils.SimulationResult import SimulationResult
 from src.senfuslib.timesequence import TimeSequence
 from src.tracker.tracker import TrackerUpdateResult
 
-
 def generate_plotly_html_from_pickle(filename: str):
     with open(os.path.join(SIMDATA_PATH, filename), "rb") as f:
         sim_result: SimulationResult = pickle.load(f)
 
-    # Extract config objects for convenience
     config = sim_result.config
     name = config.sim.name
     num_frames = config.sim.num_frames
-    lidar_max_distance = config.lidar.max_distance
-    lidar_position = config.lidar.lidar_position
-    angles = config.extent.angles
-    N_fourier = config.extent.N_fourier
-    shape_coords_body = config.extent.shape_coords_body
+    
+    # Load PCA params only if needed (TrackerConfig usually has the path)
+    pca_params = None
+    if hasattr(config.tracker, 'PCA_parameters_path'):
+        pca_params = np.load(Path(config.tracker.PCA_parameters_path))
 
-    # Extract static PCA parameters from the config within the simulation result
-    pca_params = np.load(Path(config.tracker.PCA_parameters_path))
-    PCA_eigenvectors_M = pca_params['eigenvectors'][:, :config.tracker.N_pca].real
-    fourier_coeff_mean = pca_params['mean']
-
-    # Extract TimeSequences
     tracker_results_ts = sim_result.tracker_results_ts
     ground_truth_ts = sim_result.ground_truth_ts
 
-    # Iterate through TimeSequences to create lists of data for each frame
-    # Access .values as a property, not a method
     state_posteriors = [r.state_posterior.mean for r in tracker_results_ts.values]
     z = [r.measurements for r in tracker_results_ts.values]
     ground_truth_states = list(ground_truth_ts.values)
 
-    # Initialize the figure
     fig = go.Figure()
+    # ... (Layout setup remains the same) ...
     fig.update_layout(
-        sliders=[
-            {
-                "active": 0,
-                "yanchor": "top",
-                "xanchor": "left",
-                "currentvalue": {"prefix": "Frame: ", "font": {"size": 20}},
-                "pad": {"b": 10, "t": 50},
-                "len": 0.9,
-                "x": 0.1,
-                "y": 0,
-                "steps": [
-                    {
-                        "args": [[str(i)], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}],
-                        "label": str(i)
-                    } for i in range(num_frames+1)
-                ]
-            }
-        ],
+        sliders=[{
+            # ... slider config ...
+            "active": 0, "yanchor": "top", "xanchor": "left",
+            "currentvalue": {"prefix": "Frame: ", "font": {"size": 20}},
+            "pad": {"b": 10, "t": 50}, "len": 0.9, "x": 0.1, "y": 0,
+            "steps": [{"args": [[str(i)], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}], "label": str(i)} for i in range(num_frames+1)]
+        }],
         title='Vessel Movement',
-        xaxis_title='West-East Position [m]',
-        yaxis_title='North-South Position [m]',
-        xaxis=dict(scaleanchor='y', title_font=dict(size=16)),
-        yaxis=dict(title_font=dict(size=16)),
+        xaxis_title='West-East Position [m]', yaxis_title='North-South Position [m]',
+        xaxis=dict(scaleanchor='y', title_font=dict(size=16)), yaxis=dict(title_font=dict(size=16)),
         showlegend=True,
     )
-    plot_frames, locationx, locationy = [], [], []
+
+    plot_frames = []
+    # Histories for plotting path
+    gt_history_x, gt_history_y = [], []
 
     for frame_idx in range(1, num_frames+1):
-        # Create plot frame
         gt_state = ground_truth_states[frame_idx]
         est_state = state_posteriors[frame_idx]
         
-        locationx.append(gt_state.x)
-        locationy.append(gt_state.y)
+        gt_history_x.append(gt_state.x)
+        gt_history_y.append(gt_state.y)
 
-        # Use named attributes for clarity and correctness
-        x_pos_est = est_state.x
-        y_pos_est = est_state.y
-        heading_est = est_state.yaw
-        L = est_state.length
-        W = est_state.width
-        PCA_coeffs = est_state.pca_coeffs
-
-        shape_x, shape_y = compute_exact_vessel_shape_global(
-            gt_state, shape_coords_body
-        )
+        # Ground Truth Shape (Always Explicit Polygon)
+        shape_x, shape_y = compute_exact_vessel_shape_global(gt_state, config.extent.shape_coords_body)
 
         z_lidar_cart = z[frame_idx].reshape((-1, 2))
 
-        plot_frame = create_frame_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, z_lidar_cart, (frame_idx+1), locationx, locationy, 
-                                shape_x, shape_y, lidar_max_distance, lidar_position, angles, fourier_coeff_mean, PCA_eigenvectors_M, N_fourier)
+        plot_frame = create_frame_from_state(
+            est_state, 
+            z_lidar_cart, 
+            (frame_idx+1), 
+            gt_history_x, gt_history_y, 
+            shape_x, shape_y, 
+            config, 
+            pca_params
+        )
         plot_frames.append(plot_frame)
 
     fig = create_sim_figure(fig, plot_frames, len(plot_frames))
+    # ... (Saving logic remains the same) ...
     plot_filename = os.path.join(FIGURES_PATH, f"{name}.html")
     os.makedirs(os.path.dirname(plot_filename), exist_ok=True)
     plotly.offline.plot(fig, filename=plot_filename, auto_open=False)
     print(f"HTML plot simulation run saved to {plot_filename}")
 
-def create_frame_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, z_lidar_cart, current_timestep, locationx, locationy, shape_x, shape_y, lidar_max_distance, lidar_position, angles, fourier_coeff_mean, PCA_eigenvectors_M, N_fourier):
-    # Compute estimated shape based on current state estimate
-    est_shape_x, est_shape_y = compute_estimated_shape_from_params(x_pos_est, y_pos_est, heading_est, L, W, PCA_coeffs, fourier_coeff_mean, PCA_eigenvectors_M, angles, N_fourier)
+def create_frame_from_state(est_state, z_lidar_cart, current_timestep, locationx, locationy, shape_x, shape_y, config, pca_params):
+    # Compute Estimated Shape
+    est_shape_x, est_shape_y = compute_estimated_shape_global(est_state, config, pca_params)
 
+    # Process Lidar Rays
+    lidar_pos = config.lidar.lidar_position
+    max_dist = config.lidar.max_distance
+    
     lidar_ray_x = []
     lidar_ray_y = []
 
     for z_pos in z_lidar_cart:
-        dist = np.linalg.norm(z_pos - np.array(lidar_position))
-        if dist < lidar_max_distance:
-            lidar_ray_x.extend([lidar_position[0], z_pos[0], None])
-            lidar_ray_y.extend([lidar_position[1], z_pos[1], None])
+        dist = np.linalg.norm(z_pos - np.array(lidar_pos))
+        if dist < max_dist:
+            lidar_ray_x.extend([lidar_pos[0], z_pos[0], None])
+            lidar_ray_y.extend([lidar_pos[1], z_pos[1], None])
 
-    # Extract estimated position and heading
-    est_pos = np.array([x_pos_est, y_pos_est])  # [North, East]
-    est_heading = heading_est  # Heading angle
-
-    # Define arrow properties
-    arrow_length = 5.0  # Adjust as needed
-    arrowhead_length = arrow_length * 0.3  # Shorter than main arrow
-    arrowhead_angle = np.pi / 6  # 30 degrees for arrowhead
-
-    # Compute arrow endpoint
+    # Create Arrow for Heading
+    est_pos = np.array([est_state.x, est_state.y])
+    est_heading = est_state.yaw
+    arrow_length = 5.0
     arrow_end = est_pos + arrow_length * np.array([np.cos(est_heading), np.sin(est_heading)])
-
-    # Compute arrowhead points
-    arrowhead_left = arrow_end - arrowhead_length * np.array([np.cos(est_heading - arrowhead_angle), np.sin(est_heading - arrowhead_angle)])
-    arrowhead_right = arrow_end - arrowhead_length * np.array([np.cos(est_heading + arrowhead_angle), np.sin(est_heading + arrowhead_angle)])
+    
+    # Arrowhead logic
+    arrowhead_length = arrow_length * 0.3
+    arrowhead_angle = np.pi / 6
+    ah_left = arrow_end - arrowhead_length * np.array([np.cos(est_heading - arrowhead_angle), np.sin(est_heading - arrowhead_angle)])
+    ah_right = arrow_end - arrowhead_length * np.array([np.cos(est_heading + arrowhead_angle), np.sin(est_heading + arrowhead_angle)])
 
     frame = go.Frame(
         data=[
             go.Scatter(x=locationy, y=locationx, mode='lines', name='Vessel Path', line=dict(color='royalblue')),
-            go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent', line=dict(color='black')),
+            go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent (GT)', line=dict(color='black')),
             go.Scatter(x=est_shape_y, y=est_shape_x, mode='lines', name='Estimated Extent', line=dict(color='green')),
             go.Scatter(x=lidar_ray_y, y=lidar_ray_x, mode='lines+markers', name='LiDAR Rays', line=dict(color='red', width=1)),
-
-            # Heading arrow
-            go.Scatter(x=[est_pos[1], arrow_end[1]], y=[est_pos[0], arrow_end[0]],
-                    mode='lines', name='Estimated Heading', line=dict(color='purple', width=2)),
-
-            # Arrowhead
-            go.Scatter(x=[arrow_end[1], arrowhead_left[1]], y=[arrow_end[0], arrowhead_left[0]],
-                    mode='lines', showlegend=False, line=dict(color='purple', width=2)),
-            go.Scatter(x=[arrow_end[1], arrowhead_right[1]], y=[arrow_end[0], arrowhead_right[0]],
-                    mode='lines', showlegend=False, line=dict(color='purple', width=2))
+            
+            # Heading Arrow
+            go.Scatter(x=[est_pos[1], arrow_end[1]], y=[est_pos[0], arrow_end[0]], mode='lines', name='Estimated Heading', line=dict(color='purple', width=2)),
+            go.Scatter(x=[arrow_end[1], ah_left[1]], y=[arrow_end[0], ah_left[0]], mode='lines', showlegend=False, line=dict(color='purple', width=2)),
+            go.Scatter(x=[arrow_end[1], ah_right[1]], y=[arrow_end[0], ah_right[0]], mode='lines', showlegend=False, line=dict(color='purple', width=2))
         ],
         name=str(current_timestep)
     )
@@ -259,18 +232,13 @@ def create_sim_figure(fig, frames, num_frames):
 def generate_initial_plotly_fig(gt_state, est_state, config, pca_params):
     """Generates the Plotly figure for the initial state (Frame 0)."""
     fig = go.Figure()
-    PCA_eigenvectors_M = pca_params['eigenvectors'][:, :config.tracker.N_pca].real
-    fourier_coeff_mean = pca_params['mean']
 
     # Add GT shape
     shape_x, shape_y = compute_exact_vessel_shape_global(gt_state, config.extent.shape_coords_body)
     fig.add_trace(go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent (GT)', line=dict(color='black')))
     
     # Add Estimated shape
-    est_shape_x, est_shape_y = compute_estimated_shape_from_params(
-        est_state.x, est_state.y, est_state.yaw, est_state.length, est_state.width, est_state.pca_coeffs,
-        fourier_coeff_mean, PCA_eigenvectors_M, config.extent.angles, config.extent.N_fourier
-    )
+    est_shape_x, est_shape_y = compute_estimated_shape_global(est_state, config, pca_params)
     fig.add_trace(go.Scatter(x=est_shape_y, y=est_shape_x, mode='lines', name='Estimated Extent', line=dict(color='green')))
     
     return fig
@@ -278,8 +246,6 @@ def generate_initial_plotly_fig(gt_state, est_state, config, pca_params):
 def generate_plotly_fig_for_frame(frame_idx, gt_state, est_state, z_lidar_cart, ground_truth_history, config, pca_params):
     """Generates the Plotly figure for a given frame's data."""
     fig = go.Figure()
-    PCA_eigenvectors_M = pca_params['eigenvectors'][:, :config.tracker.N_pca].real
-    fourier_coeff_mean = pca_params['mean']
 
     # Vessel Path
     locationx = [s.x for s in ground_truth_history]
@@ -291,19 +257,17 @@ def generate_plotly_fig_for_frame(frame_idx, gt_state, est_state, z_lidar_cart, 
     fig.add_trace(go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent (GT)', line=dict(color='black')))
 
     # Estimated Shape
-    est_shape_x, est_shape_y = compute_estimated_shape_from_params(
-        est_state.x, est_state.y, est_state.yaw, est_state.length, est_state.width, est_state.pca_coeffs,
-        fourier_coeff_mean, PCA_eigenvectors_M, config.extent.angles, config.extent.N_fourier
-    )
+    est_shape_x, est_shape_y = compute_estimated_shape_global(est_state, config, pca_params)
     fig.add_trace(go.Scatter(x=est_shape_y, y=est_shape_x, mode='lines', name='Estimated Extent', line=dict(color='green')))
 
     # LiDAR Rays
+    lidar_pos = config.lidar.lidar_position
     lidar_ray_x, lidar_ray_y = [], []
     for z_pos in z_lidar_cart:
-        dist = np.linalg.norm(z_pos - np.array(config.lidar.lidar_position))
+        dist = np.linalg.norm(z_pos - np.array(lidar_pos))
         if dist < config.lidar.max_distance:
-            lidar_ray_x.extend([config.lidar.lidar_position[0], z_pos[0], None])
-            lidar_ray_y.extend([config.lidar.lidar_position[1], z_pos[1], None])
+            lidar_ray_x.extend([lidar_pos[0], z_pos[0], None])
+            lidar_ray_y.extend([lidar_pos[1], z_pos[1], None])
     fig.add_trace(go.Scatter(x=lidar_ray_y, y=lidar_ray_x, mode='lines+markers', name='LiDAR Rays', line=dict(color='red', width=1)))
 
     # Estimated Heading

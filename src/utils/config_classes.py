@@ -178,8 +178,8 @@ class LidarConfig:
     lidar_position: Tuple[float, float] = (30.0, 0.0)
     num_rays: int = 360
     max_distance: float = 140.0
-    lidar_noise_mean: float = 0.0
-    lidar_std_dev: float = 0.15
+    lidar_gt_mean: float = 0.0
+    lidar_gt_std_dev: float = 0.15
 
 @dataclass
 class Config:
