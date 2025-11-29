@@ -152,7 +152,7 @@ def get_gp_tracker_config(lidar_pos, N_gp=20):
 
 
 if __name__ == "__main__":
-    GENERATE_PLOTLY_HTML = True
+    GENERATE_PLOTLY_HTML = False
     CONSISTENCY_ANALYSIS = False
     LOAD_SIM_RESULT = False # TODO MARTIN: ONLY USES CONFIG FOR ID GENERATION FOR NOW
 
@@ -165,8 +165,8 @@ if __name__ == "__main__":
     # method_list = ["iekf", "ukf", "bfgs", "slsqp", "gauss_newton", "levenberg_marquardt", "smoothing_slsqp"]
     # method_list = ["iekf"]
     # method_list = ["bfgs", "ekf", "iekf"]
-    # method_list = ["gp_iekf"]
-    method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
+    method_list = ["gp_iekf"]
+    # method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
 
     for method in method_list:
         print(f"--- Setting up for method: {method} ---")

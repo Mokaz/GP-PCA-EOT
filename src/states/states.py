@@ -109,6 +109,27 @@ class State_GP(NamedArray):
     # The radii are dynamic in length (N_gp), starting at index 6
     radii: AtIndex[slice(6, None)]
 
+    radius_0: AtIndex[6] = field(init=False)
+    radius_1: AtIndex[7] = field(init=False)
+    radius_2: AtIndex[8] = field(init=False)
+    radius_3: AtIndex[9] = field(init=False)
+    radius_4: AtIndex[10] = field(init=False)
+    radius_5: AtIndex[11] = field(init=False)
+    radius_6: AtIndex[12] = field(init=False)
+    radius_7: AtIndex[13] = field(init=False)
+    radius_8: AtIndex[14] = field(init=False)
+    radius_9: AtIndex[15] = field(init=False)
+    radius_10: AtIndex[16] = field(init=False)
+    radius_11: AtIndex[17] = field(init=False)
+    radius_12: AtIndex[18] = field(init=False)
+    radius_13: AtIndex[19] = field(init=False)
+    radius_14: AtIndex[20] = field(init=False)
+    radius_15: AtIndex[21] = field(init=False)
+    radius_16: AtIndex[22] = field(init=False)
+    radius_17: AtIndex[23] = field(init=False)
+    radius_18: AtIndex[24] = field(init=False)
+    radius_19: AtIndex[25] = field(init=False)  # Adjust number of radii as needed
+
     # --- Convenient group accessors ---
     pos: AtIndex[slice(0, 2)] = field(init=False)
     kinematics: AtIndex[slice(0, 6)] = field(init=False)

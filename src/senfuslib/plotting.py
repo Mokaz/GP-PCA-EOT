@@ -256,7 +256,6 @@ def interactive_show_consistency(
             dofs_sub = str(data.dofs[0]).translate(subscript_map)
             sym = f"χ²{dofs_sub}"
             
-            # --- FIX: Re-added the detailed statistics to the legend labels ---
             ci_label = (f"{sym}, {data.in_interval:.0%} ∈ "
                         f"CI at {data.alpha*100:.0f}%")
             median_label = f"{sym}, {data.above_median:.0%} > median"
@@ -274,7 +273,13 @@ def interactive_show_consistency(
             )
             p.add_tools(hover_tool)
 
-            p.yaxis.axis_label = ', '.join(field) if isinstance(field, (list, tuple)) else str(field)
+            if isinstance(field, (list, tuple)):
+                # Convert all items to strings before joining
+                label_text = ', '.join(map(str, field))
+            else:
+                label_text = str(field)
+
+            p.yaxis.axis_label = label_text
             p.legend.location = "bottom_right"
             p.legend.click_policy = "hide"
             plots_group.append(p)

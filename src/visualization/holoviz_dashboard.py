@@ -24,6 +24,7 @@ from src.visualization.plotly_offline_generator import (
     generate_plotly_fig_for_frame,
     generate_initial_plotly_fig,
 )
+from src.states.states import State_PCA, State_GP 
 
 js_files = {
     'jquery': 'https://code.jquery.com/jquery-1.11.1.min.js',
@@ -72,19 +73,9 @@ frame_player = pn.widgets.Player(
 )
 
 # --- NEES Widgets ---
-NEES_GROUP_MAPPING = {
-    'Total NEES': 'all',
-    'Position (x, y)': ['x', 'y'],
-    'Heading (yaw)': ['yaw'],
-    'Velocity (vx, vy)': ['vel_x', 'vel_y'],
-    'Extent (l, w)': ['length', 'width'],
-    'PCA Shape': ['pca_coeffs'],
-}
 nees_group_selector = pn.widgets.MultiSelect(
     name='NEES Consistency Groups', 
-    options=list(NEES_GROUP_MAPPING.keys()), 
     visible=False, 
-    size=len(NEES_GROUP_MAPPING),
     sizing_mode='stretch_width'
 )
 
@@ -130,27 +121,88 @@ def update_widgets(filename):
         return
 
     sim_result = loaded_data["sim_result"]
+    config = sim_result.config
+    
+    # 1. Inspect the first posterior state to determine type
+    first_state_posterior = sim_result.tracker_results_ts.values[0].state_posterior.mean
 
-    # Dynamically get the list of state labels
-    all_state_labels = ['x', 'y', 'yaw', 'vel_x', 'vel_y', 'yaw_rate', 'length', 'width'] + [f'pca_coeff_{i}' for i in range(sim_result.config.tracker.N_pca)]
+    # 2. Define Groups and Labels dynamically based on State Type
+    if isinstance(first_state_posterior, State_GP):
+        # --- GP Configuration ---
+        n_radii = len(first_state_posterior.radii)
+        
+        # NEES Groups
+        dynamic_nees_mapping = {
+            'Total NEES': 'all',
+            'Position (x, y)': ['x', 'y'],
+            'Heading (yaw)': ['yaw'],
+            'Velocity (vx, vy)': ['vel_x', 'vel_y'],
+            'Yaw Rate': ['yaw_rate'],
+            'Shape (All Radii)': ['radii'] # Uses the 'radii' slice from State_GP
+        }
+        
+        # Individual State Labels (for Custom Selector)
+        # We map display names to actual lookup keys (Strings for named fields, Ints for array indices)
+        # State_GP structure: 0:x, 1:y, 2:yaw, 3:vx, 4:vy, 5:rate, 6+:radii
+        custom_state_options = {
+            'x': 'x', 'y': 'y', 'yaw': 'yaw', 
+            'vel_x': 'vel_x', 'vel_y': 'vel_y', 'yaw_rate': 'yaw_rate'
+        }
+        # Add radii indices dynamically
+        for i in range(n_radii):
+            custom_state_options[f'radius_{i}'] = 6 + i
 
+    elif isinstance(first_state_posterior, State_PCA):
+        # --- PCA Configuration ---
+        n_pca = config.tracker.N_pca
+        
+        # NEES Groups
+        dynamic_nees_mapping = {
+            'Total NEES': 'all',
+            'Position (x, y)': ['x', 'y'],
+            'Heading (yaw)': ['yaw'],
+            'Velocity (vx, vy)': ['vel_x', 'vel_y'],
+            'Extent (L, W)': ['length', 'width'],
+            'PCA Components': ['pca_coeffs'] # Uses the 'pca_coeffs' slice
+        }
+        
+        # Individual State Labels
+        custom_state_options = {
+            'x': 'x', 'y': 'y', 'yaw': 'yaw', 
+            'vel_x': 'vel_x', 'vel_y': 'vel_y', 'yaw_rate': 'yaw_rate',
+            'length': 'length', 'width': 'width'
+        }
+        # Add PCA indices dynamically (assuming they map to the slice start)
+        # Note: If State_PCA has explicit fields 'pca_coeff_0', use strings, else use indices
+        base_pca_idx = 8
+        for i in range(n_pca):
+            custom_state_options[f'pca_coeff_{i}'] = base_pca_idx + i
+
+    else:
+        # Fallback / Error safety
+        dynamic_nees_mapping = {'Total NEES': 'all'}
+        custom_state_options = {}
+
+    # 3. Update Widgets
     frame_player.end = sim_result.config.sim.num_frames
     frame_player.value = 0
     frame_player.visible = True
     
+    # Update NEES Group Selector
+    nees_group_selector.options = dynamic_nees_mapping
     nees_group_selector.value = []
     nees_group_selector.visible = True
-    nees_group_selector.size = len(NEES_GROUP_MAPPING)
-    nees_group_selector.height = min(len(NEES_GROUP_MAPPING) * 20, 400)
+    nees_group_selector.size = len(dynamic_nees_mapping)
+    nees_group_selector.height = min(len(dynamic_nees_mapping) * 20, 400)
 
-    custom_nees_selector.options = all_state_labels
+    # Update Custom NEES Selector
+    custom_nees_selector.options = custom_state_options
     custom_nees_selector.value = []
     custom_nees_selector.visible = True
-
-    n_items = len(all_state_labels)
-    calculated_height = n_items * 18
-    custom_nees_selector.height = min(calculated_height, 400) 
-    custom_nees_selector.size = n_items 
+    
+    n_items = len(custom_state_options)
+    custom_nees_selector.size = min(n_items, 15)
+    custom_nees_selector.height = min(n_items * 18, 400) 
 
     cov_matrix_selector.visible = True
     nis_field_selector.visible = True
@@ -239,7 +291,9 @@ def get_nees_view(selected_groups, custom_states, filename):
     if not loaded_data or (not selected_groups and not custom_states):
         return pn.pane.Markdown("### Select pre-defined groups or custom states to show NEES plot.")
     
-    fields_to_plot = [NEES_GROUP_MAPPING[name] for name in selected_groups]
+    # selected_groups already contains the values (e.g. ['x', 'y'] or 'all') from the dict
+    fields_to_plot = []
+    fields_to_plot.extend(selected_groups)
     
     if custom_states:
         fields_to_plot.append(list(custom_states))
@@ -256,32 +310,70 @@ def get_nees_view(selected_groups, custom_states, filename):
     return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
 
 
+# src/visualization/holoviz_dashboard.py
+
+# ... existing code ...
+
 @pn.depends(cov_matrix_selector.param.value, frame_player.param.value, file_selector.param.value)
 def get_covariance_view(matrix_name, frame_idx, filename):
     loaded_data = load_data(filename)
     if not loaded_data:
         return pn.pane.Markdown("### Select a file to begin.")
 
+    # Get the specific result for this frame
     tracker_result = loaded_data["sim_result"].tracker_results_ts.values[frame_idx]
     
     attr_name = COV_MATRIX_MAPPING[matrix_name]
     gauss_obj = getattr(tracker_result, attr_name)
+    
+    # Handle optional None values (e.g. initial frame prior)
+    if gauss_obj is None:
+        return pn.pane.Markdown(f"### {matrix_name} not available for Frame {frame_idx}")
+
     cov_matrix = gauss_obj.cov
 
     if 'state' in attr_name:
-        n_pca = loaded_data["config"].tracker.N_pca
-        labels = ['x', 'y', 'yaw', 'vel_x', 'vel_y', 'yaw_rate', 'length', 'width'] + [f'pca_{i}' for i in range(n_pca)]
+        # Check the type of the state estimate to determine labels
+        # We look at the posterior mean to decide the structure
+        state_mean = tracker_result.state_posterior.mean
+        
+        if isinstance(state_mean, State_GP):
+            # --- GP Labels ---
+            n_radii = len(state_mean.radii)
+            labels = ['x', 'y', 'yaw', 'vel_x', 'vel_y', 'yaw_rate'] + [f'radius_{i}' for i in range(n_radii)]
+            
+        elif isinstance(state_mean, State_PCA):
+            # --- PCA Labels ---
+            n_pca = loaded_data["config"].tracker.N_pca
+            labels = ['x', 'y', 'yaw', 'vel_x', 'vel_y', 'yaw_rate', 'length', 'width'] + [f'pca_{i}' for i in range(n_pca)]
+            
+        else:
+            # Fallback based on size if type check fails or is generic
+            N = cov_matrix.shape[0]
+            labels = [f'state_{i}' for i in range(N)]
+            
     else: 
+        # Measurement Covariance (S_k)
         num_rays = cov_matrix.shape[0] // 2
         labels = [f'x{i}' for i in range(num_rays)] + [f'y{i}' for i in range(num_rays)]
 
+    # Safety check to prevent crashing if shapes still don't match due to some other edge case
+    if len(labels) != cov_matrix.shape[0]:
+        return pn.pane.Markdown(f"### Dimension Mismatch: Covariance is {cov_matrix.shape}, but generated {len(labels)} labels.")
+
     df = pd.DataFrame(cov_matrix, index=labels, columns=labels)
     
-    cond_number = np.linalg.cond(cov_matrix)
+    # Check condition number to warn about numerical instability
+    try:
+        cond_number = np.linalg.cond(cov_matrix)
+        title_text = f"{matrix_name} at Frame {frame_idx} (cond={cond_number:.2e})"
+    except np.linalg.LinAlgError:
+        title_text = f"{matrix_name} at Frame {frame_idx} (Singular Matrix)"
+
     heatmap = df.hvplot.heatmap(
         cmap='viridis',
         rot=90,
-        title=f"{matrix_name} at Frame {frame_idx} (cond={cond_number:.2e})"
+        title=title_text
     ).opts(responsive=True, xrotation=90, invert_yaxis=True)
     
     return pn.pane.HoloViews(heatmap, sizing_mode="stretch_both")
