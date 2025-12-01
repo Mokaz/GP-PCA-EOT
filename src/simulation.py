@@ -50,8 +50,8 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
     # --- Method Dispatching ---
     if method == "gp_iekf":
         # Check dimensions
-        if hasattr(tracker_cfg.initial_std_devs, 'shape'):
-             print(f"[DEBUG] Initial Std Devs Shape: {tracker_cfg.initial_std_devs.shape}")
+        # if hasattr(tracker_cfg.initial_std_devs, 'shape'):
+        #      print(f"[DEBUG] Initial Std Devs Shape: {tracker_cfg.initial_std_devs.shape}")
 
         # 1. Initialize GP Math Utils
         gp_utils = GaussianProcess(

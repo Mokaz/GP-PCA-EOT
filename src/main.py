@@ -137,9 +137,9 @@ def get_gp_tracker_config(lidar_pos, N_gp=20):
         
         # GP Specific Params
         N_gp_points=N_gp,
-        gp_length_scale=0.5,
+        gp_length_scale=np.pi / 2,
         gp_signal_var=1.0,
-        gp_forgetting_factor=0.05,
+        gp_forgetting_factor=0.001,
         gp_use_negative_info=True,
 
         initial_state=initial_state_tracker,
@@ -180,7 +180,8 @@ if __name__ == "__main__":
 
         # Create a unique name for this simulation configuration
         id_number = crc32(repr(config).encode())
-        config.sim.name = f"{method}_{config.sim.seed}_{extent_base.shape_params_true.get('type')}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
+        # config.sim.name = f"{method}_{config.sim.seed}_{extent_base.shape_params_true.get('type')}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
+        config.sim.name = f"{method}_{config.sim.seed}_lengthscale_{tracker_cfg.gp_length_scale:.2f}_forgettingfactor_{tracker_cfg.gp_forgetting_factor:.4f}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
 
         filename = f"{config.sim.name}.pkl"
         pickle_path = Path(SIMDATA_PATH) / filename

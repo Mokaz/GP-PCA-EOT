@@ -21,7 +21,7 @@ class LidarModelGP(SensorModel[Sequence[LidarScan]]):
     lidar_std_dev: float
     
     # GP Utilities for interpolation logic
-    gp_utils: GaussianProcess
+    gp_utils: GaussianProcess = field(repr=False)
     
     # Simulation specific
     rng: np.random.Generator = field(repr=False)
