@@ -100,7 +100,7 @@ class ShapeExplorer:
             x=est_shape_y, 
             y=est_shape_x, 
             mode='lines', 
-            name='GP-PCA Shape',
+            name='PCA Shape',
             line=dict(color='royalblue', width=3),
             fill='toself',
             fillcolor='rgba(65, 105, 225, 0.2)' 
@@ -156,7 +156,7 @@ class ShapeExplorer:
         )
         
         return pn.template.FastListTemplate(
-            title="GP-PCA Shape Explorer",
+            title="PCA Shape Explorer",
             sidebar=[sidebar],
             main=[main_area],
             sidebar_width=450

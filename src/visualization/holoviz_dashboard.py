@@ -26,13 +26,16 @@ from src.visualization.plotly_offline_generator import (
 )
 from src.states.states import State_PCA, State_GP 
 
+# Define assets directory relative to this file
+ASSETS_DIR = Path(__file__).parent / 'assets'
+
 js_files = {
-    'jquery': 'https://code.jquery.com/jquery-1.11.1.min.js',
-    'goldenlayout': 'https://golden-layout.com/files/latest/js/goldenlayout.min.js',
+    'jquery': 'assets/jquery-1.11.1.min.js',
+    'goldenlayout': 'assets/goldenlayout.min.js',
 }
 css_files = [
-    'https://golden-layout.com/files/latest/css/goldenlayout-base.css',
-    'https://golden-layout.com/files/latest/css/goldenlayout-light-theme.css',
+    'assets/goldenlayout-base.css',
+    'assets/goldenlayout-light-theme.css',
 ]
 pn.extension('plotly', 'tabulator', js_files=js_files, css_files=css_files)
 
@@ -437,4 +440,5 @@ tmpl.add_panel('nis_view', nis_view)
 tmpl.servable(title="GP-PCA-EOT Simulation Analysis Dashboard")
 
 if __name__ == "__main__":
-    pn.serve(tmpl, port=5006, show=True)
+    # Serve static assets from the local directory
+    pn.serve(tmpl, port=5006, show=True, static_dirs={'assets': str(ASSETS_DIR)})
