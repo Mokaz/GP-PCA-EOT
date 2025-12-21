@@ -18,7 +18,13 @@ sys.path.append(str(PROJECT_ROOT))
 
 from src.analysis.analysis_utils import create_consistency_analysis_from_sim_result
 from src.global_project_paths import SIMDATA_PATH
-from src.senfuslib.plotting import interactive_show_consistency, show_consistency, interactive_show_error
+from src.senfuslib.plotting import (
+    interactive_show_consistency, 
+    show_consistency, 
+    interactive_show_error,
+    matplotlib_show_consistency,
+    matplotlib_show_error
+)
 from src.visualization.plotly_offline_generator import (
     generate_plotly_fig_for_frame,
     generate_initial_plotly_fig,
@@ -114,6 +120,29 @@ nis_field_selector = pn.widgets.Select(
     sizing_mode='stretch_width'
 )
 
+# --- Plotting Control Widgets ---
+plot_backend_selector = pn.widgets.Select(
+    name='Plotting Backend', 
+    options=['Bokeh', 'Matplotlib'], 
+    value='Bokeh',
+    sizing_mode='stretch_width'
+)
+
+save_filename_input = pn.widgets.TextInput(
+    name='Save Filename (no ext)', 
+    value='plot_output',
+    placeholder='Enter filename...',
+    sizing_mode='stretch_width'
+)
+
+save_button = pn.widgets.Button(
+    name='Save Matplotlib Plots', 
+    button_type='primary',
+    sizing_mode='stretch_width'
+)
+
+save_status = pn.pane.Markdown("", sizing_mode='stretch_width')
+
 
 # --- Interactive functions ---
 @pn.depends(file_selector.param.value, watch=True)
@@ -122,7 +151,7 @@ def update_widgets(filename):
     if not loaded_data:
         frame_player.visible = False
         nees_group_selector.visible = False
-        error_group_selector.visible = False # Hide error selector
+        error_group_selector.visible = False
         cov_matrix_selector.visible = False
         nis_field_selector.visible = False
         custom_nees_selector.visible = False
@@ -298,8 +327,8 @@ def update_plotly_view(frame_idx, filename):
 
 pn.bind(update_plotly_view, frame_player, file_selector, watch=True)
 
-@pn.depends(nees_group_selector.param.value, custom_nees_selector.param.value, file_selector.param.value)
-def get_nees_view(selected_groups, custom_states, filename):
+@pn.depends(nees_group_selector.param.value, custom_nees_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
+def get_nees_view(selected_groups, custom_states, filename, backend):
     loaded_data = load_data(filename)
     if not loaded_data or (not selected_groups and not custom_states):
         return pn.pane.Markdown("### Select pre-defined groups or custom states to show NEES plot.")
@@ -312,15 +341,25 @@ def get_nees_view(selected_groups, custom_states, filename):
         fields_to_plot.append(list(custom_states))
         
     consistency_analyzer = loaded_data["consistency_analyzer"]
-    bokeh_plot = interactive_show_consistency(
-        analysis=consistency_analyzer, 
-        fields_nees=fields_to_plot
-    )
+    
+    if backend == 'Matplotlib':
+        fig = matplotlib_show_consistency(
+            analysis=consistency_analyzer, 
+            fields_nees=fields_to_plot
+        )
+        if fig is None:
+             return pn.pane.Markdown("### No data to plot for the selected fields.")
+        return pn.pane.Matplotlib(fig, sizing_mode='stretch_both')
+    else:
+        bokeh_plot = interactive_show_consistency(
+            analysis=consistency_analyzer, 
+            fields_nees=fields_to_plot
+        )
 
-    if bokeh_plot is None:
-      return pn.pane.Markdown("### No data to plot for the selected fields.")
-      
-    return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
+        if bokeh_plot is None:
+            return pn.pane.Markdown("### No data to plot for the selected fields.")
+        
+        return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
 
 @pn.depends(cov_matrix_selector.param.value, frame_player.param.value, file_selector.param.value)
 def get_covariance_view(matrix_name, frame_idx, filename):
@@ -387,8 +426,8 @@ def get_covariance_view(matrix_name, frame_idx, filename):
     return pn.pane.HoloViews(heatmap, sizing_mode="stretch_both")
 
 
-@pn.depends(nis_field_selector.param.value, file_selector.param.value)
-def get_nis_view(selected_field, filename):
+@pn.depends(nis_field_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
+def get_nis_view(selected_field, filename, backend):
     loaded_data = load_data(filename)
     if not loaded_data:
         return pn.pane.Markdown("### Select a file to begin.")
@@ -397,19 +436,28 @@ def get_nis_view(selected_field, filename):
     
     fields_to_plot = ["all"]
     
-    bokeh_plot = interactive_show_consistency(
-        analysis=consistency_analyzer, 
-        fields_nis=fields_to_plot,
-    )
+    if backend == 'Matplotlib':
+        fig = matplotlib_show_consistency(
+            analysis=consistency_analyzer, 
+            fields_nis=fields_to_plot
+        )
+        if fig is None:
+             return pn.pane.Markdown("### No NIS data available.")
+        return pn.pane.Matplotlib(fig, sizing_mode='stretch_both')
+    else:
+        bokeh_plot = interactive_show_consistency(
+            analysis=consistency_analyzer, 
+            fields_nis=fields_to_plot,
+        )
 
-    if bokeh_plot is None:
-      return pn.pane.Markdown("### No NIS data available.")
-      
-    return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
+        if bokeh_plot is None:
+            return pn.pane.Markdown("### No NIS data available.")
+        
+        return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
 
 
-@pn.depends(error_group_selector.param.value, custom_nees_selector.param.value, file_selector.param.value)
-def get_error_view(selected_groups, custom_states, filename):
+@pn.depends(error_group_selector.param.value, custom_nees_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
+def get_error_view(selected_groups, custom_states, filename, backend):
     loaded_data = load_data(filename)
     if not loaded_data or (not selected_groups and not custom_states):
         return pn.pane.Markdown("### Select pre-defined groups or custom states to show Error plot.")
@@ -429,15 +477,91 @@ def get_error_view(selected_groups, custom_states, filename):
         fields_to_plot.extend(custom_states)
         
     consistency_analyzer = loaded_data["consistency_analyzer"]
-    bokeh_plot = interactive_show_error(
-        analysis=consistency_analyzer, 
-        fields_err=fields_to_plot
-    )
+    
+    if backend == 'Matplotlib':
+        fig = matplotlib_show_error(
+            analysis=consistency_analyzer, 
+            fields_err=fields_to_plot
+        )
+        if fig is None:
+             return pn.pane.Markdown("### No data to plot for the selected fields.")
+        return pn.pane.Matplotlib(fig, sizing_mode='stretch_both')
+    else:
+        bokeh_plot = interactive_show_error(
+            analysis=consistency_analyzer, 
+            fields_err=fields_to_plot
+        )
 
-    if bokeh_plot is None:
-      return pn.pane.Markdown("### No data to plot for the selected fields.")
-      
-    return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
+        if bokeh_plot is None:
+            return pn.pane.Markdown("### No data to plot for the selected fields.")
+        
+        return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
+
+
+def save_plots(event):
+    filename = save_filename_input.value
+    if not filename:
+        save_status.object = "Please enter a filename."
+        return
+        
+    loaded_data = load_data(file_selector.value)
+    if not loaded_data:
+        save_status.object = "No data loaded."
+        return
+        
+    consistency_analyzer = loaded_data["consistency_analyzer"]
+    saved_files = []
+    
+    # Save NEES
+    nees_fields = []
+    nees_fields.extend(nees_group_selector.value)
+    if custom_nees_selector.value:
+        nees_fields.append(list(custom_nees_selector.value))
+        
+    if nees_fields:
+        fig = matplotlib_show_consistency(consistency_analyzer, fields_nees=nees_fields)
+        if fig:
+            path = Path(PROJECT_ROOT) / 'figures' / f'{filename}_nees.pdf'
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(path)
+            saved_files.append(path.name)
+            plt.close(fig)
+
+    # Save Error
+    error_fields = []
+    for group in error_group_selector.value:
+        if isinstance(group, list):
+            error_fields.extend(group)
+        else:
+            error_fields.append(group)
+    if custom_nees_selector.value:
+        error_fields.extend(custom_nees_selector.value)
+        
+    if error_fields:
+        fig = matplotlib_show_error(consistency_analyzer, fields_err=error_fields)
+        if fig:
+            path = Path(PROJECT_ROOT) / 'figures' / f'{filename}_error.pdf'
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(path)
+            saved_files.append(path.name)
+            plt.close(fig)
+
+    # Save NIS
+    if nis_field_selector.value:
+        fig = matplotlib_show_consistency(consistency_analyzer, fields_nis=['all'])
+        if fig:
+            path = Path(PROJECT_ROOT) / 'figures' / f'{filename}_nis.pdf'
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(path)
+            saved_files.append(path.name)
+            plt.close(fig)
+            
+    if saved_files:
+        save_status.object = f"Saved: {', '.join(saved_files)} in figures/"
+    else:
+        save_status.object = "No plots to save (select groups first)."
+
+save_button.on_click(save_plots)
 
 
 # --- Build Panel objects ---
@@ -450,6 +574,12 @@ controls = pn.Column(
     custom_nees_selector,
     cov_matrix_selector,
     nis_field_selector,
+    pn.layout.Divider(),
+    pn.pane.Markdown("### Plotting & Saving"),
+    plot_backend_selector,
+    save_filename_input,
+    save_button,
+    save_status,
     sizing_mode="stretch_width",
 )
 
