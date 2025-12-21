@@ -16,17 +16,15 @@ sys.path.append(str(SRC_ROOT))
 PROJECT_ROOT = SRC_ROOT.parent
 sys.path.append(str(PROJECT_ROOT))
 
-# now import everything else that may be referenced by the pickle:
 from src.analysis.analysis_utils import create_consistency_analysis_from_sim_result
 from src.global_project_paths import SIMDATA_PATH
-from src.senfuslib.plotting import interactive_show_consistency, show_consistency
+from src.senfuslib.plotting import interactive_show_consistency, show_consistency, interactive_show_error
 from src.visualization.plotly_offline_generator import (
     generate_plotly_fig_for_frame,
     generate_initial_plotly_fig,
 )
 from src.states.states import State_PCA, State_GP 
 
-# Define assets directory relative to this file
 ASSETS_DIR = Path(__file__).parent / 'assets'
 
 js_files = {
@@ -39,7 +37,6 @@ css_files = [
 ]
 pn.extension('plotly', 'tabulator', js_files=js_files, css_files=css_files)
 
-# --- Data loading and caching ---
 @pn.cache(max_items=5)
 def load_data(filename):
     """Loads simulation result and performs initial analysis. Cached for performance."""
@@ -82,6 +79,13 @@ nees_group_selector = pn.widgets.MultiSelect(
     sizing_mode='stretch_width'
 )
 
+# --- Error Widgets ---
+error_group_selector = pn.widgets.MultiSelect(
+    name='Error Groups', 
+    visible=False, 
+    sizing_mode='stretch_width'
+)
+
 custom_nees_selector = pn.widgets.MultiSelect(
     name='Custom NEES States',
     visible=False,
@@ -118,6 +122,7 @@ def update_widgets(filename):
     if not loaded_data:
         frame_player.visible = False
         nees_group_selector.visible = False
+        error_group_selector.visible = False # Hide error selector
         cov_matrix_selector.visible = False
         nis_field_selector.visible = False
         custom_nees_selector.visible = False
@@ -186,6 +191,11 @@ def update_widgets(filename):
         dynamic_nees_mapping = {'Total NEES': 'all'}
         custom_state_options = {}
 
+    # Create a copy for error mapping and remove 'Total NEES' if present
+    error_mapping = dynamic_nees_mapping.copy()
+    if 'Total NEES' in error_mapping:
+        del error_mapping['Total NEES']
+
     # 3. Update Widgets
     frame_player.end = sim_result.config.sim.num_frames
     frame_player.value = 0
@@ -197,6 +207,13 @@ def update_widgets(filename):
     nees_group_selector.visible = True
     nees_group_selector.size = len(dynamic_nees_mapping)
     nees_group_selector.height = min(len(dynamic_nees_mapping) * 20, 400)
+
+    # Update Error Group Selector
+    error_group_selector.options = error_mapping
+    error_group_selector.value = []
+    error_group_selector.visible = True
+    error_group_selector.size = len(error_mapping)
+    error_group_selector.height = min(len(error_mapping) * 20, 400)
 
     # Update Custom NEES Selector
     custom_nees_selector.options = custom_state_options
@@ -225,20 +242,16 @@ def create_empty_figure(message="Select a file to begin"):
     )
     return empty_fig
 
-# 1. Create the pane ONCE, initializing it with the empty figure
 persistent_plotly_pane = pn.pane.Plotly(
-    object=create_empty_figure(),  # <--- Initialize with text
+    object=create_empty_figure(),
     sizing_mode='stretch_both', 
     config={'responsive': True}
 )
 
-# 2. Define the update logic
 def update_plotly_view(frame_idx, filename):
     loaded_data = load_data(filename)
-    
-    # Handle "No Data" without destroying the Plotly pane
+
     if not loaded_data:
-        # Use the helper to reset the view to the message
         persistent_plotly_pane.object = create_empty_figure()
         return
     
@@ -248,7 +261,6 @@ def update_plotly_view(frame_idx, filename):
     ground_truth_states = list(sim_result.ground_truth_ts.values)
     tracker_results = list(sim_result.tracker_results_ts.values)
 
-    # Safety check for frame index
     if frame_idx >= len(ground_truth_states):
         return
 
@@ -282,10 +294,8 @@ def update_plotly_view(frame_idx, filename):
         legend=dict(x=1.05, y=1)
     )
     
-    # Update the object in-place
     persistent_plotly_pane.object = fig
 
-# 3. Bind the update function to the widgets using watch=True
 pn.bind(update_plotly_view, frame_player, file_selector, watch=True)
 
 @pn.depends(nees_group_selector.param.value, custom_nees_selector.param.value, file_selector.param.value)
@@ -311,11 +321,6 @@ def get_nees_view(selected_groups, custom_states, filename):
       return pn.pane.Markdown("### No data to plot for the selected fields.")
       
     return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
-
-
-# src/visualization/holoviz_dashboard.py
-
-# ... existing code ...
 
 @pn.depends(cov_matrix_selector.param.value, frame_player.param.value, file_selector.param.value)
 def get_covariance_view(matrix_name, frame_idx, filename):
@@ -395,11 +400,42 @@ def get_nis_view(selected_field, filename):
     bokeh_plot = interactive_show_consistency(
         analysis=consistency_analyzer, 
         fields_nis=fields_to_plot,
-        title="Measurement Consistency"
     )
 
     if bokeh_plot is None:
       return pn.pane.Markdown("### No NIS data available.")
+      
+    return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
+
+
+@pn.depends(error_group_selector.param.value, custom_nees_selector.param.value, file_selector.param.value)
+def get_error_view(selected_groups, custom_states, filename):
+    loaded_data = load_data(filename)
+    if not loaded_data or (not selected_groups and not custom_states):
+        return pn.pane.Markdown("### Select pre-defined groups or custom states to show Error plot.")
+    
+    # Flatten the selected groups into a single list of fields
+    fields_to_plot = []
+    
+    # Handle group selections (which might be lists of fields)
+    for group in selected_groups:
+        if isinstance(group, list):
+            fields_to_plot.extend(group)
+        else:
+            fields_to_plot.append(group)
+    
+    # Handle custom state selections
+    if custom_states:
+        fields_to_plot.extend(custom_states)
+        
+    consistency_analyzer = loaded_data["consistency_analyzer"]
+    bokeh_plot = interactive_show_error(
+        analysis=consistency_analyzer, 
+        fields_err=fields_to_plot
+    )
+
+    if bokeh_plot is None:
+      return pn.pane.Markdown("### No data to plot for the selected fields.")
       
     return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
 
@@ -410,6 +446,7 @@ controls = pn.Column(
     file_selector,
     frame_player,
     nees_group_selector,
+    error_group_selector,
     custom_nees_selector,
     cov_matrix_selector,
     nis_field_selector,
@@ -418,6 +455,7 @@ controls = pn.Column(
 
 plotly_view = pn.Column(persistent_plotly_pane, sizing_mode="stretch_both")
 nees_view = pn.Column(get_nees_view, sizing_mode="stretch_both")
+error_view = pn.Column(get_error_view, sizing_mode="stretch_both")
 covariance_view = pn.Column(get_covariance_view, sizing_mode="stretch_both")
 nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
 
@@ -435,10 +473,10 @@ tmpl.nb_template.globals['get_id'] = make_globally_unique_id
 tmpl.add_panel('controls', controls)
 tmpl.add_panel('plotly_view', plotly_view)
 tmpl.add_panel('nees_view', nees_view)
+tmpl.add_panel('error_view', error_view) # <--- Add to template
 tmpl.add_panel('covariance_view', covariance_view)
 tmpl.add_panel('nis_view', nis_view)
 tmpl.servable(title="GP-PCA-EOT Simulation Analysis Dashboard")
 
 if __name__ == "__main__":
-    # Serve static assets from the local directory
     pn.serve(tmpl, port=5006, show=True, static_dirs={'assets': str(ASSETS_DIR)})
