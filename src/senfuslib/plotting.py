@@ -168,8 +168,8 @@ def show_consistency(analysis: ConsistencyAnalysis,
 
             aconf = data.aconf
             insym = '$\\in$' if aconf[0] < data.a < aconf[1] else '$\\notin$'
-            aconf = f'({aconf[0]:.3f}, {aconf[1]:.3f})'
-            lab = f"{name}, A={data.a:.3f}{insym}{aconf}"
+            aconf_str = f'({aconf[0]:.3f}, {aconf[1]:.3f})'
+            lab = f"{name}, Avg={data.a:.3f} {insym} CI{aconf_str}"
             ax.plot(data.mahal_dist_tseq.times,
                     data.mahal_dist_tseq.values, label=lab)
             add_stuff(ax, data)
@@ -207,11 +207,87 @@ def show_consistency(analysis: ConsistencyAnalysis,
 
     return all_axs
 
+def interactive_show_error(
+    analysis: ConsistencyAnalysis,
+    fields_err: Sequence[str] = tuple(),
+    title: str = '',
+) -> gridplot:
+    """
+    Creates interactive Bokeh plots for error analysis (Absolute Error).
+    """
+    if not fields_err:
+        return None
+
+    tooltips = [
+        ("Name", "$name"),
+        ("Timestep", "@timesteps"),
+        ("Time", "@times{0.0}s"),
+        ("Value", "@values{0.000000}"),
+    ]
+
+    err_plots = []
+    for i, field in enumerate(fields_err):
+        err_gauss_tseq = analysis.get_x_err(field)
+        err_tseq = err_gauss_tseq.map(lambda e: e.mean)
+        
+        # Calculate RMSE (Scalar)
+        raw_values = np.array(err_tseq.values)
+        
+        # Determine if we are plotting a vector norm or scalar absolute error
+        if raw_values.ndim > 1 and raw_values.shape[1] > 1:
+            # Vector quantity: Plot Euclidean Norm
+            values = np.linalg.norm(raw_values, axis=1)
+            label_prefix = "||err||"
+        else:
+            # Scalar quantity: Plot Absolute Error
+            values = np.abs(raw_values).flatten()
+            label_prefix = "|err|"
+
+        rmse = np.sqrt(np.mean(values**2))
+        
+        plot_title = f'Error {title}' if i == 0 else ''
+        p = figure(height=300, width=800, title=plot_title)
+
+        times = err_tseq.times
+        timesteps = np.arange(len(values))
+        
+        source_err = ColumnDataSource(data={'timesteps': timesteps, 'times': times, 'values': values})
+
+        err_label = f'{label_prefix}, rmse={rmse:.2e}'
+        err_line_renderer = p.line(x='timesteps', y='values', source=source_err, legend_label=err_label, name=err_label, color='royalblue')
+        
+        # Dashed line at 0 is still useful as the floor
+        p.line([timesteps[0], timesteps[-1]], [0, 0], color='black', line_dash='dashed', alpha=0.7)
+        
+        hover_tool = HoverTool(
+            renderers=[err_line_renderer], 
+            tooltips=tooltips, 
+            mode='vline', 
+            point_policy='snap_to_data'
+        )
+        p.add_tools(hover_tool)
+
+        # Update label to indicate absolute error
+        p.yaxis.axis_label = f"{label_prefix.replace('err', str(field))}"
+        p.legend.location = "top_right" # Moved to top usually better for positive-only plots
+        p.legend.click_policy = "hide"
+        err_plots.append(p)
+    
+    if err_plots:
+        err_plots[0].title.text = f'Absolute error {title}'
+        err_plots[-1].xaxis.axis_label = 'Timestep'
+
+        for plot in err_plots[1:]:
+            plot.x_range = err_plots[0].x_range
+            
+        return gridplot(err_plots, ncols=1, sizing_mode='stretch_both')
+    
+    return None
+
 def interactive_show_consistency(
     analysis: ConsistencyAnalysis,
     fields_nis: Sequence[Union[str, List[str]]] = tuple(),
     fields_nees: Sequence[Union[str, List[str]]] = tuple(),
-    fields_err: Sequence[str] = tuple(),
     title: str = '',
 ) -> gridplot:
     """
@@ -222,8 +298,8 @@ def interactive_show_consistency(
     tooltips = [
         ("Name", "$name"),
         ("Timestep", "@timesteps"),
-        ("Time", "@times{0.00}s"),
-        ("Value", "@values{0.000}"),
+        ("Time", "@times{0.0000}s"),
+        ("Value", "@values{0.000000}"),
     ]
 
     # --- 1. Process NIS and NEES plots ---
@@ -245,7 +321,7 @@ def interactive_show_consistency(
 
             aconf = data.aconf
             insym = '∈' if aconf[0] < data.a < aconf[1] else '∉'
-            lab = f"{name}, A={data.a:.3f} {insym} ({aconf[0]:.3f}, {aconf[1]:.3f})"
+            lab = f"{name}, Avg={data.a:.3f} {insym} CI({aconf[0]:.3f}, {aconf[1]:.3f})"
             
             main_line_renderer = p.line(
                 x='timesteps', y='values', source=source, 
@@ -256,7 +332,6 @@ def interactive_show_consistency(
             dofs_sub = str(data.dofs[0]).translate(subscript_map)
             sym = f"χ²{dofs_sub}"
             
-            # --- FIX: Re-added the detailed statistics to the legend labels ---
             ci_label = (f"{sym}, {data.in_interval:.0%} ∈ "
                         f"CI at {data.alpha*100:.0f}%")
             median_label = f"{sym}, {data.above_median:.0%} > median"
@@ -274,7 +349,13 @@ def interactive_show_consistency(
             )
             p.add_tools(hover_tool)
 
-            p.yaxis.axis_label = ', '.join(field) if isinstance(field, (list, tuple)) else str(field)
+            if isinstance(field, (list, tuple)):
+                # Convert all items to strings before joining
+                label_text = ', '.join(map(str, field))
+            else:
+                label_text = str(field)
+
+            p.yaxis.axis_label = label_text
             p.legend.location = "bottom_right"
             p.legend.click_policy = "hide"
             plots_group.append(p)
@@ -282,52 +363,6 @@ def interactive_show_consistency(
         if plots_group:
             plots_group[-1].xaxis.axis_label = 'Timestep'
             all_plots.extend(plots_group)
-
-    # --- 2. Process Error plots ---
-    if fields_err:
-        err_plots = []
-        rmse_total_sq = 0
-        for i, field in enumerate(fields_err):
-            err_gauss_tseq = analysis.get_x_err(field)
-            err_tseq = err_gauss_tseq.map(lambda e: e.mean)
-            std_tseq = err_gauss_tseq.map(lambda e: np.sqrt(e.cov).item())
-            rmse = np.sqrt(np.mean(np.array(err_tseq.values)**2))
-            rmse_total_sq += rmse**2
-            
-            plot_title = f'Error {title}' if i == 0 else ''
-            p = figure(height=300, width=800, title=plot_title)
-
-            times = err_tseq.times
-            values = err_tseq.values
-            timesteps = np.arange(len(values))
-            source_err = ColumnDataSource(data={'timesteps': timesteps, 'times': times, 'values': values})
-
-            err_label = f'err, rmse={rmse:.2e}'
-            err_line_renderer = p.line(x='timesteps', y='values', source=source_err, legend_label=err_label, name=err_label, color='royalblue')
-            
-            p.varea(x=timesteps, y1=-np.array(std_tseq.values), y2=np.array(std_tseq.values), 
-                    fill_alpha=0.3, fill_color='royalblue', legend_label='±1σ', name='±1σ')
-            
-            p.line([timesteps[0], timesteps[-1]], [0, 0], color='black', line_dash='dashed', alpha=0.7)
-            
-            hover_tool = HoverTool(
-                renderers=[err_line_renderer], 
-                tooltips=tooltips, 
-                mode='vline', 
-                point_policy='snap_to_data'
-            )
-            p.add_tools(hover_tool)
-
-            p.yaxis.axis_label = field
-            p.legend.location = "bottom_right"
-            p.legend.click_policy = "hide"
-            err_plots.append(p)
-        
-        if err_plots:
-            total_rmse = np.sqrt(rmse_total_sq / len(fields_err))
-            err_plots[0].title.text = f'Error {title}, total rmse={total_rmse:.2e}'
-            err_plots[-1].xaxis.axis_label = 'Timestep'
-            all_plots.extend(err_plots)
 
     # --- 3. Arrange all plots into a final grid layout ---
     if not all_plots:
@@ -337,3 +372,129 @@ def interactive_show_consistency(
         plot.x_range = all_plots[0].x_range
         
     return gridplot(all_plots, ncols=1, sizing_mode='stretch_both')
+
+def matplotlib_show_error(
+    analysis: ConsistencyAnalysis,
+    fields_err: Sequence[str] = tuple(),
+    title: str = '',
+) -> plt.Figure:
+    """
+    Creates Matplotlib plots for error analysis (Absolute Error), matching interactive_show_error.
+    """
+    if not fields_err:
+        return None
+
+    fig, axs = plt.subplots(len(fields_err), 1, sharex=True, figsize=(10, 3*len(fields_err)))
+    if len(fields_err) == 1:
+        axs = [axs]
+
+    for i, (ax, field) in enumerate(zip(axs, fields_err)):
+        err_gauss_tseq = analysis.get_x_err(field)
+        err_tseq = err_gauss_tseq.map(lambda e: e.mean)
+        
+        # Calculate RMSE (Scalar)
+        raw_values = np.array(err_tseq.values)
+        
+        # Determine if we are plotting a vector norm or scalar absolute error
+        if raw_values.ndim > 1 and raw_values.shape[1] > 1:
+            # Vector quantity: Plot Euclidean Norm
+            values = np.linalg.norm(raw_values, axis=1)
+            label_prefix = "||err||"
+        else:
+            # Scalar quantity: Plot Absolute Error
+            values = np.abs(raw_values).flatten()
+            label_prefix = "|err|"
+
+        rmse = np.sqrt(np.mean(values**2))
+        
+        times = err_tseq.times
+        timesteps = np.arange(len(values))
+        
+        err_label = f'{label_prefix}, rmse={rmse:.2e}'
+        ax.plot(timesteps, values, label=err_label, color='royalblue')
+        ax.axhline(0, color='black', linestyle='--', alpha=0.7)
+        
+        ax.set_ylabel(f"{label_prefix.replace('err', str(field))}")
+        ax.legend(loc="upper right")
+        ax.grid(True, linestyle=':', alpha=0.6)
+        
+        if i == 0:
+            ax.set_title(f'Absolute error {title}')
+        if i == len(fields_err) - 1:
+            ax.set_xlabel('Timestep')
+
+    fig.tight_layout()
+    return fig
+
+def matplotlib_show_consistency(
+    analysis: ConsistencyAnalysis,
+    fields_nis: Sequence[Union[str, List[str]]] = tuple(),
+    fields_nees: Sequence[Union[str, List[str]]] = tuple(),
+    title: str = '',
+) -> plt.Figure:
+    """
+    Creates Matplotlib plots for consistency analysis, matching interactive_show_consistency.
+    """
+    # Collect all fields to plot
+    all_fields = []
+    
+    if fields_nis:
+        for f in fields_nis:
+            all_fields.append((f, 'NIS'))
+    if fields_nees:
+        for f in fields_nees:
+            all_fields.append((f, 'NEES'))
+            
+    if not all_fields:
+        return None
+
+    fig, axs = plt.subplots(len(all_fields), 1, sharex=True, figsize=(10, 3*len(all_fields)))
+    if len(all_fields) == 1:
+        axs = [axs]
+        
+    for i, (ax, (field, name)) in enumerate(zip(axs, all_fields)):
+        if name == 'NIS':
+            data = analysis.get_nis(field)
+        else:
+            data = analysis.get_nees(field)
+
+        times = data.mahal_dist_tseq.times
+        values = data.mahal_dist_tseq.values
+        timesteps = np.arange(len(values))
+
+        aconf = data.aconf
+        insym = '$\\in$' if aconf[0] < data.a < aconf[1] else '$\\notin$'
+        lab = f"{name}, Avg={data.a:.3f} {insym} CI({aconf[0]:.3f}, {aconf[1]:.3f})"
+        
+        ax.plot(timesteps, values, label=lab, color="royalblue", linewidth=2)
+        
+        subscript_map = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+        dofs_sub = str(data.dofs[0]).translate(subscript_map)
+        sym = rf"$\chi^2_{{{data.dofs[0]}}}$" # Use latex for matplotlib
+        
+        ci_label = (f"{sym}, {data.in_interval:.0%} $\\in$ "
+                    f"CI at {data.alpha*100:.0f}%")
+        median_label = f"{sym}, {data.above_median:.0%} > median"
+        
+        lmu = data.low_med_upp_tseq.values_as_array()
+        ax.plot(timesteps, lmu[:, 0], label=ci_label, color="darkorange", linestyle='--')
+        ax.plot(timesteps, lmu[:, 2], color="darkorange", linestyle='--')
+        ax.plot(timesteps, lmu[:, 1], label=median_label, color="green", linestyle='--')
+        
+        if isinstance(field, (list, tuple)):
+            label_text = ', '.join(map(str, field))
+        else:
+            label_text = str(field)
+
+        ax.set_ylabel(label_text)
+        ax.set_yscale('log')
+        ax.legend(loc="lower right")
+        ax.grid(True, linestyle=':', alpha=0.6)
+        
+        if i == 0:
+            ax.set_title(f'{name} {title}')
+        if i == len(all_fields) - 1:
+            ax.set_xlabel('Timestep')
+
+    fig.tight_layout()
+    return fig

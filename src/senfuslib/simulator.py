@@ -91,12 +91,12 @@ class Simulator:
                          ) -> TimeSequence[M]:
 
         if self.datapath:
-            logging.info('Loading measurements from file. '
-                         '(Delete data/cache or change seed to regenerate)')
             id_number = crc32(repr(sensor_model).encode())
             meas_path = self.datapath.with_name(
                 f'Sensor_{id_number}_{self.datapath.name}')
             if meas_path.is_file():
+                logging.info('Loading measurements from file. '
+                            '(Delete data/cache or change seed to regenerate)')
                 with open(meas_path, 'rb')as f:
                     return pickle.load(f)
 

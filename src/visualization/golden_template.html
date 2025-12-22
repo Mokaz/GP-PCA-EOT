@@ -51,10 +51,27 @@ var config = {
                             isClosable: false,
                             },
                             {
-                                type: 'component',
-                                componentName: 'view',
-                                componentState: { model: '{{ embed(roots.nees_view) }}', title: 'NEES Consistency'},
-                                isClosable: false,
+                                type: 'stack',
+                                content: [
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: { model: '{{ embed(roots.nees_view) }}', title: 'NEES Consistency' },
+                                        title: 'NEES Consistency'
+                                    },
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: { model: '{{ embed(roots.error_view) }}', title: 'State Errors' },
+                                        title: 'State Errors'
+                                    },
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: { model: '{{ embed(roots.data_browser_view) }}', title: 'Data Browser', css_classes: ['scrollable'] },
+                                        title: 'Data Browser'
+                                    }
+                                ]
                             }
                         ]
                     },

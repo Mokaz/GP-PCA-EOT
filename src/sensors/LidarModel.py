@@ -17,6 +17,7 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
     lidar_position: np.ndarray
     num_rays: int
     max_distance: float
+    lidar_gt_std_dev: float
     lidar_std_dev: float
     pca_mean: np.ndarray
     pca_eigenvectors: np.ndarray
@@ -138,11 +139,7 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
         lidar_position = self.lidar_position
         num_rays = self.num_rays
         max_distance = self.max_distance
-        lidar_noise_mean = 0.0 # Assuming zero-mean noise # TODO Martin: Consider if needed
-        lidar_noise_std_dev = 0.0
 
         angles, distances = cast_rays(lidar_position, num_rays, max_distance, shape_x, shape_y)
-        noisy_measurements = add_noise_to_distances(self.rng, distances, angles, lidar_noise_mean, lidar_noise_std_dev)
-        # print( "Noisy measurements:", noisy_measurements)
-        # exit()
+        noisy_measurements = add_noise_to_distances(self.rng, distances, angles, 0.0, self.lidar_gt_std_dev)
         return noisy_measurements

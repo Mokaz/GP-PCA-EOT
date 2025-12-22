@@ -10,7 +10,7 @@ sys.path.append(PROJECT_ROOT)
 
 from global_project_paths import SIMDATA_PATH
 
-from src.dynamics.process_models import GroundTruthModel, Model_PCA_CV
+from src.dynamics.process_models import GroundTruthModel, Model_GP_CV, Model_PCA_CV
 from src.sensors.LidarModel import LidarModel
 
 from src.tracker.tracker import TrackerUpdateResult
@@ -30,6 +30,9 @@ from src.utils.SimulationResult import SimulationResult
 
 from src.utils.config_classes import Config
 
+from src.utils.GaussianProcess import GaussianProcess
+from src.sensors.LidarModelGP import LidarModelGP 
+from src.tracker.GP_IEKF import GP_IEKF
 
 def run_single_simulation(config: Config, method: str) -> SimulationResult:
     """
@@ -42,37 +45,80 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
 
     rng = np.random.default_rng(seed=sim_cfg.seed)
 
-    # --- Initialize Models ---
-    filter_dyn_model = Model_PCA_CV(
-        x_pos_std_dev=tracker_cfg.pos_north_std_dev,
-        y_pos_std_dev=tracker_cfg.pos_east_std_dev,
-        yaw_std_dev=tracker_cfg.heading_std_dev,
-        N_pca=tracker_cfg.N_pca
-    )
-
     gt_dynamic_model = GroundTruthModel(rng=rng, yaw_rate_std_dev=sim_cfg.gt_yaw_rate_std_dev)
 
-    pca_params = np.load(Path(tracker_cfg.PCA_parameters_path))
-    sensor_model = LidarModel(
-        lidar_position=np.array(lidar_cfg.lidar_position),
-        num_rays=lidar_cfg.num_rays,
-        max_distance=lidar_cfg.max_distance,
-        lidar_std_dev=lidar_cfg.lidar_std_dev,
-        extent_cfg=extent_cfg,
-        pca_mean=pca_params['mean'],
-        pca_eigenvectors=pca_params['eigenvectors'][:, :tracker_cfg.N_pca].real,
-        rng=rng
-    )
+    # --- Method Dispatching ---
+    if method == "gp_iekf":
+        # Check dimensions
+        # if hasattr(tracker_cfg.initial_std_devs, 'shape'):
+        #      print(f"[DEBUG] Initial Std Devs Shape: {tracker_cfg.initial_std_devs.shape}")
 
-    # --- Initialize the Tracker ---
-    if method == "bfgs":
-        tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
-    elif method == "ekf":
-        tracker = EKF(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
-    elif method == "iekf":
-        tracker = IterativeEKF(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
+        # 1. Initialize GP Math Utils
+        gp_utils = GaussianProcess(
+            n_test_points=tracker_cfg.N_gp_points, 
+            length_scale=tracker_cfg.gp_length_scale,
+            signal_var=tracker_cfg.gp_signal_var,
+            symmetric=True
+        )
+
+        # 2. Initialize GP Process Model
+        filter_dyn_model = Model_GP_CV(
+            gp_utils=gp_utils,
+            x_pos_std_dev=tracker_cfg.pos_north_std_dev,
+            y_pos_std_dev=tracker_cfg.pos_east_std_dev,
+            yaw_std_dev=tracker_cfg.heading_std_dev,
+            forgetting_factor=tracker_cfg.gp_forgetting_factor
+        )
+
+        # 3. Initialize GP Sensor Model
+        sensor_model = LidarModelGP(
+            lidar_position=np.array(lidar_cfg.lidar_position),
+            num_rays=lidar_cfg.num_rays,
+            max_distance=lidar_cfg.max_distance,
+            lidar_gt_std_dev=lidar_cfg.lidar_gt_std_dev,
+            lidar_std_dev=tracker_cfg.lidar_std_dev, # Use tracker config for noise
+            gp_utils=gp_utils,
+            rng=rng,
+            shape_coords_body=extent_cfg.shape_coords_body # Needed for GT generation
+        )
+
+        # 4. Initialize GP Tracker
+        tracker = GP_IEKF(
+            dynamic_model=filter_dyn_model, 
+            lidar_model=sensor_model, 
+            config=config,
+            use_negative_info=tracker_cfg.gp_use_negative_info
+        )
+
     else:
-        raise NotImplementedError(f"Tracker method '{method}' is not yet refactored.")
+        filter_dyn_model = Model_PCA_CV(
+            x_pos_std_dev=tracker_cfg.pos_north_std_dev,
+            y_pos_std_dev=tracker_cfg.pos_east_std_dev,
+            yaw_std_dev=tracker_cfg.heading_std_dev,
+            N_pca=tracker_cfg.N_pca
+        )
+
+        pca_params = np.load(Path(tracker_cfg.PCA_parameters_path))
+        sensor_model = LidarModel(
+            lidar_position=np.array(lidar_cfg.lidar_position),
+            num_rays=lidar_cfg.num_rays,
+            max_distance=lidar_cfg.max_distance,
+            lidar_gt_std_dev=lidar_cfg.lidar_gt_std_dev,
+            lidar_std_dev=tracker_cfg.lidar_std_dev, # Use tracker config for noise
+            extent_cfg=extent_cfg,
+            pca_mean=pca_params['mean'],
+            pca_eigenvectors=pca_params['eigenvectors'][:, :tracker_cfg.N_pca].real,
+            rng=rng
+        )
+
+        if method == "bfgs":
+            tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
+        elif method == "ekf":
+            tracker = EKF(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
+        elif method == "iekf":
+            tracker = IterativeEKF(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
+        else:
+            raise NotImplementedError(f"Tracker method '{method}' is not supported.")
     
     simulator = Simulator(
         dynamic_model=gt_dynamic_model,
@@ -105,6 +151,7 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
 
     filename = os.path.join(SIMDATA_PATH, f"{sim_cfg.name}.pkl")
 
+    # NOTE Martin: static_covariances might need adjustment for GP, but keeping generic for now
     static_covariances = {
         "Q": filter_dyn_model.Q_d(dt=sim_cfg.dt),
         "R_point": sensor_model.R_single_point()

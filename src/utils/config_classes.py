@@ -130,50 +130,42 @@ class ExtentConfig:
 @dataclass
 class TrackerConfig:
     use_gt_state_for_bodyangles_calc: bool = True
+    
     N_pca: int = 4
+    PCA_parameters_path : str = 'data/input_parameters/FourierPCAParameters_scaled.npz'
 
-    # Standard deviations for process noise
+    # GP Specifics
+    N_gp_points: int = 20
+    gp_length_scale: float = 0.5
+    gp_signal_var: float = 1.0
+    gp_forgetting_factor: float = 0.05
+    gp_use_negative_info: bool = True
+
     pos_north_std_dev: float = 0.3
     pos_east_std_dev: float = 0.3
     heading_std_dev: float = 0.1
-
-    # Standard deviations for measurement noise
     lidar_std_dev: float = 0.15
 
-    # Initial state vector. If not provided, a default is created in __post_init__.
-    initial_state: Optional[State_PCA] = None # TODO Martin Consider separating intial state and tracker init state
-    initial_std_devs: Optional[State_PCA] = None
+    # Accepts State_GP or State_PCA
+    initial_state: Optional[Any] = None 
+    initial_std_devs: Optional[Any] = None
     
-    # Lidar position, to be set from LidarConfig
     lidar_position: Optional[np.ndarray] = None
 
-    PCA_parameters_path : str = 'data/input_parameters/FourierPCAParameters_scaled.npz'
-
     def __post_init__(self):
-        # Initialize initial_state if it wasn't provided
         if self.initial_state is None:
+            from src.states.states import State_PCA
             self.initial_state = State_PCA(
-                x=0.0,
-                y=-40.0,
-                yaw=np.pi / 2,
-                vel_x=0.0,
-                vel_y=0.0,
-                yaw_rate=0.0,
-                length=20.0,
-                width=6.0,
-                pca_coeffs=np.zeros(self.N_pca)
+                x=0.0, y=-40.0, yaw=np.pi / 2, vel_x=0.0, vel_y=0.0, yaw_rate=0.0,
+                length=20.0, width=6.0, pca_coeffs=np.zeros(self.N_pca)
             )
         
         if self.initial_std_devs is None:
+            from src.states.states import State_PCA
             self.initial_std_devs = State_PCA(
-                x=2.0,
-                y=2.0,
-                yaw=0.2,
-                vel_x=2.0,
-                vel_y=2.0,
-                yaw_rate=0.1,
-                length=2.0,
-                width=2.0,
+                x=2.0, y=2.0, yaw=0.2, 
+                vel_x=2.0, vel_y=2.0, yaw_rate=0.1,
+                length=2.0, width=2.0,
                 pca_coeffs=np.ones(self.N_pca) * 0.5 
             )
 
@@ -186,8 +178,8 @@ class LidarConfig:
     lidar_position: Tuple[float, float] = (30.0, 0.0)
     num_rays: int = 360
     max_distance: float = 140.0
-    lidar_noise_mean: float = 0.0
-    lidar_std_dev: float = 0.15
+    lidar_gt_mean: float = 0.0
+    lidar_gt_std_dev: float = 0.15
 
 @dataclass
 class Config:

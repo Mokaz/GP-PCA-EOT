@@ -48,6 +48,17 @@ class ShapeExplorer:
         )
         self.reset_btn.on_click(self.reset_coefficients)
 
+        self.coeff_input = pn.widgets.TextInput(
+            name='Paste Coefficients (comma separated)',
+            placeholder='e.g. -1.17, 0.16, 0.06, 0.07',
+            sizing_mode='stretch_width'
+        )
+        self.set_coeff_btn = pn.widgets.Button(
+            name='Set Coefficients', button_type='success',
+            sizing_mode='stretch_width'
+        )
+        self.set_coeff_btn.on_click(self.set_coefficients_from_text)
+
         self.pca_sliders = []
         for i in range(self.num_pca_comps):
             s = pn.widgets.FloatSlider(
@@ -80,6 +91,25 @@ class ShapeExplorer:
         for slider in self.pca_sliders:
             slider.value = 0.0
 
+    def set_coefficients_from_text(self, event=None):
+        """Parses the text input and updates sliders."""
+        text = self.coeff_input.value
+        if not text:
+            return
+        
+        try:
+            # Remove brackets if present and split by comma
+            clean_text = text.replace('[', '').replace(']', '').replace('np.array(', '').replace(')', '')
+            values = [float(x.strip()) for x in clean_text.split(',')]
+            
+            # Update sliders (which triggers the plot update via bind)
+            for i, val in enumerate(values):
+                if i < len(self.pca_sliders):
+                    self.pca_sliders[i].value = val
+                    
+        except ValueError:
+            print("Invalid input format. Please use comma-separated numbers.")
+
     def update_plot(self, L, W, rotate_90, *pca_coeffs):
         """
         Callback function that updates the EXISTING plot pane.
@@ -100,7 +130,7 @@ class ShapeExplorer:
             x=est_shape_y, 
             y=est_shape_x, 
             mode='lines', 
-            name='GP-PCA Shape',
+            name='PCA Shape',
             line=dict(color='royalblue', width=3),
             fill='toself',
             fillcolor='rgba(65, 105, 225, 0.2)' 
@@ -144,6 +174,8 @@ class ShapeExplorer:
             self.rotate_toggle,
             pn.layout.Divider(),
             pn.pane.Markdown("### PCA Coefficients"),
+            self.coeff_input,
+            self.set_coeff_btn,
             self.reset_btn,
             pn.Spacer(height=10),
             *self.pca_sliders,
@@ -156,7 +188,7 @@ class ShapeExplorer:
         )
         
         return pn.template.FastListTemplate(
-            title="GP-PCA Shape Explorer",
+            title="PCA Shape Explorer",
             sidebar=[sidebar],
             main=[main_area],
             sidebar_width=450
