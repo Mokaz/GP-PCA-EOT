@@ -777,11 +777,10 @@ def save_plots(event):
             
     if saved_files:
         save_status.object = f"Saved: {', '.join(saved_files)} in figures/"
-    cov_matrix_selector,
-    nis_field_selector,
-    plotting_divider,
-    plotting_header,
-    plot_backend_selector,
+    else:
+        save_status.object = "No plots to save (select groups first)."
+
+save_button.on_click(save_plots)
 
 # --- Build Panel objects ---
 controls = pn.Column(
