@@ -35,7 +35,6 @@ class TrackerUpdateResult:
 
 class Tracker:
     def __init__(self, dynamic_model, sensor_model, config: Config):
-        # Removed specific type hints (Model_PCA_CV) to allow Model_GP_CV
         self.dynamic_model = dynamic_model
         self.sensor_model = sensor_model
         self.config = config
@@ -43,14 +42,13 @@ class Tracker:
         
         self.use_gt_state_for_bodyangles_calc = config.tracker.use_gt_state_for_bodyangles_calc
 
-        # --- Initialization Logic ---
         initial_mean = config.tracker.initial_state
         initial_std_devs = config.tracker.initial_std_devs
 
         if initial_mean is None or initial_std_devs is None:
             raise ValueError("Tracker configuration missing initial_state or initial_std_devs.")
 
-        # --- BRANCH 1: Gaussian Process Initialization ---
+        # Gaussian Process Initialization
         if isinstance(initial_mean, State_GP):
             # For GP, we use the explicit std_devs provided in the config (Size 26)
             # We do NOT load PCA parameters.
@@ -62,7 +60,7 @@ class Tracker:
             
             initial_cov = np.diag(std_devs_arr**2)
 
-        # --- BRANCH 2: PCA Initialization (Legacy) ---
+        # PCA Initialization
         else:
             self.N_pca = config.tracker.N_pca 
             # For PCA, we preserve your existing logic:

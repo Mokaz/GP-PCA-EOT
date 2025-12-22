@@ -78,6 +78,15 @@ frame_player = pn.widgets.Player(
     sizing_mode='stretch_width'
 )
 
+frame_input = pn.widgets.IntInput(
+    name='Jump to Frame', value=0, start=0, step=1,
+    visible=False, sizing_mode='stretch_width'
+)
+
+# Link player and input
+frame_player.link(frame_input, value='value')
+frame_input.link(frame_player, value='value')
+
 # --- NEES Widgets ---
 nees_group_selector = pn.widgets.MultiSelect(
     name='NEES Consistency Groups', 
@@ -92,8 +101,8 @@ error_group_selector = pn.widgets.MultiSelect(
     sizing_mode='stretch_width'
 )
 
-custom_nees_selector = pn.widgets.MultiSelect(
-    name='Custom NEES States',
+custom_states_selector = pn.widgets.MultiSelect(
+    name='Custom States for NEES/Error',
     visible=False,
     sizing_mode='stretch_width'
 )
@@ -121,28 +130,50 @@ nis_field_selector = pn.widgets.Select(
 )
 
 # --- Plotting Control Widgets ---
+plotting_divider = pn.layout.Divider(visible=False)
+plotting_header = pn.pane.Markdown("### Plotting & Saving", visible=False)
+
 plot_backend_selector = pn.widgets.Select(
     name='Plotting Backend', 
     options=['Bokeh', 'Matplotlib'], 
     value='Bokeh',
-    sizing_mode='stretch_width'
+    sizing_mode='stretch_width',
+    visible=False
 )
 
 save_filename_input = pn.widgets.TextInput(
     name='Save Filename (no ext)', 
     value='plot_output',
     placeholder='Enter filename...',
-    sizing_mode='stretch_width'
+    sizing_mode='stretch_width',
+    visible=False
 )
 
 save_button = pn.widgets.Button(
     name='Save Matplotlib Plots', 
     button_type='primary',
-    sizing_mode='stretch_width'
+    sizing_mode='stretch_width',
+    visible=False
 )
 
-save_status = pn.pane.Markdown("", sizing_mode='stretch_width')
+save_status = pn.pane.Markdown("", sizing_mode='stretch_width', visible=False)
 
+# --- Data Browser Widgets ---
+data_browser_mode = pn.widgets.Select(
+    name='Data Browser Mode',
+    options=[
+        'Current Frame Tracker Result', 
+        'Current Frame GT', 
+        'Current Frame State Error', 
+        'Current Frame Measurement Error',
+        'Consistency Analysis (Summary)',
+        'Config', 
+        'Full Simulation Result (Summary)'
+    ],
+    value='Current Frame Tracker Result',
+    sizing_mode='stretch_width',
+    visible=False
+)
 
 # --- Interactive functions ---
 @pn.depends(file_selector.param.value, watch=True)
@@ -150,11 +181,20 @@ def update_widgets(filename):
     loaded_data = load_data(filename)
     if not loaded_data:
         frame_player.visible = False
+        frame_input.visible = False
         nees_group_selector.visible = False
         error_group_selector.visible = False
         cov_matrix_selector.visible = False
         nis_field_selector.visible = False
-        custom_nees_selector.visible = False
+        custom_states_selector.visible = False
+        
+        data_browser_mode.visible = False
+        plotting_divider.visible = False
+        plotting_header.visible = False
+        plot_backend_selector.visible = False
+        save_filename_input.visible = False
+        save_button.visible = False
+        save_status.visible = False
         return
 
     sim_result = loaded_data["sim_result"]
@@ -230,6 +270,10 @@ def update_widgets(filename):
     frame_player.value = 0
     frame_player.visible = True
     
+    frame_input.end = sim_result.config.sim.num_frames
+    frame_input.value = 0
+    frame_input.visible = True
+    
     # Update NEES Group Selector
     nees_group_selector.options = dynamic_nees_mapping
     nees_group_selector.value = []
@@ -245,16 +289,108 @@ def update_widgets(filename):
     error_group_selector.height = min(len(error_mapping) * 20, 400)
 
     # Update Custom NEES Selector
-    custom_nees_selector.options = custom_state_options
-    custom_nees_selector.value = []
-    custom_nees_selector.visible = True
+    custom_states_selector.options = custom_state_options
+    custom_states_selector.value = []
+
+    # Visbility
+    cov_matrix_selector.visible = True
+    nis_field_selector.visible = True
+
+    data_browser_mode.visible = True
+    plotting_divider.visible = True
+    plotting_header.visible = True
+    plot_backend_selector.visible = True
+    save_filename_input.visible = True
+    save_button.visible = True
+    save_status.visible = True
+    custom_states_selector.visible = True
     
     n_items = len(custom_state_options)
-    custom_nees_selector.size = min(n_items, 15)
-    custom_nees_selector.height = min(n_items * 18, 400) 
+    custom_states_selector.size = min(n_items, 15)
+    custom_states_selector.height = min(n_items * 18, 400) 
 
     cov_matrix_selector.visible = True
     nis_field_selector.visible = True
+
+def serialize_state_object(state_obj):
+    """Helper to convert State_PCA/State_GP objects into a labeled dictionary."""
+    cls_name = state_obj.__class__.__name__
+    
+    # Prioritize attribute detection over class name to handle potential mismatches
+    # Check for GP characteristics (radii)
+    if hasattr(state_obj, 'radii'):
+        return {
+            "__type__": cls_name,
+            "x": float(state_obj.x),
+            "y": float(state_obj.y),
+            "yaw": float(state_obj.yaw),
+            "vel_x": float(state_obj.vel_x),
+            "vel_y": float(state_obj.vel_y),
+            "yaw_rate": float(state_obj.yaw_rate),
+            "radii": state_obj.radii.tolist()
+        }
+        
+    # Check for PCA characteristics (pca_coeffs)
+    if hasattr(state_obj, 'pca_coeffs'):
+        return {
+            "__type__": cls_name,
+            "x": float(state_obj.x),
+            "y": float(state_obj.y),
+            "yaw": float(state_obj.yaw),
+            "vel_x": float(state_obj.vel_x),
+            "vel_y": float(state_obj.vel_y),
+            "yaw_rate": float(state_obj.yaw_rate),
+            "length": float(state_obj.length),
+            "width": float(state_obj.width),
+            "pca_coeffs": state_obj.pca_coeffs.tolist()
+        }
+    
+    return None
+
+def safe_serialize(obj, max_depth=3, current_depth=0):
+    """Recursively converts objects to JSON-serializable dicts/lists."""
+    if current_depth > max_depth:
+        return str(obj)
+    
+    if obj is None:
+        return None
+    
+    # Check for State objects first
+    # We try to serialize if it has state-like attributes or matching class name
+    if hasattr(obj, 'radii') or hasattr(obj, 'pca_coeffs') or obj.__class__.__name__ in ['State_PCA', 'State_GP']:
+        res = serialize_state_object(obj)
+        if res is not None:
+            return res
+        
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
+        
+    if isinstance(obj, (np.integer, int)):
+        return int(obj)
+        
+    if isinstance(obj, (np.floating, float)):
+        return float(obj)
+        
+    if isinstance(obj, np.ndarray):
+        if obj.size <= 100:
+            return obj.tolist()
+        return f"ndarray(shape={obj.shape}, dtype={obj.dtype})"
+    
+    if isinstance(obj, (list, tuple)):
+        return [safe_serialize(x, max_depth, current_depth + 1) for x in obj]
+    
+    if isinstance(obj, dict):
+        return {str(k): safe_serialize(v, max_depth, current_depth + 1) for k, v in obj.items()}
+        
+    # Handle Dataclasses
+    if hasattr(obj, '__dataclass_fields__'):
+        return {k: safe_serialize(getattr(obj, k), max_depth, current_depth + 1) for k in obj.__dataclass_fields__}
+        
+    # Handle generic objects
+    if hasattr(obj, '__dict__'):
+        return {k: safe_serialize(v, max_depth, current_depth + 1) for k, v in obj.__dict__.items() if not k.startswith('_')}
+        
+    return str(obj)
 
 def create_empty_figure(message="Select a file to begin"):
     """Helper to create a blank figure with a centered message."""
@@ -327,7 +463,7 @@ def update_plotly_view(frame_idx, filename):
 
 pn.bind(update_plotly_view, frame_player, file_selector, watch=True)
 
-@pn.depends(nees_group_selector.param.value, custom_nees_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
+@pn.depends(nees_group_selector.param.value, custom_states_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
 def get_nees_view(selected_groups, custom_states, filename, backend):
     loaded_data = load_data(filename)
     if not loaded_data or (not selected_groups and not custom_states):
@@ -456,7 +592,7 @@ def get_nis_view(selected_field, filename, backend):
         return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
 
 
-@pn.depends(error_group_selector.param.value, custom_nees_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
+@pn.depends(error_group_selector.param.value, custom_states_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
 def get_error_view(selected_groups, custom_states, filename, backend):
     loaded_data = load_data(filename)
     if not loaded_data or (not selected_groups and not custom_states):
@@ -498,6 +634,89 @@ def get_error_view(selected_groups, custom_states, filename, backend):
         return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
 
 
+@pn.depends(data_browser_mode.param.value, frame_player.param.value, file_selector.param.value)
+def get_data_browser_view(mode, frame_idx, filename):
+    loaded_data = load_data(filename)
+    if not loaded_data:
+        return pn.pane.Markdown("### Select a file to begin.")
+    
+    sim_result = loaded_data["sim_result"]
+    consistency_analyzer = loaded_data["consistency_analyzer"]
+    
+    data_to_show = {}
+    
+    if mode == 'Current Frame Tracker Result':
+        if frame_idx < len(sim_result.tracker_results_ts.values):
+            res = sim_result.tracker_results_ts.values[frame_idx]
+            data_to_show = safe_serialize(res, max_depth=4)
+        else:
+            data_to_show = {"info": "Frame index out of range"}
+            
+    elif mode == 'Current Frame GT':
+        if frame_idx < len(sim_result.ground_truth_ts.values):
+            res = sim_result.ground_truth_ts.values[frame_idx]
+            data_to_show = safe_serialize(res, max_depth=4)
+        else:
+            data_to_show = {"info": "Frame index out of range"}
+
+    elif mode == 'Current Frame State Error':
+        if hasattr(consistency_analyzer, 'x_err_gauss') and frame_idx < len(consistency_analyzer.x_err_gauss.values):
+            err_gauss = consistency_analyzer.x_err_gauss.values[frame_idx]
+            
+            # Try to recover labels for the error vector
+            err_mean = err_gauss.mean
+            # We assume the error has the same structure as the posterior mean of the first frame
+            if len(sim_result.tracker_results_ts.values) > 0:
+                ref_state = sim_result.tracker_results_ts.values[0].state_posterior.mean
+                
+                if not isinstance(err_mean, (State_PCA, State_GP)) and isinstance(err_mean, np.ndarray):
+                    try:
+                        # Attempt to view as the reference state class
+                        err_mean = err_mean.view(ref_state.__class__)
+                    except Exception:
+                        pass # Fallback to array
+
+            data_to_show = {
+                "error_mean": safe_serialize(err_mean, max_depth=4),
+                "covariance_diag": safe_serialize(np.diag(err_gauss.cov), max_depth=4)
+            }
+        else:
+            data_to_show = {"info": "Frame index out of range or no state error data."}
+
+    elif mode == 'Current Frame Measurement Error':
+        if hasattr(consistency_analyzer, 'z_err_gauss') and frame_idx < len(consistency_analyzer.z_err_gauss.values):
+            err_gauss = consistency_analyzer.z_err_gauss.values[frame_idx]
+            data_to_show = {
+                "error_mean": safe_serialize(err_gauss.mean, max_depth=4),
+                "covariance_diag": safe_serialize(np.diag(err_gauss.cov), max_depth=4)
+            }
+        else:
+            data_to_show = {"info": "Frame index out of range or no measurement error data."}
+
+    elif mode == 'Consistency Analysis (Summary)':
+        data_to_show = {
+            "num_frames_analyzed": len(consistency_analyzer.x_err_gauss) if hasattr(consistency_analyzer, 'x_err_gauss') else 0,
+            "has_ground_truth": consistency_analyzer.x_gts is not None,
+            "average_nees": safe_serialize(consistency_analyzer.get_nees(indices='all').a) if consistency_analyzer.x_gts else "N/A",
+            "average_nis": safe_serialize(consistency_analyzer.get_nis(indices='all').a),
+        }
+            
+    elif mode == 'Config':
+        data_to_show = safe_serialize(sim_result.config, max_depth=5)
+        
+    elif mode == 'Full Simulation Result (Summary)':
+        # Custom summary for the huge object
+        data_to_show = {
+            "config": "See Config mode",
+            "num_frames": len(sim_result.tracker_results_ts.values),
+            "static_covariances": safe_serialize(sim_result.static_covariances),
+            "tracker_results_ts": f"TimeSequence with {len(sim_result.tracker_results_ts.values)} items",
+            "ground_truth_ts": f"TimeSequence with {len(sim_result.ground_truth_ts.values)} items",
+        }
+
+    return pn.pane.JSON(data_to_show, sizing_mode='stretch_both', depth=5, theme='light')
+
+
 def save_plots(event):
     filename = save_filename_input.value
     if not filename:
@@ -515,8 +734,8 @@ def save_plots(event):
     # Save NEES
     nees_fields = []
     nees_fields.extend(nees_group_selector.value)
-    if custom_nees_selector.value:
-        nees_fields.append(list(custom_nees_selector.value))
+    if custom_states_selector.value:
+        nees_fields.append(list(custom_states_selector.value))
         
     if nees_fields:
         fig = matplotlib_show_consistency(consistency_analyzer, fields_nees=nees_fields)
@@ -534,8 +753,8 @@ def save_plots(event):
             error_fields.extend(group)
         else:
             error_fields.append(group)
-    if custom_nees_selector.value:
-        error_fields.extend(custom_nees_selector.value)
+    if custom_states_selector.value:
+        error_fields.extend(custom_states_selector.value)
         
     if error_fields:
         fig = matplotlib_show_error(consistency_analyzer, fields_err=error_fields)
@@ -558,20 +777,22 @@ def save_plots(event):
             
     if saved_files:
         save_status.object = f"Saved: {', '.join(saved_files)} in figures/"
-    else:
-        save_status.object = "No plots to save (select groups first)."
-
-save_button.on_click(save_plots)
-
+    cov_matrix_selector,
+    nis_field_selector,
+    plotting_divider,
+    plotting_header,
+    plot_backend_selector,
 
 # --- Build Panel objects ---
 controls = pn.Column(
     pn.pane.Markdown("## Controls"),
     file_selector,
     frame_player,
+    frame_input,
+    data_browser_mode,
     nees_group_selector,
     error_group_selector,
-    custom_nees_selector,
+    custom_states_selector,
     cov_matrix_selector,
     nis_field_selector,
     pn.layout.Divider(),
@@ -588,7 +809,7 @@ nees_view = pn.Column(get_nees_view, sizing_mode="stretch_both")
 error_view = pn.Column(get_error_view, sizing_mode="stretch_both")
 covariance_view = pn.Column(get_covariance_view, sizing_mode="stretch_both")
 nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
-
+data_browser_view = pn.Column(get_data_browser_view, sizing_mode="stretch_both")
 
 # --- Custom GoldenLayout Template ---
 template_file = Path(__file__).parent / 'golden_template.html'
@@ -603,9 +824,10 @@ tmpl.nb_template.globals['get_id'] = make_globally_unique_id
 tmpl.add_panel('controls', controls)
 tmpl.add_panel('plotly_view', plotly_view)
 tmpl.add_panel('nees_view', nees_view)
-tmpl.add_panel('error_view', error_view) # <--- Add to template
+tmpl.add_panel('error_view', error_view)
 tmpl.add_panel('covariance_view', covariance_view)
 tmpl.add_panel('nis_view', nis_view)
+tmpl.add_panel('data_browser_view', data_browser_view)
 tmpl.servable(title="GP-PCA-EOT Simulation Analysis Dashboard")
 
 if __name__ == "__main__":

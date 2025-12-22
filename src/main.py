@@ -14,13 +14,11 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 
-# Correct the path to be relative to this file's location
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 from global_project_paths import SIMDATA_PATH
 from src.utils.config_classes import TrackerConfig, SimulationConfig, Config, ExtentConfig, LidarConfig
-# Import the State_PCA class
 from src.states.states import State_GP, State_PCA
 from src.visualization.plotly_offline_generator import generate_plotly_html_from_pickle
 
@@ -41,7 +39,7 @@ def get_common_configs(N_pca=4):
         yaw_rate=0.0,   # Yaw Rate
         length=20.0,    # Length
         width=6.0,      # Width
-        pca_coeffs=np.zeros(N_pca)
+        pca_coeffs=np.array([-1.1716024210647493, 0.1598108552333908, 0.06624525016067562, 0.07254312701009336]) # GT for ellipse shape L=20m, W=6m
     )
 
     sim_config = SimulationConfig(
@@ -59,7 +57,7 @@ def get_common_configs(N_pca=4):
         num_rays=360,
         max_distance=140.0,
         lidar_gt_mean=0.0,# NOTE: Currently unused
-        lidar_gt_std_dev=0.15,
+        lidar_gt_std_dev=0.0,
     )
 
     # Extent config
@@ -93,12 +91,12 @@ def get_pca_tracker_config(lidar_pos, N_pca=4):
         pca_coeffs=np.zeros(N_pca)
     )
 
-    # Define initial std devs for PCA (Explicitly)
+    # Define initial std devs for PCA
     initial_std_devs_tracker = State_PCA(
         x=2.0, y=2.0, yaw=0.2, 
         vel_x=2.0, vel_y=2.0, yaw_rate=0.1,
         length=2.0, width=2.0,
-        pca_coeffs=np.ones(N_pca) * 0.5 
+        pca_coeffs=np.ones(N_pca) * 0.5 # NOTE Overwritten by eigenvalues in tracker initialization
     )
 
     tracker_config = TrackerConfig(
@@ -107,7 +105,7 @@ def get_pca_tracker_config(lidar_pos, N_pca=4):
         pos_north_std_dev=0.3,
         pos_east_std_dev=0.3,
         heading_std_dev=0.1,
-        lidar_std_dev=0.15,
+        lidar_std_dev=0.05,
         initial_state=initial_state_tracker,
         initial_std_devs=initial_std_devs_tracker,
         lidar_position=np.array(lidar_pos)
@@ -117,7 +115,7 @@ def get_pca_tracker_config(lidar_pos, N_pca=4):
 def get_gp_tracker_config(lidar_pos, N_gp=20):
     """Returns TrackerConfig for GP methods."""
     
-    # Initialize radii (approx circle of radius 10m to start)
+    # Initialize radii (circle of radius 10 m)
     initial_radii = np.ones(N_gp) * 10.0
     
     initial_state_tracker = State_GP(
@@ -125,11 +123,10 @@ def get_gp_tracker_config(lidar_pos, N_gp=20):
         radii=initial_radii
     )
 
-    # Define initial uncertainties compatible with State_GP (Size 26)
     initial_std_devs_tracker = State_GP(
         x=2.0, y=2.0, yaw=0.2, 
         vel_x=2.0, vel_y=2.0, yaw_rate=0.1,
-        radii=np.ones(N_gp) * 5.0 # High uncertainty on shape (5m std dev)
+        radii=np.ones(N_gp) * 5.0 # (5m std dev)
     )
 
     return TrackerConfig(
@@ -154,7 +151,7 @@ def get_gp_tracker_config(lidar_pos, N_gp=20):
 if __name__ == "__main__":
     GENERATE_PLOTLY_HTML = False
     CONSISTENCY_ANALYSIS = False
-    LOAD_SIM_RESULT = False # TODO MARTIN: ONLY USES CONFIG FOR ID GENERATION FOR NOW
+    LOAD_SIM_RESULT = False # TODO: ONLY USES CONFIG FOR ID GENERATION FOR NOW
 
     N_pca = 4
     N_gp = 20
@@ -162,10 +159,7 @@ if __name__ == "__main__":
     # Load base configs
     sim_base, lidar_base, extent_base = get_common_configs(N_pca)
 
-    # method_list = ["iekf", "ukf", "bfgs", "slsqp", "gauss_newton", "levenberg_marquardt", "smoothing_slsqp"]
-    # method_list = ["iekf"]
-    # method_list = ["bfgs", "ekf", "iekf"]
-    method_list = ["gp_iekf"]
+    method_list = ["ekf", "iekf", "bfgs"]
     # method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
 
     for method in method_list:
@@ -181,7 +175,8 @@ if __name__ == "__main__":
         # Create a unique name for this simulation configuration
         id_number = crc32(repr(config).encode())
         # config.sim.name = f"{method}_{config.sim.seed}_{extent_base.shape_params_true.get('type')}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
-        config.sim.name = f"{method}_{config.sim.seed}_lengthscale_{tracker_cfg.gp_length_scale:.2f}_forgettingfactor_{tracker_cfg.gp_forgetting_factor:.4f}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
+        # config.sim.name = f"{method}_{config.sim.seed}_lengthscale_{tracker_cfg.gp_length_scale:.2f}_forgettingfactor_{tracker_cfg.gp_forgetting_factor:.4f}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
+        config.sim.name = f"casestudy_{method}_{config.sim.seed}_tracker_lidarstd_{tracker_cfg.lidar_std_dev}_seed_{config.sim.seed}"
 
         filename = f"{config.sim.name}.pkl"
         pickle_path = Path(SIMDATA_PATH) / filename

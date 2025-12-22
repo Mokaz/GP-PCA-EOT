@@ -63,7 +63,7 @@ class GroundTruthModel(DynamicModel):
     rng: np.random.Generator = field(repr=False)
 
     # Noise parameters
-    yaw_rate_std_dev: float = 0.01
+    yaw_rate_std_dev: float = 0.01 # TODO Make configurable
 
     _initial_speed: Optional[float] = field(default=None, init=False, repr=False)
 

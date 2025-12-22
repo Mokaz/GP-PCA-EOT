@@ -64,6 +64,12 @@ var config = {
                                         componentName: 'view',
                                         componentState: { model: '{{ embed(roots.error_view) }}', title: 'State Errors' },
                                         title: 'State Errors'
+                                    },
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: { model: '{{ embed(roots.data_browser_view) }}', title: 'Data Browser', css_classes: ['scrollable'] },
+                                        title: 'Data Browser'
                                     }
                                 ]
                             }

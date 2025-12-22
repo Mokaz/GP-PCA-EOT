@@ -221,8 +221,8 @@ def interactive_show_error(
     tooltips = [
         ("Name", "$name"),
         ("Timestep", "@timesteps"),
-        ("Time", "@times{0.00}s"),
-        ("Value", "@values{0.000}"),
+        ("Time", "@times{0.0}s"),
+        ("Value", "@values{0.000000}"),
     ]
 
     err_plots = []
@@ -232,20 +232,28 @@ def interactive_show_error(
         
         # Calculate RMSE (Scalar)
         raw_values = np.array(err_tseq.values)
-        rmse = np.sqrt(np.mean(raw_values**2))
+        
+        # Determine if we are plotting a vector norm or scalar absolute error
+        if raw_values.ndim > 1 and raw_values.shape[1] > 1:
+            # Vector quantity: Plot Euclidean Norm
+            values = np.linalg.norm(raw_values, axis=1)
+            label_prefix = "||err||"
+        else:
+            # Scalar quantity: Plot Absolute Error
+            values = np.abs(raw_values).flatten()
+            label_prefix = "|err|"
+
+        rmse = np.sqrt(np.mean(values**2))
         
         plot_title = f'Error {title}' if i == 0 else ''
         p = figure(height=300, width=800, title=plot_title)
 
         times = err_tseq.times
-        
-        # We plot the absolute value so the line represents magnitude (always positive)
-        timesteps = np.arange(len(raw_values))
-        values = np.abs(raw_values)
+        timesteps = np.arange(len(values))
         
         source_err = ColumnDataSource(data={'timesteps': timesteps, 'times': times, 'values': values})
 
-        err_label = f'|err|, rmse={rmse:.2e}'
+        err_label = f'{label_prefix}, rmse={rmse:.2e}'
         err_line_renderer = p.line(x='timesteps', y='values', source=source_err, legend_label=err_label, name=err_label, color='royalblue')
         
         # Dashed line at 0 is still useful as the floor
@@ -260,7 +268,7 @@ def interactive_show_error(
         p.add_tools(hover_tool)
 
         # Update label to indicate absolute error
-        p.yaxis.axis_label = f"|{field}|"
+        p.yaxis.axis_label = f"{label_prefix.replace('err', str(field))}"
         p.legend.location = "top_right" # Moved to top usually better for positive-only plots
         p.legend.click_policy = "hide"
         err_plots.append(p)
@@ -290,8 +298,8 @@ def interactive_show_consistency(
     tooltips = [
         ("Name", "$name"),
         ("Timestep", "@timesteps"),
-        ("Time", "@times{0.00}s"),
-        ("Value", "@values{0.000}"),
+        ("Time", "@times{0.0000}s"),
+        ("Value", "@values{0.000000}"),
     ]
 
     # --- 1. Process NIS and NEES plots ---
@@ -386,18 +394,29 @@ def matplotlib_show_error(
         
         # Calculate RMSE (Scalar)
         raw_values = np.array(err_tseq.values)
-        rmse = np.sqrt(np.mean(raw_values**2))
+        
+        # Determine if we are plotting a vector norm or scalar absolute error
+        if raw_values.ndim > 1 and raw_values.shape[1] > 1:
+            # Vector quantity: Plot Euclidean Norm
+            values = np.linalg.norm(raw_values, axis=1)
+            label_prefix = "||err||"
+        else:
+            # Scalar quantity: Plot Absolute Error
+            values = np.abs(raw_values).flatten()
+            label_prefix = "|err|"
+
+        rmse = np.sqrt(np.mean(values**2))
         
         times = err_tseq.times
-        timesteps = np.arange(len(raw_values))
-        values = np.abs(raw_values)
+        timesteps = np.arange(len(values))
         
-        err_label = f'|err|, rmse={rmse:.2e}'
+        err_label = f'{label_prefix}, rmse={rmse:.2e}'
         ax.plot(timesteps, values, label=err_label, color='royalblue')
         ax.axhline(0, color='black', linestyle='--', alpha=0.7)
         
-        ax.set_ylabel(f"|{field}|")
+        ax.set_ylabel(f"{label_prefix.replace('err', str(field))}")
         ax.legend(loc="upper right")
+        ax.grid(True, linestyle=':', alpha=0.6)
         
         if i == 0:
             ax.set_title(f'Absolute error {title}')
@@ -451,7 +470,7 @@ def matplotlib_show_consistency(
         
         subscript_map = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
         dofs_sub = str(data.dofs[0]).translate(subscript_map)
-        sym = f"$\chi^2_{{{data.dofs[0]}}}$" # Use latex for matplotlib
+        sym = rf"$\chi^2_{{{data.dofs[0]}}}$" # Use latex for matplotlib
         
         ci_label = (f"{sym}, {data.in_interval:.0%} $\\in$ "
                     f"CI at {data.alpha*100:.0f}%")
@@ -470,6 +489,7 @@ def matplotlib_show_consistency(
         ax.set_ylabel(label_text)
         ax.set_yscale('log')
         ax.legend(loc="lower right")
+        ax.grid(True, linestyle=':', alpha=0.6)
         
         if i == 0:
             ax.set_title(f'{name} {title}')
