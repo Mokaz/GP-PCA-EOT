@@ -40,7 +40,6 @@ class State_PCA(NamedArray):
         pca_coeffs = np.atleast_1d(pca_coeffs)
         full_state = np.concatenate([kinematics, extent, pca_coeffs])
 
-        # Create the final object by viewing the data as an instance of this class
         obj = np.asarray(full_state).view(cls)
         return obj
 

@@ -4,16 +4,13 @@ import panel as pn
 import plotly.graph_objects as go
 from pathlib import Path
 
-# --- Path Setup ---
 FILE_PATH = Path(__file__).resolve()
 SRC_ROOT = FILE_PATH.parent.parent
 PROJECT_ROOT = SRC_ROOT.parent
 sys.path.append(str(PROJECT_ROOT))
 
-# --- Project Imports ---
 from src.utils.geometry_utils import compute_estimated_shape_from_params
 
-# Initialize Panel extension with Plotly support
 pn.extension('plotly')
 
 class ShapeExplorer:
@@ -67,24 +64,18 @@ class ShapeExplorer:
             )
             self.pca_sliders.append(s)
 
-        # --- FIX PART 1: Initialize the Pane ONCE ---
-        # We create the container once. It stays in the DOM, maintaining its size.
         self.plot_pane = pn.pane.Plotly(
             sizing_mode='stretch_both', 
             config={'responsive': True}
         )
 
-        # --- FIX PART 2: Bind with watch=True ---
-        # We trigger the update function when widgets change, but we don't 
-        # replace 'self.plot_pane' with the result.
         pn.bind(self.update_plot, 
                 self.slider_L, 
                 self.slider_W, 
                 self.rotate_toggle, 
                 *self.pca_sliders, 
-                watch=True) # <--- Important: Watch triggers the side-effect
+                watch=True)
 
-        # Trigger an initial update so the plot isn't empty on load
         self.update_plot(self.slider_L.value, self.slider_W.value, self.rotate_toggle.value, *[s.value for s in self.pca_sliders])
 
     def reset_coefficients(self, event=None):
@@ -102,7 +93,6 @@ class ShapeExplorer:
             clean_text = text.replace('[', '').replace(']', '').replace('np.array(', '').replace(')', '')
             values = [float(x.strip()) for x in clean_text.split(',')]
             
-            # Update sliders (which triggers the plot update via bind)
             for i, val in enumerate(values):
                 if i < len(self.pca_sliders):
                     self.pca_sliders[i].value = val
@@ -162,8 +152,6 @@ class ShapeExplorer:
             margin=dict(l=20, r=20, t=40, b=20)
         )
 
-        # --- FIX PART 3: Update In-Place ---
-        # Instead of returning the figure, we assign it to the existing object.
         self.plot_pane.object = fig 
 
     def view(self):
@@ -183,7 +171,7 @@ class ShapeExplorer:
         )
         
         main_area = pn.Column(
-            self.plot_pane, # This object instance never changes
+            self.plot_pane,
             sizing_mode='stretch_both'
         )
         

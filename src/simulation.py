@@ -47,12 +47,7 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
 
     gt_dynamic_model = GroundTruthModel(rng=rng, yaw_rate_std_dev=sim_cfg.gt_yaw_rate_std_dev)
 
-    # --- Method Dispatching ---
     if method == "gp_iekf":
-        # Check dimensions
-        # if hasattr(tracker_cfg.initial_std_devs, 'shape'):
-        #      print(f"[DEBUG] Initial Std Devs Shape: {tracker_cfg.initial_std_devs.shape}")
-
         # 1. Initialize GP Math Utils
         gp_utils = GaussianProcess(
             n_test_points=tracker_cfg.N_gp_points, 
