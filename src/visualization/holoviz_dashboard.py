@@ -276,7 +276,7 @@ def update_widgets(filename):
     
     # Update NEES Group Selector
     nees_group_selector.options = dynamic_nees_mapping
-    nees_group_selector.value = []
+    nees_group_selector.value = ['all']
     nees_group_selector.visible = True
     nees_group_selector.size = len(dynamic_nees_mapping)
     nees_group_selector.height = min(len(dynamic_nees_mapping) * 20, 400)
@@ -811,7 +811,7 @@ nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
 data_browser_view = pn.Column(get_data_browser_view, sizing_mode="stretch_both")
 
 # --- Custom GoldenLayout Template ---
-template_file = Path(__file__).parent / 'golden_template.html'
+template_file = ASSETS_DIR / 'golden_template.html'
 
 with open(template_file, 'r') as f:
     template_str = f.read()
