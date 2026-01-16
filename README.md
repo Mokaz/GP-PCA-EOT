@@ -2,10 +2,12 @@
 This repository contains the code for my TTK4550 specialization project at NTNU Fall 2025
 
 ## Prerequisites
-- Python 3.12.4
-- Holoviz Panel
+Use Conda environment file to make a new virtual environment to ensure all dependencies are installed.
 
-Use Conda environment file to make a new virtual environment to ensure all dependencies are installed. (WIP)
+```bash
+conda env create -f environment.yml
+conda activate gp_pca_eot
+```
 
 ## Main entry file
 Configure and run the simulations using the main file:
@@ -14,7 +16,7 @@ python src/main.py
 ```
 
 ## Visualization
-The visualization dashboard may be opened by running the Python file:
+The visualization dashboard may be launched by running the Python file:
 ```bash
 python src/visualization/holoviz_dashboard.py
 ```
