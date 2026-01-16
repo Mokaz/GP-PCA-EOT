@@ -50,8 +50,6 @@ class Tracker:
 
         # Gaussian Process Initialization
         if isinstance(initial_mean, State_GP):
-            # For GP, we use the explicit std_devs provided in the config (Size 26)
-            # We do NOT load PCA parameters.
             std_devs_arr = np.array(initial_std_devs).flatten()
             
             # Safety check
@@ -63,9 +61,6 @@ class Tracker:
         # PCA Initialization
         else:
             self.N_pca = config.tracker.N_pca 
-            # For PCA, we preserve your existing logic:
-            # 1. Take first 8 std devs (Kinematics + L/W)
-            # 2. Append Eigenvalues from file for the PCA coefficients
             PCA_parameters = np.load(Path(config.tracker.PCA_parameters_path))
             PCA_eigenvalues = PCA_parameters['eigenvalues'][:self.N_pca].real
             

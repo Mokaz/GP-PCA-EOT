@@ -363,31 +363,3 @@ def calculate_body_angles(measurements: LidarScan, state: np.ndarray) -> np.ndar
     body_angles = ssa(world_angles - state[2])
     
     return body_angles
-
-class StateIdxToName(IntEnum):
-    """
-    Enum mapping state vector indices to human-readable names.
-    """
-    X_POS = 0
-    Y_POS = 1
-    HEADING = 2
-    X_VEL = 3
-    Y_VEL = 4
-    YAW_RATE = 5
-    LENGTH = 6
-    WIDTH = 7
-    PCA_COMPONENTS = 8  # Starting index for PCA components
-
-    def __new__(cls, value):
-        obj = int.__new__(cls, value)
-        obj._value_ = value
-        return obj
-
-    @property
-    def name(self):
-        if self.value >= self.PCA_COMPONENTS:
-            return f"PCA_{self.value - self.PCA_COMPONENTS + 1}"
-        return super().name
-
-    def __str__(self):
-        return self.name
