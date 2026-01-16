@@ -159,8 +159,7 @@ if __name__ == "__main__":
     # Load base configs
     sim_base, lidar_base, extent_base = get_common_configs(N_pca)
 
-    method_list = ["ekf", "iekf", "bfgs"]
-    # method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
+    method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
 
     for method in method_list:
         print(f"--- Setting up for method: {method} ---")

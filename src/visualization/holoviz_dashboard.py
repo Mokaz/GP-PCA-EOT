@@ -545,6 +545,7 @@ def get_covariance_view(matrix_name, frame_idx, filename):
         return pn.pane.Markdown(f"### Dimension Mismatch: Covariance is {cov_matrix.shape}, but generated {len(labels)} labels.")
 
     df = pd.DataFrame(cov_matrix, index=labels, columns=labels)
+    df = df.iloc[::-1]
     
     # Check condition number to warn about numerical instability
     try:
@@ -557,7 +558,7 @@ def get_covariance_view(matrix_name, frame_idx, filename):
         cmap='viridis',
         rot=90,
         title=title_text
-    ).opts(responsive=True, xrotation=90, invert_yaxis=True)
+    ).opts(responsive=True, xrotation=90)
     
     return pn.pane.HoloViews(heatmap, sizing_mode="stretch_both")
 
