@@ -1,7 +1,8 @@
 import numpy as np
 
 from src.senfuslib import MultiVarGauss
-from src.tracker.tracker import Tracker, TrackerUpdateResult
+from src.tracker.tracker import Tracker
+from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 from src.utils.tools import ssa, initialize_centroid, calculate_body_angles
 from src.states.states import State_PCA, LidarScan
 from src.dynamics.process_models import Model_PCA_CV

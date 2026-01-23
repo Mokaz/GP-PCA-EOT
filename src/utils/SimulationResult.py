@@ -4,7 +4,7 @@ import numpy as np
 
 from src.senfuslib.timesequence import TimeSequence
 from src.states.states import State_PCA, LidarScan
-from src.tracker.tracker import TrackerUpdateResult
+from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 from src.utils.config_classes import Config
 
 @dataclass

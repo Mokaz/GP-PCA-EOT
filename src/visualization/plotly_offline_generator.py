@@ -25,7 +25,7 @@ from src.utils.geometry_utils import compute_estimated_shape_from_params, comput
 # These imports are for type hinting; the actual classes are found by pickle
 from src.utils.SimulationResult import SimulationResult
 from src.senfuslib.timesequence import TimeSequence
-from src.tracker.tracker import TrackerUpdateResult
+from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 
 def generate_plotly_html_from_pickle(filename: str):
     with open(os.path.join(SIMDATA_PATH, filename), "rb") as f:

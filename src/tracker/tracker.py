@@ -7,31 +7,7 @@ from src.utils.config_classes import Config
 from src.states.states import State_PCA, State_GP 
 from src.senfuslib.gaussian import MultiVarGauss
 
-@dataclass
-class TrackerUpdateResult:
-    """
-    Holds all relevant data from a single tracker update step.
-    """
-    # Core filter states
-    state_prior: MultiVarGauss           # State estimate before the update (x_k|k-1)
-    state_posterior: MultiVarGauss       # State estimate after the update (x_k|k)
-
-    # Measurement and Innovation
-    measurements: Optional[np.ndarray]      # The flattened measurement vector used (z_k)
-    predicted_measurement: Optional[MultiVarGauss]    # The predicted measurement
-    innovation_gauss: Optional[MultiVarGauss]         # The innovation
-
-    # --- DEBUGGING VALUES ---
-    cost_prior: Optional[float] = None
-    cost_likelihood: Optional[float] = None
-    cost_penalty: Optional[float] = None
-    H_jacobian: Optional[np.ndarray] = None
-    R_covariance: Optional[np.ndarray] = None
-    
-    # Optional Debugging / Analysis Info
-    iterations: Optional[int] = None
-    cost: Optional[float] = None
-    raw_optimizer_result: Any = None
+from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 
 class Tracker:
     def __init__(self, dynamic_model, sensor_model, config: Config):

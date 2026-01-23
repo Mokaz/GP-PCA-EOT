@@ -13,7 +13,7 @@ from global_project_paths import SIMDATA_PATH
 from src.dynamics.process_models import GroundTruthModel, Model_GP_CV, Model_PCA_CV
 from src.sensors.LidarModel import LidarModel
 
-from src.tracker.tracker import TrackerUpdateResult
+from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 from src.tracker.ExtendedKalmanFilter import EKF
 from src.tracker.IterativeEKF import IterativeEKF
 from src.tracker.gauss_newton import GaussNewton
