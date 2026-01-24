@@ -29,6 +29,7 @@ from src.visualization.plotly_offline_generator import (
     generate_plotly_fig_for_frame,
     generate_initial_plotly_fig,
 )
+from src.visualization.cost_landscape_component import CostLandscapeComponent
 from src.states.states import State_PCA, State_GP 
 
 ASSETS_DIR = Path(__file__).parent / 'assets'
@@ -717,6 +718,29 @@ def get_data_browser_view(mode, frame_idx, filename):
 
     return pn.pane.JSON(data_to_show, sizing_mode='stretch_both', depth=5, theme='light')
 
+@pn.depends(file_selector.param.value)
+def get_cost_landscape_view(filename):
+    loaded_data = load_data(filename)
+    if not loaded_data:
+        return pn.pane.Markdown("### Select a file to view Cost Landscape")
+    
+    # 1. Instantiate the Component
+    # We pass the project root so it can find the PCA files relative to the project
+    explorer = CostLandscapeComponent(
+        sim_result=loaded_data["sim_result"],
+        tracker_config_path=None, # Config is extracted from sim_result inside the component
+        project_root=PROJECT_ROOT
+    )
+    
+    # 2. Link Global Frame Player to Component
+    # When the main dashboard slider moves, update the component's internal state
+    pn.bind(explorer.update_frame, frame_player, watch=True)
+    
+    # 3. Initial update to match current slider
+    explorer.update_frame(frame_player.value)
+    
+    return explorer
+
 
 def save_plots(event):
     filename = save_filename_input.value
@@ -810,6 +834,8 @@ error_view = pn.Column(get_error_view, sizing_mode="stretch_both")
 covariance_view = pn.Column(get_covariance_view, sizing_mode="stretch_both")
 nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
 data_browser_view = pn.Column(get_data_browser_view, sizing_mode="stretch_both")
+cost_landscape_view = pn.Column(get_cost_landscape_view, sizing_mode="stretch_both")
+
 
 # --- Custom GoldenLayout Template ---
 template_file = ASSETS_DIR / 'golden_template.html'
@@ -828,6 +854,7 @@ tmpl.add_panel('error_view', error_view)
 tmpl.add_panel('covariance_view', covariance_view)
 tmpl.add_panel('nis_view', nis_view)
 tmpl.add_panel('data_browser_view', data_browser_view)
+tmpl.add_panel('cost_landscape', cost_landscape_view)
 tmpl.servable(title="GP-PCA-EOT Simulation Analysis Dashboard")
 
 if __name__ == "__main__":
