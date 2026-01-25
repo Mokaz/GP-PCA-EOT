@@ -10,28 +10,23 @@ from src.utils.tools import cast_rays, add_noise_to_distances, ur, rot2D, drot2D
 from src.utils.config_classes import ExtentConfig
 
 @dataclass
-class LidarModel(SensorModel[Sequence[LidarScan]]):
+class LidarMeasurementModel(SensorModel[Sequence[LidarScan]]):
     """
-    A sensor model for a LiDAR that measures the shape of a vessel.
+    A measurement model for the tracker.
+    Represents the mathematical model of the sensor (h(x), H(x), R).
     """
     lidar_position: np.ndarray
-    num_rays: int
-    max_distance: float
-    lidar_gt_std_dev: float
     lidar_std_dev: float
     pca_mean: np.ndarray
     pca_eigenvectors: np.ndarray
-    rng: np.random.Generator = field(repr=False)
     extent_cfg: ExtentConfig
     
     def h_lidar(self, x, body_angles: list[float]):
         L = x[6]
         W = x[7]
         
-        # Normalize the angles
         normalized_angles = np.arctan2(np.sin(body_angles) / W, np.cos(body_angles) / L)
 
-        # Precompute values that don’t change inside the loop
         pos = x[:2].reshape(-1, 1)  # shape (2, 1)
         R_heading = rot2D(x[2])    # shape (2, 2)
         LW_scaling = np.diag([L, W])  # shape (2, 2)
@@ -39,7 +34,7 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
         fourier_coeffs = self.pca_mean + self.pca_eigenvectors @ x[8:].reshape(-1, 1)  # shape (N_f, 1)
 
         # Vectorized direction vectors: shape (2, N) -- one column per angle
-        ur_all = ur(normalized_angles)  # shape (2, N) if ur returns [cos(θ); sin(θ)]
+        ur_all = ur(normalized_angles)  # shape (2, N), ur returns [cos(θ); sin(θ)]
 
         # Vectorized g(theta): shape (N_f, N)
         g_all = fourier_basis_matrix(normalized_angles, N_fourier=self.extent_cfg.N_fourier)  # shape (N_f, N)
@@ -114,6 +109,19 @@ class LidarModel(SensorModel[Sequence[LidarScan]]):
         """
         return np.eye(2) * self.lidar_std_dev**2
 
+
+@dataclass
+class LidarSimulator(SensorModel[Sequence[LidarScan]]):
+    """
+    A simulation model for a LiDAR.
+    Handles ray-casting and noise generation.
+    """
+    lidar_position: np.ndarray
+    num_rays: int
+    max_distance: float
+    lidar_gt_std_dev: float
+    rng: np.random.Generator = field(repr=False)
+    extent_cfg: ExtentConfig
 
     def sample_from_state(self, x_gt: State_PCA) -> LidarScan:
         """

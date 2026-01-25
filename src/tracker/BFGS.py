@@ -9,13 +9,13 @@ from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 from src.utils.tools import ssa, initialize_centroid, compute_angle_range, calculate_body_angles
 from src.states.states import State_PCA, LidarScan
 from src.dynamics.process_models import Model_PCA_CV
-from src.sensors.LidarModel import LidarModel
+from src.sensors.LidarModel import LidarMeasurementModel
 from src.utils.config_classes import Config
 
 class BFGS(Tracker):
     def __init__(self, 
                  dynamic_model: Model_PCA_CV, 
-                 lidar_model: LidarModel,
+                 lidar_model: LidarMeasurementModel,
                  config: Config,
                  max_iterations=10, 
                  convergence_threshold=1e-9):

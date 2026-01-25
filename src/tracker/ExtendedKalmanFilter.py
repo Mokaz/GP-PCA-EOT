@@ -6,15 +6,15 @@ from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 from src.utils.tools import ssa, calculate_body_angles
 from src.states.states import State_PCA, LidarScan
 from src.dynamics.process_models import Model_PCA_CV
-from src.sensors.LidarModel import LidarModel
+from src.sensors.LidarModel import LidarMeasurementModel
 from src.utils.config_classes import Config
 
 class EKF(Tracker):
     def __init__(self, 
                  dynamic_model: Model_PCA_CV, 
-                 lidar_model: LidarModel,
+                 lidar_model: LidarMeasurementModel,
                  config: Config):
-        super().__init__(dynamic_model, sensor_model=lidar_model, config=config)
+        super().__init__(dynamic_model=dynamic_model, sensor_model=lidar_model, config=config)
 
     def predict(self):
         """

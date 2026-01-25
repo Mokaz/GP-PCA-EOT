@@ -37,7 +37,7 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
 
         # Re-instantiate Tracker Logic
         from src.dynamics.process_models import Model_PCA_CV
-        from src.sensors.LidarModel import LidarModel
+        from src.sensors.LidarModel import LidarMeasurementModel
         
         filter_dyn_model = Model_PCA_CV(
             x_pos_std_dev=self.config.tracker.pos_north_std_dev,
@@ -46,16 +46,12 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
             N_pca=self.config.tracker.N_pca
         )
         
-        sensor_model = LidarModel(
+        sensor_model = LidarMeasurementModel(
             lidar_position=np.array(self.config.lidar.lidar_position),
-            num_rays=self.config.lidar.num_rays,
-            max_distance=self.config.lidar.max_distance,
-            lidar_gt_std_dev=self.config.lidar.lidar_gt_std_dev,
             lidar_std_dev=self.config.tracker.lidar_std_dev,
             extent_cfg=self.config.extent,
             pca_mean=self.pca_params['mean'],
             pca_eigenvectors=self.pca_params['eigenvectors'][:, :self.config.tracker.N_pca].real,
-            rng=np.random.default_rng(42)
         )
         
         self.tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=self.config)
