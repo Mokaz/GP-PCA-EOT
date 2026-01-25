@@ -11,9 +11,8 @@ sys.path.append(PROJECT_ROOT)
 from global_project_paths import SIMDATA_PATH
 
 from src.dynamics.process_models import GroundTruthModel, Model_GP_CV, Model_PCA_CV
-from src.sensors.LidarModel import LidarModel
+from src.sensors.LidarModel import LidarSimulator
 
-from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 from src.tracker.ExtendedKalmanFilter import EKF
 from src.tracker.IterativeEKF import IterativeEKF
 from src.tracker.gauss_newton import GaussNewton
@@ -22,6 +21,9 @@ from src.tracker.BFGS import BFGS
 from src.tracker.SLSQP import SLSQP
 from src.tracker.smoothing_SLSQP import SmoothingSLSQP
 from src.tracker.UnscentedKalmanFilter import UKF
+
+from src.tracker.TrackerUpdateResult import TrackerUpdateResult
+from src.sensors.LidarModel import LidarMeasurementModel
 
 from src.senfuslib.simulator import Simulator
 from src.senfuslib.timesequence import TimeSequence
@@ -66,7 +68,7 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
         )
 
         # 3. Initialize GP Sensor Model
-        sensor_model = LidarModelGP(
+        lidar_model = LidarModelGP(
             lidar_position=np.array(lidar_cfg.lidar_position),
             num_rays=lidar_cfg.num_rays,
             max_distance=lidar_cfg.max_distance,
@@ -80,9 +82,19 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
         # 4. Initialize GP Tracker
         tracker = GP_IEKF(
             dynamic_model=filter_dyn_model, 
-            lidar_model=sensor_model, 
+            lidar_model=lidar_model, 
             config=config,
             use_negative_info=tracker_cfg.gp_use_negative_info
+        )
+
+        simulator = Simulator(
+            dynamic_model=gt_dynamic_model,
+            sensor_model=lidar_model, # TODO: Separate GT and filter sensor models for GP too
+            sensor_setter=None,
+            init_state=sim_cfg.initial_state_gt,
+            dt=sim_cfg.dt,
+            end_time=sim_cfg.num_frames * sim_cfg.dt,
+            seed=str(sim_cfg.seed)
         )
 
     else:
@@ -94,36 +106,41 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
         )
 
         pca_params = np.load(Path(tracker_cfg.PCA_parameters_path))
-        sensor_model = LidarModel(
+        lidar_model = LidarMeasurementModel(
+            lidar_position=np.array(lidar_cfg.lidar_position),
+            lidar_std_dev=tracker_cfg.lidar_std_dev,
+            pca_mean=pca_params['mean'],
+            pca_eigenvectors=pca_params['eigenvectors'][:, :tracker_cfg.N_pca].real,
+            extent_cfg=extent_cfg
+        )
+
+        if method == "bfgs":
+            tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
+        elif method == "ekf":
+            tracker = EKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
+        elif method == "iekf":
+            tracker = IterativeEKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
+        else:
+            raise ValueError(f"Unknown method {method}")
+
+        lidar_simulator = LidarSimulator(
             lidar_position=np.array(lidar_cfg.lidar_position),
             num_rays=lidar_cfg.num_rays,
             max_distance=lidar_cfg.max_distance,
             lidar_gt_std_dev=lidar_cfg.lidar_gt_std_dev,
-            lidar_std_dev=tracker_cfg.lidar_std_dev, # Use tracker config for noise
-            extent_cfg=extent_cfg,
-            pca_mean=pca_params['mean'],
-            pca_eigenvectors=pca_params['eigenvectors'][:, :tracker_cfg.N_pca].real,
-            rng=rng
+            rng=rng,
+            extent_cfg=extent_cfg
         )
 
-        if method == "bfgs":
-            tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
-        elif method == "ekf":
-            tracker = EKF(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
-        elif method == "iekf":
-            tracker = IterativeEKF(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
-        else:
-            raise NotImplementedError(f"Tracker method '{method}' is not supported.")
-    
-    simulator = Simulator(
-        dynamic_model=gt_dynamic_model,
-        sensor_model=sensor_model,
-        sensor_setter=None,
-        init_state=sim_cfg.initial_state_gt,
-        dt=sim_cfg.dt,
-        end_time=sim_cfg.num_frames * sim_cfg.dt,
-        seed=str(sim_cfg.seed)
-    )
+        simulator = Simulator(
+            dynamic_model=gt_dynamic_model,
+            sensor_model=lidar_simulator,
+            sensor_setter=None,
+            init_state=sim_cfg.initial_state_gt,
+            dt=sim_cfg.dt,
+            end_time=sim_cfg.num_frames * sim_cfg.dt,
+            seed=str(sim_cfg.seed)
+        )
 
     # --- Generate Simulation Data ---
     print(f"Generating simulation data for {sim_cfg.num_frames} frames...")
@@ -149,7 +166,7 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
     # NOTE Martin: static_covariances might need adjustment for GP, but keeping generic for now
     static_covariances = {
         "Q": filter_dyn_model.Q_d(dt=sim_cfg.dt),
-        "R_point": sensor_model.R_single_point()
+        "R_point": lidar_model.R_single_point()
     }
 
     data_to_save = SimulationResult(

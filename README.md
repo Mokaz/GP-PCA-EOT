@@ -24,3 +24,7 @@ To explore possible shapes expressed by PCA coefficients, run:
 ```bash
 python src/visualization/explore_pca_shape.py
 ```
+Inspect the cost function landscape using
+```bash
+python src/visualization/explore_cost_landscape.py
+```

@@ -37,7 +37,7 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
 
         # Re-instantiate Tracker Logic
         from src.dynamics.process_models import Model_PCA_CV
-        from src.sensors.LidarModel import LidarModel
+        from src.sensors.LidarModel import LidarMeasurementModel
         
         filter_dyn_model = Model_PCA_CV(
             x_pos_std_dev=self.config.tracker.pos_north_std_dev,
@@ -46,16 +46,12 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
             N_pca=self.config.tracker.N_pca
         )
         
-        sensor_model = LidarModel(
+        sensor_model = LidarMeasurementModel(
             lidar_position=np.array(self.config.lidar.lidar_position),
-            num_rays=self.config.lidar.num_rays,
-            max_distance=self.config.lidar.max_distance,
-            lidar_gt_std_dev=self.config.lidar.lidar_gt_std_dev,
             lidar_std_dev=self.config.tracker.lidar_std_dev,
             extent_cfg=self.config.extent,
             pca_mean=self.pca_params['mean'],
             pca_eigenvectors=self.pca_params['eigenvectors'][:, :self.config.tracker.N_pca].real,
-            rng=np.random.default_rng(42)
         )
         
         self.tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=self.config)
@@ -84,6 +80,8 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
             name='Cost Scale', options=['Raw', 'Logarithmic'], value='Raw', button_type='primary'
         )
         
+        self.penalty_toggle = pn.widgets.Toggle(name='Include Penalty', value=True, button_type='success')
+        
         self.range_slider = pn.widgets.FloatSlider(name='Grid Range (+/-)', start=0.1, end=10.0, value=4.0)
         self.resolution_slider = pn.widgets.IntSlider(name='Grid Resolution', start=10, end=100, value=50)
         
@@ -100,6 +98,7 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
         self.center_select.param.watch(self.reset_cursor, 'value')
         # Trigger update when scale changes
         self.cost_scale_toggle.param.watch(lambda e: setattr(self.update_trigger, 'clicks', self.update_trigger.clicks + 1), 'value')
+        self.penalty_toggle.param.watch(lambda e: setattr(self.update_trigger, 'clicks', self.update_trigger.clicks + 1), 'value')
 
         super().__init__()
 
@@ -197,10 +196,29 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
             obj_cost = self.tracker.object_function(
                 test_state, self._state_pred, self._P_pred, self._z_flat
             )
+            
+            total_cost = obj_cost
+            if self.penalty_toggle.value:
+                penalty = self.tracker.penalty_function(
+                    test_state, self._mean_lidar_angle, self._lower_diff, self._upper_diff
+                )
+                # print(f"Cost: {obj_cost:.4f}, Penalty: {penalty:.4f}")
+                total_cost += penalty
+
+            return total_cost
+        except Exception:
+            return np.nan
+
+    def calculate_single_penalty(self, base_state, x_val, y_val, x_param, y_param):
+        test_state = base_state.copy()
+        test_state = self._modify_state(test_state, x_param, x_val)
+        test_state = self._modify_state(test_state, y_param, y_val)
+        
+        try:
             penalty = self.tracker.penalty_function(
                 test_state, self._mean_lidar_angle, self._lower_diff, self._upper_diff
             )
-            return obj_cost + penalty
+            return penalty
         except Exception:
             return np.nan
 
@@ -224,16 +242,19 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
         ys = np.linspace(y_center - rng*y_scale, y_center + rng*y_scale, res)
         
         grid_z = np.zeros((res, res))
+        grid_penalty = np.zeros((res, res))
         base_frozen_state = self._cursor_state
         
         for i, xv in enumerate(xs):
             for j, yv in enumerate(ys):
                 grid_z[j, i] = self.calculate_single_cost(base_frozen_state, xv, yv, x_param, y_param)
+                grid_penalty[j, i] = self.calculate_single_penalty(base_frozen_state, xv, yv, x_param, y_param)
         
         min_cost = np.nanmin(grid_z)
+        min_penalty = np.nanmin(grid_penalty)
         
         # Return RAW grid_z now
-        result = (xs, ys, grid_z, min_cost, est_x, est_y, gt_x, gt_y)
+        result = (xs, ys, grid_z, min_cost, grid_penalty, min_penalty, est_x, est_y, gt_x, gt_y)
         self._cache_grid_data[cache_key] = result
         return result
 
@@ -248,7 +269,7 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
         self._get_frame_data(frame_idx)
         anchor_state = self._get_anchor_state()
         data = self._compute_cost_grid(x_param, y_param, rng, res, anchor_state)
-        xs, ys, grid_z, min_cost, est_x, est_y, gt_x, gt_y = data
+        xs, ys, grid_z, min_cost, _, _, est_x, est_y, gt_x, gt_y = data
         
         # Apply scaling based on toggle
         z_vals = self._get_scaled_grid(grid_z, min_cost)
@@ -274,7 +295,7 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
         self._get_frame_data(frame_idx)
         anchor_state = self._get_anchor_state()
         data = self._compute_cost_grid(x_param, y_param, rng, res, anchor_state)
-        xs, ys, grid_z, min_cost, est_x, est_y, gt_x, gt_y = data
+        xs, ys, grid_z, min_cost, _, _, est_x, est_y, gt_x, gt_y = data
 
         # Apply scaling
         z_vals = self._get_scaled_grid(grid_z, min_cost)
@@ -303,6 +324,29 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
         cur_pt = hv.Scatter3D([(cur_x, cur_y, cz)]).opts(color='blue', size=5, backend='plotly')
 
         return (surface * est_pt * gt_pt * cur_pt)
+
+    def _plot_penalty_landscape(self, frame_idx, x_param, y_param, rng, res, center_mode, scale_mode, _trigger, mode='2D'):
+        self._get_frame_data(frame_idx)
+        anchor_state = self._get_anchor_state()
+        data = self._compute_cost_grid(x_param, y_param, rng, res, anchor_state)
+        xs, ys, _, _, grid_penalty, min_penalty, est_x, est_y, gt_x, gt_y = data
+        
+        z_vals = self._get_scaled_grid(grid_penalty, min_penalty)
+        
+        if mode == '2D':
+            heatmap = hv.Image((xs, ys, z_vals), kdims=[x_param, y_param]).opts(
+                cmap='Reds', title=f'Penalty ({scale_mode})',
+                width=600, height=500, colorbar=True, backend='bokeh',
+                framewise=True
+            )
+            est_pt = hv.Points([(est_x, est_y)], label='Estimate').opts(color='cyan', marker='+', size=15, line_width=3, backend='bokeh')
+            return heatmap * est_pt
+        else:
+            surface = hv.Surface((xs, ys, z_vals), kdims=[x_param, y_param], vdims=['Penalty']).opts(
+                cmap='Reds', colorbar=True, width=600, height=500, backend='plotly',
+                title=f'3D Penalty ({scale_mode})'
+            )
+            return surface
 
     def _plot_geometry(self, frame_idx, _trigger):
         self._get_frame_data(frame_idx)
@@ -391,6 +435,26 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
             )
         )
 
+        dmap_penalty_2d = hv.DynamicMap(
+            pn.bind(self._plot_penalty_landscape, 
+                frame_idx=self.frame_slider, x_param=self.x_axis_select, y_param=self.y_axis_select, 
+                rng=self.range_slider, res=self.resolution_slider, 
+                center_mode=self.center_select, scale_mode=self.cost_scale_toggle,
+                _trigger=self.update_trigger.param.clicks,
+                mode='2D'
+            )
+        )
+
+        dmap_penalty_3d = hv.DynamicMap(
+            pn.bind(self._plot_penalty_landscape, 
+                frame_idx=self.frame_slider, x_param=self.x_axis_select, y_param=self.y_axis_select, 
+                rng=self.range_slider, res=self.resolution_slider, 
+                center_mode=self.center_select, scale_mode=self.cost_scale_toggle,
+                _trigger=self.update_trigger.param.clicks,
+                mode='3D'
+            )
+        )
+
         dmap_geometry = hv.DynamicMap(
             pn.bind(self._plot_geometry, 
                 frame_idx=self.frame_slider, _trigger=self.update_trigger.param.clicks
@@ -416,6 +480,7 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
             pn.layout.Divider(),
             "### View Options",
             self.cost_scale_toggle,
+            self.penalty_toggle,
             self.range_slider,
             self.resolution_slider,
             pn.layout.Divider(),
@@ -425,7 +490,9 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
 
         tabs = pn.Tabs(
             ("2D Heatmap", pn.pane.HoloViews(dmap_2d, backend='bokeh')),
-            ("3D Surface", pn.pane.HoloViews(dmap_3d, backend='plotly'))
+            ("3D Surface", pn.pane.HoloViews(dmap_3d, backend='plotly')),
+            ("2D Penalty", pn.pane.HoloViews(dmap_penalty_2d, backend='bokeh')),
+            ("3D Penalty", pn.pane.HoloViews(dmap_penalty_3d, backend='plotly'))
         )
 
         main = pn.Row(tabs, pn.pane.HoloViews(dmap_geometry, backend='bokeh'))
