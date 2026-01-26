@@ -73,7 +73,7 @@ class Tracker:
     def jacobian(self, x, body_angles: list[float]): # Used in GN and LM only
         return self.sensor_model.lidar_jacobian(x, body_angles)
 
-    def object_function(self, x, x_pred, P_pred, z, ground_truth=None):
+    def objective_function(self, x, x_pred, P_pred, z, ground_truth=None):
         """
         Compute the negative log-posterior for the given state and measurements.
         """
@@ -108,8 +108,8 @@ class Tracker:
             x2 = x.copy()
             x1[i] += epsilon
             x2[i] -= epsilon
-            J[i] = (self.object_function(x1, z, h, R, x_pred, P_pred, ground_truth) 
-                    - self.object_function(x2, z, h, R, x_pred, P_pred, ground_truth)) / (2 * epsilon)
+            J[i] = (self.objective_function(x1, z, h, R, x_pred, P_pred, ground_truth) 
+                    - self.objective_function(x2, z, h, R, x_pred, P_pred, ground_truth)) / (2 * epsilon)
 
         # Compute Hessian
         for i in range(n):
@@ -130,8 +130,8 @@ class Tracker:
                 x_imjp[i] -= epsilon
                 x_imjp[j] += epsilon
 
-                H[i, j] = (self.object_function(x_ijp, z, h, R, x_pred, P_pred, ground_truth) 
-                           - self.object_function(x_ipjm, z, h, R, x_pred, P_pred, ground_truth)
-                           - self.object_function(x_imjp, z, h, R, x_pred, P_pred, ground_truth) 
-                           + self.object_function(x_ijm, z, h, R, x_pred, P_pred, ground_truth)) / (4 * epsilon ** 2)
+                H[i, j] = (self.objective_function(x_ijp, z, h, R, x_pred, P_pred, ground_truth) 
+                           - self.objective_function(x_ipjm, z, h, R, x_pred, P_pred, ground_truth)
+                           - self.objective_function(x_imjp, z, h, R, x_pred, P_pred, ground_truth) 
+                           + self.objective_function(x_ijm, z, h, R, x_pred, P_pred, ground_truth)) / (4 * epsilon ** 2)
         return J, H

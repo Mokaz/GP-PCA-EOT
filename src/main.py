@@ -101,6 +101,7 @@ def get_pca_tracker_config(lidar_pos, N_pca=4):
 
     tracker_config = TrackerConfig(
         use_gt_state_for_bodyangles_calc = False,
+        use_initialize_centroid = False,
         N_pca=N_pca,
         pos_north_std_dev=0.3,
         pos_east_std_dev=0.3,
@@ -159,7 +160,8 @@ if __name__ == "__main__":
     # Load base configs
     sim_base, lidar_base, extent_base = get_common_configs(N_pca)
 
-    method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
+    # method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
+    method_list = ["iekf"]
 
     for method in method_list:
         print(f"--- Setting up for method: {method} ---")
@@ -175,7 +177,8 @@ if __name__ == "__main__":
         id_number = crc32(repr(config).encode())
         # config.sim.name = f"{method}_{config.sim.seed}_{extent_base.shape_params_true.get('type')}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
         # config.sim.name = f"{method}_{config.sim.seed}_lengthscale_{tracker_cfg.gp_length_scale:.2f}_forgettingfactor_{tracker_cfg.gp_forgetting_factor:.4f}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
-        config.sim.name = f"casestudy_{method}_{config.sim.seed}_tracker_lidarstd_{tracker_cfg.lidar_std_dev}_seed_{config.sim.seed}"
+        # config.sim.name = f"casestudy_{method}_{config.sim.seed}_tracker_lidarstd_{tracker_cfg.lidar_std_dev}_seed_{config.sim.seed}"
+        config.sim.name = f"init_centroid_test_{tracker_cfg.use_initialize_centroid}_{method}_seed_{config.sim.seed}"
 
         filename = f"{config.sim.name}.pkl"
         pickle_path = Path(SIMDATA_PATH) / filename

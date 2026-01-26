@@ -127,7 +127,7 @@ class SLSQP(Tracker):
 
         # Test the 'trust-exact' optimizer to potentially improve convergence and accuracy
         # of the state estimation by minimizing the negative log-posterior.
-        res = minimize(self.object_function, state_vector, 
+        res = minimize(self.objective_function, state_vector, 
                        args=(z_combined, self.h, R, state_vector, P_pred, ssa_vec, ais_available, ground_truth), #, alpha_min, alpha_max, lidar_pos), 
                        method='SLSQP', constraints=constraints) #, options={'ftol': self.convergence_threshold})
 

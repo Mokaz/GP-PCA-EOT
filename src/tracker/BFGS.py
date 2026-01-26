@@ -24,6 +24,7 @@ class BFGS(Tracker):
         # Parameters
         self.max_iterations = max_iterations
         self.convergence_threshold = convergence_threshold
+        self.use_initialize_centroid = config.tracker.use_initialize_centroid
 
     def predict(self):
         """
@@ -65,13 +66,14 @@ class BFGS(Tracker):
 
         # Initialize the centroid for the optimization
         state_iter_mean = state_prior_mean.copy()
-        state_iter_mean.pos = initialize_centroid(
-            position=state_prior_mean.pos,
-            lidar_pos=self.sensor_model.lidar_position,
-            measurements=polar_measurements,
-            L_est=state_prior_mean.length,
-            W_est=state_prior_mean.width
-        ) # TODO Martin: Investigate if this should be used in penalty too
+        if self.use_initialize_centroid:
+            state_iter_mean.pos = initialize_centroid(
+                position=state_prior_mean.pos,
+                lidar_pos=self.sensor_model.lidar_position,
+                measurements=polar_measurements,
+                L_est=state_prior_mean.length,
+                W_est=state_prior_mean.width
+            ) # TODO Martin: Investigate if this should be used in penalty too
 
         res = minimize(
             fun=self.prob_with_penalty, 
@@ -161,5 +163,5 @@ class BFGS(Tracker):
 
     def prob_with_penalty(self, x, z, x_pred, P_pred, ground_truth, mean_lidar_angle, lower_diff, upper_diff):
         penalty = self.penalty_function(x, mean_lidar_angle, lower_diff, upper_diff)
-        objective = self.object_function(x, x_pred, P_pred, z, ground_truth)
+        objective = self.objective_function(x, x_pred, P_pred, z, ground_truth)
         return objective + penalty

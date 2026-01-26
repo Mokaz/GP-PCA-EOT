@@ -82,7 +82,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
 
         # --- Tap Stream & Trigger ---
         self.tap_stream = hv.streams.Tap(x=None, y=None)
-        self.update_trigger = pn.widgets.Button(name='Trigger', visible=False)
+        self.update_trigger = pn.widgets.Button(name='Refresh values', button_type='primary')
 
         # Setup Watchers
         self.x_axis_select.param.watch(self._on_axis_change, 'value')
@@ -213,7 +213,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             body_angles = calculate_body_angles(self._meas_global, state)
             self.tracker.body_angles = body_angles
             
-            obj_cost = self.tracker.object_function(
+            obj_cost = self.tracker.objective_function(
                 state, self._state_pred, self._P_pred, self._z_flat
             )
             
@@ -504,6 +504,8 @@ class CostLandscapeComponent(pn.viewable.Viewer):
 
         sidebar = pn.Column(
             pn.pane.Markdown("### Cost Landscape Config"),
+            self.update_trigger,
+            pn.layout.Divider(),
             "### Axes & Center",
             self.x_axis_select,
             self.y_axis_select,

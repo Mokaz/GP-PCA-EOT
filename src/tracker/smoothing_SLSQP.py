@@ -184,7 +184,7 @@ class SmoothingSLSQP(Tracker):
         # of the state estimation by minimizing the negative log-posterior.
 
         # Optimization
-        res = minimize(self.object_function, unknowns, 
+        res = minimize(self.objective_function, unknowns, 
                        args=(self.h, self.state[:self.N_extent], x_prior, z_window, extent_covariance, weight_matrix, ssa_vec, ais_available), #, alpha_min, alpha_max, lidar_pos), 
                        method='SLSQP', constraints=constraints) #, options={'disp': True})
 
@@ -211,7 +211,7 @@ class SmoothingSLSQP(Tracker):
 
         return state_iterates, z_combined, y_combined, S_combined, P_pred, self.P, z_dim, x_dim
     
-    def object_function(self, x, h, extent_pred, x_prior, z_window, extent_covariance, weight_matrix, ssa_func, ais_received):
+    def objective_function(self, x, h, extent_pred, x_prior, z_window, extent_covariance, weight_matrix, ssa_func, ais_received):
         """
         Compute the negative log-posterior for the given state and measurements.
         
@@ -288,7 +288,7 @@ class SmoothingSLSQP(Tracker):
             x2 = x.copy()
             x1[i] += epsilon
             x2[i] -= epsilon
-            J[i] = (self.object_function(x1, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received) - self.object_function(x2, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received)) / (2 * epsilon)
+            J[i] = (self.objective_function(x1, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received) - self.objective_function(x2, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received)) / (2 * epsilon)
 
         # Compute Hessian
         for i in range(n):
@@ -309,8 +309,8 @@ class SmoothingSLSQP(Tracker):
                 x_imjp[i] -= epsilon
                 x_imjp[j] += epsilon
 
-                H[i, j] = (self.object_function(x_ijp, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received) - self.object_function(x_ipjm, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received)
-                        - self.object_function(x_imjp, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received) + self.object_function(x_ijm, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received)) / (4 * epsilon ** 2)
+                H[i, j] = (self.objective_function(x_ijp, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received) - self.objective_function(x_ipjm, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received)
+                        - self.objective_function(x_imjp, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received) + self.objective_function(x_ijm, h, extent_pred, x_window, z_window, extent_covariance, weight_matrix, ssa_func, ais_received)) / (4 * epsilon ** 2)
 
         return J, H
     

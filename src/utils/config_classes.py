@@ -129,7 +129,8 @@ class ExtentConfig:
 
 @dataclass
 class TrackerConfig:
-    use_gt_state_for_bodyangles_calc: bool = True
+    use_gt_state_for_bodyangles_calc: bool = False
+    use_initialize_centroid: bool = False
     
     N_pca: int = 4
     PCA_parameters_path : str = 'data/input_parameters/FourierPCAParameters_scaled.npz'

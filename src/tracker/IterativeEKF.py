@@ -21,6 +21,7 @@ class IterativeEKF(Tracker):
         # Parameters
         self.max_iterations = max_iterations
         self.convergence_threshold = convergence_threshold
+        self.use_initialize_centroid = config.tracker.use_initialize_centroid
 
     def predict(self):
         """
@@ -49,13 +50,15 @@ class IterativeEKF(Tracker):
         innovation = z - z_pred
 
         state_iter_mean = state_prior_mean.copy()
-        state_iter_mean.pos = initialize_centroid(
-            position=state_prior_mean.pos,
-            lidar_pos=self.sensor_model.lidar_position,
-            measurements=polar_measurements,
-            L_est=state_prior_mean.length,
-            W_est=state_prior_mean.width
-        )
+
+        if self.use_initialize_centroid:
+            state_iter_mean.pos = initialize_centroid(
+                position=state_prior_mean.pos,
+                lidar_pos=self.sensor_model.lidar_position,
+                measurements=polar_measurements,
+                L_est=state_prior_mean.length,
+                W_est=state_prior_mean.width
+            )
 
         prev_state_iter_mean = state_prior_mean.copy()
 
