@@ -175,9 +175,6 @@ if __name__ == "__main__":
 
         # Create a unique name for this simulation configuration
         id_number = crc32(repr(config).encode())
-        # config.sim.name = f"{method}_{config.sim.seed}_{extent_base.shape_params_true.get('type')}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
-        # config.sim.name = f"{method}_{config.sim.seed}_lengthscale_{tracker_cfg.gp_length_scale:.2f}_forgettingfactor_{tracker_cfg.gp_forgetting_factor:.4f}_lidar_gt_{lidar_base.lidar_gt_std_dev}_tracker_lidar_{tracker_cfg.lidar_std_dev}__{"gt_bodyangles_" if tracker_cfg.use_gt_state_for_bodyangles_calc else ""}{id_number:05d}"
-        # config.sim.name = f"casestudy_{method}_{config.sim.seed}_tracker_lidarstd_{tracker_cfg.lidar_std_dev}_seed_{config.sim.seed}"
         config.sim.name = f"init_centroid_test_{tracker_cfg.use_initialize_centroid}_{method}_seed_{config.sim.seed}"
 
         filename = f"{config.sim.name}.pkl"
@@ -190,12 +187,12 @@ if __name__ == "__main__":
         else:
             sim_result = run_single_simulation(config=config, method=method)
 
-        if GENERATE_PLOTLY_HTML:
-            pickle_filename = os.path.join(SIMDATA_PATH, f"{config.sim.name}.pkl")
-            generate_plotly_html_from_pickle(pickle_filename)
+        # if GENERATE_PLOTLY_HTML:
+        #     pickle_filename = os.path.join(SIMDATA_PATH, f"{config.sim.name}.pkl")
+        #     generate_plotly_html_from_pickle(pickle_filename)
 
-        if CONSISTENCY_ANALYSIS:
-            analysis = create_consistency_analysis_from_sim_result(sim_result)
-            plotter = PlotterTrackerPCA(sim_result, analysis)
-            plotter.test_export_NEES_all_to_csv("nees_data.csv")
-            plotter.show()
+        # if CONSISTENCY_ANALYSIS:
+        #     analysis = create_consistency_analysis_from_sim_result(sim_result)
+        #     plotter = PlotterTrackerPCA(sim_result, analysis)
+        #     plotter.test_export_NEES_all_to_csv("nees_data.csv")
+        #     plotter.show()

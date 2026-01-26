@@ -521,7 +521,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             self.range_slider,
             self.resolution_slider,
             pn.layout.Divider(),
-            "### State Table",
+            "### Cost and State Tables",
             dmap_stats
         )
 
