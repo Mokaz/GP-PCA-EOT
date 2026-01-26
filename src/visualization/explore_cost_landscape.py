@@ -420,7 +420,7 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
             pn.bind(self._plot_2d_landscape, 
                 frame_idx=self.frame_slider, x_param=self.x_axis_select, y_param=self.y_axis_select, 
                 rng=self.range_slider, res=self.resolution_slider, 
-                center_mode=self.center_select, scale_mode=self.cost_scale_toggle, # <--- Bind toggle
+                center_mode=self.center_select, scale_mode=self.cost_scale_toggle,
                 _trigger=self.update_trigger.param.clicks
             ),
             streams=[self.tap_stream]
@@ -430,7 +430,7 @@ class CostLandscapeExplorer(pn.viewable.Viewer):
             pn.bind(self._plot_3d_landscape, 
                 frame_idx=self.frame_slider, x_param=self.x_axis_select, y_param=self.y_axis_select, 
                 rng=self.range_slider, res=self.resolution_slider, 
-                center_mode=self.center_select, scale_mode=self.cost_scale_toggle, # <--- Bind toggle
+                center_mode=self.center_select, scale_mode=self.cost_scale_toggle,
                 _trigger=self.update_trigger.param.clicks
             )
         )

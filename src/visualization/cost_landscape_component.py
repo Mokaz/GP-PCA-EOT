@@ -3,15 +3,13 @@ import pandas as pd
 import panel as pn
 import holoviews as hv
 from pathlib import Path
-
-# Assuming these are available in your python path or src package
 from src.tracker.BFGS import BFGS
 from src.utils.tools import calculate_body_angles
 from src.utils.geometry_utils import compute_estimated_shape_global, compute_exact_vessel_shape_global
 from src.dynamics.process_models import Model_PCA_CV
-from src.sensors.LidarModel import LidarModel
+from src.sensors.LidarModel import LidarMeasurementModel
 
-# Ensure extensions are loaded if used standalone, though parent usually handles this
+
 pn.extension('katex', 'plotly', 'tabulator')
 hv.extension('bokeh', 'plotly')
 
@@ -33,8 +31,6 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         if hasattr(self.config.tracker, 'PCA_parameters_path'):
             self.pca_params = np.load(project_root / self.config.tracker.PCA_parameters_path)
 
-        # Re-instantiate Tracker Logic (BFGS specifically)
-        # Note: We rebuild it here to ensure we have a fresh instance for math calculations
         filter_dyn_model = Model_PCA_CV(
             x_pos_std_dev=self.config.tracker.pos_north_std_dev,
             y_pos_std_dev=self.config.tracker.pos_east_std_dev,
@@ -42,16 +38,12 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             N_pca=self.config.tracker.N_pca
         )
         
-        sensor_model = LidarModel(
+        sensor_model = LidarMeasurementModel(
             lidar_position=np.array(self.config.lidar.lidar_position),
-            num_rays=self.config.lidar.num_rays,
-            max_distance=self.config.lidar.max_distance,
-            lidar_gt_std_dev=self.config.lidar.lidar_gt_std_dev,
             lidar_std_dev=self.config.tracker.lidar_std_dev,
-            extent_cfg=self.config.extent,
             pca_mean=self.pca_params['mean'],
             pca_eigenvectors=self.pca_params['eigenvectors'][:, :self.config.tracker.N_pca].real,
-            rng=np.random.default_rng(42)
+            extent_cfg=self.config.extent
         )
         
         self.tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=self.config)
@@ -62,8 +54,6 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         self._cursor_state = None 
         
         # --- Widgets ---
-        # Note: Frame selection is handled by the parent dashboard via update_frame()
-        # We store the frame internally but don't show a slider for it.
         self._internal_frame_val = 0 
         
         self.param_options = ['x', 'y', 'yaw', 'length', 'width'] + [f'pca_{i}' for i in range(self.config.tracker.N_pca)]
@@ -74,13 +64,15 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             name='Center View On', options=['Estimate', 'Ground Truth'], value='Estimate', button_type='primary'
         )
         
-        self.behavior_toggle = pn.widgets.RadioButtonGroup(
+        self.cursor_reset_on_change_toggle = pn.widgets.RadioButtonGroup(
             name='Selection Mode', options=['Reset on Change', 'Keep Modifications'], value='Reset on Change', button_type='success'
         )
         
         self.cost_scale_toggle = pn.widgets.RadioButtonGroup(
             name='Cost Scale', options=['Raw', 'Logarithmic'], value='Raw', button_type='primary'
         )
+
+        self.penalty_toggle = pn.widgets.Toggle(name='Include Penalty', value=True, button_type='success')
         
         self.range_slider = pn.widgets.FloatSlider(name='Grid Range (+/-)', start=0.1, end=10.0, value=4.0)
         self.resolution_slider = pn.widgets.IntSlider(name='Grid Resolution', start=10, end=100, value=30)
@@ -97,19 +89,19 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         self.y_axis_select.param.watch(self._on_axis_change, 'value')
         self.center_select.param.watch(self.reset_cursor, 'value')
         self.cost_scale_toggle.param.watch(lambda e: setattr(self.update_trigger, 'clicks', self.update_trigger.clicks + 1), 'value')
+        self.penalty_toggle.param.watch(lambda e: setattr(self.update_trigger, 'clicks', self.update_trigger.clicks + 1), 'value')
 
         super().__init__()
-
-    # --- Public API for Parent Dashboard ---
     
     def update_frame(self, frame_idx):
         """Updates the component to display data for the given frame index."""
         if frame_idx != self._current_frame_idx:
             self._current_frame_idx = frame_idx
-            # Reset cursor and cache for new frame
             self._cache_grid_data = {}
-            # We need to trigger the update manually since we aren't using a bound widget for frame
+
             self.update_trigger.clicks += 1
+            if self.cursor_reset_on_change_toggle.value == 'Reset on Change':
+                self.reset_cursor()
 
     # --- Event Handling ---
 
@@ -135,7 +127,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
                 self.x_axis_select.value = fallback
             return
 
-        if self.behavior_toggle.value == 'Reset on Change':
+        if self.cursor_reset_on_change_toggle.value == 'Reset on Change':
             self.reset_cursor()
         else:
             self.update_trigger.clicks += 1
@@ -168,16 +160,14 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         self._lower_diff, self._upper_diff, self._mean_lidar_angle = compute_angle_range(angles)
         
         if self._cursor_state is None:
-             self._cursor_state = self._get_anchor_state().copy()
+            self._cursor_state = self._get_anchor_state().copy()
 
     def _get_anchor_state(self):
-        # Ensure we have data loaded
         if not hasattr(self, '_state_est'): self._get_frame_data()
         return self._state_est if self.center_select.value == 'Estimate' else self._state_gt
 
     def _modify_state(self, base_state, param_name, value):
         if base_state is None: 
-            # Fallback if initialization race condition
             self._get_frame_data()
             base_state = self._get_anchor_state()
             
@@ -208,15 +198,36 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             obj_cost = self.tracker.object_function(
                 test_state, self._state_pred, self._P_pred, self._z_flat
             )
+            
+            total_cost = obj_cost
+            if self.penalty_toggle.value:
+                penalty = self.tracker.penalty_function(
+                    test_state, self._mean_lidar_angle, self._lower_diff, self._upper_diff
+                )
+                total_cost += penalty
+            if self.penalty_toggle.value:
+                print(f"Cost at ({x_param}={x_val}, {y_param}={y_val}): {total_cost} (incl. penalty)")
+            else:
+                print(f"Cost at ({x_param}={x_val}, {y_param}={y_val}): {total_cost} (no penalty)")
+            return total_cost
+        except Exception:
+            return np.nan
+
+    def calculate_single_penalty(self, base_state, x_val, y_val, x_param, y_param):
+        test_state = base_state.copy()
+        test_state = self._modify_state(test_state, x_param, x_val)
+        test_state = self._modify_state(test_state, y_param, y_val)
+        
+        try:
             penalty = self.tracker.penalty_function(
                 test_state, self._mean_lidar_angle, self._lower_diff, self._upper_diff
             )
-            return obj_cost + penalty
+            return penalty
         except Exception:
             return np.nan
 
     def _compute_cost_grid(self, x_param, y_param, rng, res, anchor_state):
-        cache_key = (x_param, y_param, rng, res, id(anchor_state), self._current_frame_idx)
+        cache_key = (x_param, y_param, rng, res, id(anchor_state), self._current_frame_idx, self.penalty_toggle.value)
         if cache_key in self._cache_grid_data:
             return self._cache_grid_data[cache_key]
 
@@ -235,15 +246,18 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         ys = np.linspace(y_center - rng*y_scale, y_center + rng*y_scale, res)
         
         grid_z = np.zeros((res, res))
+        grid_penalty = np.zeros((res, res))
         base_frozen_state = self._cursor_state
         
         for i, xv in enumerate(xs):
             for j, yv in enumerate(ys):
                 grid_z[j, i] = self.calculate_single_cost(base_frozen_state, xv, yv, x_param, y_param)
+                grid_penalty[j, i] = self.calculate_single_penalty(base_frozen_state, xv, yv, x_param, y_param)
         
         min_cost = np.nanmin(grid_z)
-        
-        result = (xs, ys, grid_z, min_cost, est_x, est_y, gt_x, gt_y)
+        min_penalty = np.nanmin(grid_penalty)
+
+        result = (xs, ys, grid_z, min_cost, grid_penalty, min_penalty, est_x, est_y, gt_x, gt_y)
         self._cache_grid_data[cache_key] = result
         return result
 
@@ -258,7 +272,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         self._get_frame_data()
         anchor_state = self._get_anchor_state()
         data = self._compute_cost_grid(x_param, y_param, rng, res, anchor_state)
-        xs, ys, grid_z, min_cost, est_x, est_y, gt_x, gt_y = data
+        xs, ys, grid_z, min_cost, _, _, est_x, est_y, gt_x, gt_y = data
         
         z_vals = self._get_scaled_grid(grid_z, min_cost)
         
@@ -282,7 +296,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         self._get_frame_data()
         anchor_state = self._get_anchor_state()
         data = self._compute_cost_grid(x_param, y_param, rng, res, anchor_state)
-        xs, ys, grid_z, min_cost, est_x, est_y, gt_x, gt_y = data
+        xs, ys, grid_z, min_cost, _, _, est_x, est_y, gt_x, gt_y = data
 
         z_vals = self._get_scaled_grid(grid_z, min_cost)
 
@@ -310,6 +324,29 @@ class CostLandscapeComponent(pn.viewable.Viewer):
 
         return (surface * est_pt * gt_pt * cur_pt)
 
+    def _plot_penalty_landscape(self, x_param, y_param, rng, res, center_mode, scale_mode, _trigger, mode='2D'):
+        self._get_frame_data()
+        anchor_state = self._get_anchor_state()
+        data = self._compute_cost_grid(x_param, y_param, rng, res, anchor_state)
+        xs, ys, _, _, grid_penalty, min_penalty, est_x, est_y, gt_x, gt_y = data
+        
+        z_vals = self._get_scaled_grid(grid_penalty, min_penalty)
+        
+        if mode == '2D':
+            heatmap = hv.Image((xs, ys, z_vals), kdims=[x_param, y_param]).opts(
+                cmap='Reds', title=f'Penalty ({scale_mode})',
+                width=600, height=500, colorbar=True, backend='bokeh',
+                framewise=True
+            )
+            est_pt = hv.Points([(est_x, est_y)], label='Estimate').opts(color='cyan', marker='+', size=15, line_width=3, backend='bokeh')
+            return heatmap * est_pt
+        else:
+            surface = hv.Surface((xs, ys, z_vals), kdims=[x_param, y_param], vdims=['Penalty']).opts(
+                cmap='Reds', colorbar=True, width=600, height=500, backend='plotly',
+                title=f'3D Penalty ({scale_mode})'
+            )
+            return surface
+
     def _plot_geometry(self, _trigger):
         self._get_frame_data()
         
@@ -333,10 +370,9 @@ class CostLandscapeComponent(pn.viewable.Viewer):
 
     def view_stats_table(self, x_param, y_param, _trigger):
         self._get_frame_data()
+        anchor_state = self._get_anchor_state()
         data = []
         params_to_show = ['x', 'y', 'yaw', 'length', 'width'] + [f'pca_{i}' for i in range(self.config.tracker.N_pca)]
-        
-        anchor_state = self._get_anchor_state()
         
         for p in params_to_show:
             val_gt = self._get_param_value(self._state_gt, p)
@@ -348,8 +384,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
                 'Ground Truth': val_gt, 
                 'Estimate': val_est, 
                 'Cursor': val_cur, 
-                'Error (GT)': val_cur - val_gt,
-                'Active': (p == x_param or p == y_param)
+                'Error (GT)': val_cur - val_gt
             })
             
         df = pd.DataFrame(data)
@@ -358,7 +393,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             s = pd.Series('', index=row.index)
             p = row['Parameter']
             
-            if row['Active']:
+            if p == x_param or p == y_param:
                 s[:] = 'background-color: #fff9c4; font-weight: bold; color: black'
             
             # Highlight if modified
@@ -394,6 +429,25 @@ class CostLandscapeComponent(pn.viewable.Viewer):
                 _trigger=self.update_trigger.param.clicks
             )
         )
+        dmap_penalty_2d = hv.DynamicMap(
+            pn.bind(self._plot_penalty_landscape, 
+                x_param=self.x_axis_select, y_param=self.y_axis_select, 
+                rng=self.range_slider, res=self.resolution_slider, 
+                center_mode=self.center_select, scale_mode=self.cost_scale_toggle,
+                _trigger=self.update_trigger.param.clicks,
+                mode='2D'
+            )
+        )
+
+        dmap_penalty_3d = hv.DynamicMap(
+            pn.bind(self._plot_penalty_landscape, 
+                x_param=self.x_axis_select, y_param=self.y_axis_select, 
+                rng=self.range_slider, res=self.resolution_slider, 
+                center_mode=self.center_select, scale_mode=self.cost_scale_toggle,
+                _trigger=self.update_trigger.param.clicks,
+                mode='3D'
+            )
+        )
 
         dmap_geometry = hv.DynamicMap(
             pn.bind(self._plot_geometry, 
@@ -412,12 +466,13 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             self.y_axis_select,
             self.center_select,
             pn.layout.Divider(),
-            "### Interaction Mode",
-            self.behavior_toggle,
+            "### Cursor Interaction Mode",
+            self.cursor_reset_on_change_toggle,
             self.reset_btn,
             pn.layout.Divider(),
             "### View Options",
             self.cost_scale_toggle,
+            self.penalty_toggle,
             self.range_slider,
             self.resolution_slider,
             pn.layout.Divider(),
@@ -427,7 +482,9 @@ class CostLandscapeComponent(pn.viewable.Viewer):
 
         tabs = pn.Tabs(
             ("2D Heatmap", pn.pane.HoloViews(dmap_2d, backend='bokeh')),
-            ("3D Surface", pn.pane.HoloViews(dmap_3d, backend='plotly'))
+            ("3D Surface", pn.pane.HoloViews(dmap_3d, backend='plotly')),
+            ("2D Penalty", pn.pane.HoloViews(dmap_penalty_2d, backend='bokeh')),
+            ("3D Penalty", pn.pane.HoloViews(dmap_penalty_3d, backend='plotly'))
         )
 
         # Main Layout
