@@ -191,27 +191,8 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         test_state = self._modify_state(test_state, x_param, x_val)
         test_state = self._modify_state(test_state, y_param, y_val)
         
-        body_angles = calculate_body_angles(self._meas_global, test_state)
-        self.tracker.body_angles = body_angles 
-        
-        try:
-            obj_cost = self.tracker.object_function(
-                test_state, self._state_pred, self._P_pred, self._z_flat
-            )
-            
-            total_cost = obj_cost
-            if self.penalty_toggle.value:
-                penalty = self.tracker.penalty_function(
-                    test_state, self._mean_lidar_angle, self._lower_diff, self._upper_diff
-                )
-                total_cost += penalty
-            if self.penalty_toggle.value:
-                print(f"Cost at ({x_param}={x_val}, {y_param}={y_val}): {total_cost} (incl. penalty)")
-            else:
-                print(f"Cost at ({x_param}={x_val}, {y_param}={y_val}): {total_cost} (no penalty)")
-            return total_cost
-        except Exception:
-            return np.nan
+        total_cost = self._calculate_cost_for_state(test_state)
+        return total_cost
 
     def calculate_single_penalty(self, base_state, x_val, y_val, x_param, y_param):
         test_state = base_state.copy()
@@ -223,6 +204,26 @@ class CostLandscapeComponent(pn.viewable.Viewer):
                 test_state, self._mean_lidar_angle, self._lower_diff, self._upper_diff
             )
             return penalty
+        except Exception:
+            return np.nan
+    
+    def _calculate_cost_for_state(self, state):
+        """Calculate the total cost for a given complete state."""
+        try:
+            body_angles = calculate_body_angles(self._meas_global, state)
+            self.tracker.body_angles = body_angles
+            
+            obj_cost = self.tracker.object_function(
+                state, self._state_pred, self._P_pred, self._z_flat
+            )
+            
+            total_cost = obj_cost
+            if self.penalty_toggle.value:
+                penalty = self.tracker.penalty_function(
+                    state, self._mean_lidar_angle, self._lower_diff, self._upper_diff
+                )
+                total_cost += penalty
+            return total_cost
         except Exception:
             return np.nan
 
@@ -371,6 +372,23 @@ class CostLandscapeComponent(pn.viewable.Viewer):
     def view_stats_table(self, x_param, y_param, _trigger):
         self._get_frame_data()
         anchor_state = self._get_anchor_state()
+        
+        # --- Cost Table ---
+        cost_gt = self._calculate_cost_for_state(self._state_gt)
+        cost_est = self._calculate_cost_for_state(self._state_est)
+        cost_cur = self._calculate_cost_for_state(self._cursor_state)
+        
+        cost_data = [{
+            'Metric': 'Total Cost',
+            'Ground Truth': cost_gt,
+            'Estimate': cost_est,
+            'Cursor': cost_cur,
+            'Error (GT)': cost_cur - cost_gt,
+        }]
+        
+        df_cost = pd.DataFrame(cost_data)
+        
+        # --- Parameters Table ---
         data = []
         params_to_show = ['x', 'y', 'yaw', 'length', 'width'] + [f'pca_{i}' for i in range(self.config.tracker.N_pca)]
         
@@ -387,9 +405,11 @@ class CostLandscapeComponent(pn.viewable.Viewer):
                 'Error (GT)': val_cur - val_gt
             })
             
-        df = pd.DataFrame(data)
+        df_params = pd.DataFrame(data)
         
-        def style_rows(row):
+        # --- Styling ---
+        
+        def style_params(row):
             s = pd.Series('', index=row.index)
             p = row['Parameter']
             
@@ -402,13 +422,36 @@ class CostLandscapeComponent(pn.viewable.Viewer):
                 s['Cursor'] = (s['Cursor'] or '') + '; color: #d32f2f; font-weight: bold;'
             return s
 
-        tabulator = pn.widgets.Tabulator(
-            df, disabled=True, width=580, height=400, show_index=False,
-            configuration={'columnDefaults': {'headerSort': False}}
-        )
+        def style_cost(row):
+            s = pd.Series('', index=row.index)
+            # Default style for cost row
+            s[:] = 'background-color: #e3f2fd; font-weight: bold; color: black'
+            
+            # Highlight if modified from anchor
+            cost_anchor = self._calculate_cost_for_state(anchor_state)
+            if abs(row['Cursor'] - cost_anchor) > 1e-6:
+                s['Cursor'] = (s['Cursor'] or '') + '; color: #d32f2f; font-weight: bold;'
+            return s
+
+        # Create Tabulators
         fmt = {'type': 'number', 'func': '0.0000'}
-        tabulator.formatters = {'Ground Truth': fmt, 'Estimate': fmt, 'Cursor': fmt, 'Error (GT)': fmt}
-        return tabulator.style.apply(style_rows, axis=1)
+        
+        tab_cost = pn.widgets.Tabulator(
+            df_cost, disabled=True, width=580, height=80, show_index=False,
+            configuration={'columnDefaults': {'headerSort': False}},
+            formatters={'Ground Truth': fmt, 'Estimate': fmt, 'Cursor': fmt, 'Error (GT)': fmt}
+        )
+        
+        tab_params = pn.widgets.Tabulator(
+            df_params, disabled=True, width=580, height=350, show_index=False,
+            configuration={'columnDefaults': {'headerSort': False}},
+            formatters={'Ground Truth': fmt, 'Estimate': fmt, 'Cursor': fmt, 'Error (GT)': fmt}
+        )
+        
+        return pn.Column(
+            tab_cost.style.apply(style_cost, axis=1),
+            tab_params.style.apply(style_params, axis=1)
+        )
 
     def __panel__(self):
         dmap_2d = hv.DynamicMap(
