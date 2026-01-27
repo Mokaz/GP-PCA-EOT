@@ -48,7 +48,6 @@ var config = {
                                 type: 'component',
                             componentName: 'view',
                             componentState: { model: '{{ embed(roots.plotly_view) }}', title: '2D Simulation View'},
-                            isClosable: false,
                             },
                             {
                                 type: 'stack',
@@ -88,13 +87,11 @@ var config = {
                                 type: 'component',
                                 componentName: 'view',
                                 componentState: { model: '{{ embed(roots.covariance_view) }}', title: 'Covariance Matrix'},
-                                isClosable: false,
                             },
                             {
                                 type: 'component',
                                 componentName: 'view',
                                 componentState: { model: '{{ embed(roots.nis_view) }}', title: 'NIS Consistency'},
-                                isClosable: false,
                                     }
                         ]
                     }

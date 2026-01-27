@@ -75,11 +75,17 @@ class BFGS(Tracker):
                 W_est=state_prior_mean.width
             ) # TODO Martin: Investigate if this should be used in penalty too
 
+        iterates = [state_iter_mean.copy()]
+
+        def callback(xk):
+            iterates.append(State_PCA.from_array(xk))
+
         res = minimize(
             fun=self.prob_with_penalty, 
             x0=state_iter_mean,
             args=(z, state_prior_mean, P_pred, ground_truth, mean_lidar_angle, lower_diff, upper_diff),
             method='BFGS',
+            callback=callback
             # jac='3-point', # Use numerical differentiation for the gradient
             # options={'maxiter': self.max_iterations, 'gtol': self.convergence_threshold}
         )
@@ -133,6 +139,7 @@ class BFGS(Tracker):
             R_covariance=R,
             # Populate existing optional fields
             iterations=res.nit,
+            iterates=iterates,
             cost=res.fun,
             raw_optimizer_result=res,
         )

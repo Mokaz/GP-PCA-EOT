@@ -28,5 +28,6 @@ class TrackerUpdateResult:
     
     # Optional Debugging / Analysis Info
     iterations: Optional[int] = None
+    iterates: Optional[list] = None
     cost: Optional[float] = None
     raw_optimizer_result: Any = None

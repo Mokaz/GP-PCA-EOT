@@ -61,6 +61,7 @@ class IterativeEKF(Tracker):
             )
 
         prev_state_iter_mean = state_prior_mean.copy()
+        iterates = [state_iter_mean.copy()]
 
         for i in range(self.max_iterations):
             self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth if self.use_gt_state_for_bodyangles_calc else state_iter_mean)
@@ -80,6 +81,8 @@ class IterativeEKF(Tracker):
             # Update state mean
             state_iter_mean = state_prior_mean + K_lidar @ (innovation_iter + H_lidar @ (state_iter_mean - state_prior_mean))
             state_iter_mean.yaw = ssa(state_iter_mean.yaw)
+
+            iterates.append(state_iter_mean.copy())
 
             # Check for convergence
             diff = state_iter_mean - prev_state_iter_mean
@@ -114,6 +117,7 @@ class IterativeEKF(Tracker):
             state_posterior=self.state_estimate,
             measurements=z,
             predicted_measurement=z_pred_gauss,
+            iterates=iterates,
             innovation_gauss=innovation_gauss,
             iterations=i + 1,
             H_jacobian=H_lidar,
