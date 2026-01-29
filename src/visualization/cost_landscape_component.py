@@ -118,14 +118,22 @@ class CostLandscapeComponent(pn.viewable.Viewer):
                 res = self.sim_result.tracker_results_ts.values[frame_idx]
                 has_iterates = getattr(res, 'iterates', None) is not None and len(res.iterates) > 0
                 
-                self.show_iterates_toggle.visible = has_iterates
                 if has_iterates:
+                    self.show_iterates_toggle.disabled = False
+                    self.show_iterates_toggle.button_type = 'success'
+                    self.show_iterates_toggle.name = 'Show Iterates'
                     self.iterate_player.end = len(res.iterates) - 1
                     self.iterate_player.value = 0
                 else:
                     self.show_iterates_toggle.value = False
+                    self.show_iterates_toggle.disabled = True
+                    self.show_iterates_toggle.button_type = 'default'
+                    self.show_iterates_toggle.name = 'No Iterates'
             except Exception:
-                self.show_iterates_toggle.visible = False
+                self.show_iterates_toggle.disabled = True
+                self.show_iterates_toggle.value = False
+                self.show_iterates_toggle.button_type = 'default'
+                self.show_iterates_toggle.name = 'No Iterates'
 
             self._current_frame_idx = frame_idx
             self._cache_grid_data = {}
