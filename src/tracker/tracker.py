@@ -73,7 +73,7 @@ class Tracker:
     def jacobian(self, x, body_angles: list[float]): # Used in GN and LM only
         return self.sensor_model.lidar_jacobian(x, body_angles)
 
-    def objective_function(self, x, x_pred, P_pred, z, ground_truth=None):
+    def objective_function(self, x, x_pred, P_pred, z, ground_truth=None, return_components=False):
         """
         Compute the negative log-posterior for the given state and measurements.
         """
@@ -91,6 +91,9 @@ class Tracker:
         term1 = 0.5 * z_residual.T @ np.linalg.inv(R) @ z_residual
         term2 = 0.5 * x_residual.T @ np.linalg.inv(P_pred) @ x_residual
         
+        if return_components:
+            return term1, term2
+
         return term1 + term2
     
     # NOTE Martin: Used by SLSQP and smoothing_SLSQP

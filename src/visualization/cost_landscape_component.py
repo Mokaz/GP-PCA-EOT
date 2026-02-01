@@ -72,6 +72,10 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             name='Cost Scale', options=['Raw', 'Logarithmic'], value='Raw', button_type='primary'
         )
 
+        self.cost_component_select = pn.widgets.RadioButtonGroup(
+            name='Cost Component', options=['Total Cost', 'Measurement Only'], value='Total Cost', button_type='warning'
+        )
+
         self.penalty_toggle = pn.widgets.Toggle(name='Include Penalty', value=True, button_type='success')
         
         self.range_slider = pn.widgets.FloatSlider(name='Grid Range (+/-)', start=0.1, end=10.0, value=4.0)
@@ -102,6 +106,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         self.y_axis_select.param.watch(self._on_axis_change, 'value')
         self.center_select.param.watch(self.reset_cursor, 'value')
         self.cost_scale_toggle.param.watch(lambda e: setattr(self.update_trigger, 'clicks', self.update_trigger.clicks + 1), 'value')
+        self.cost_component_select.param.watch(lambda e: setattr(self.update_trigger, 'clicks', self.update_trigger.clicks + 1), 'value')
         self.penalty_toggle.param.watch(lambda e: setattr(self.update_trigger, 'clicks', self.update_trigger.clicks + 1), 'value')
         self.show_iterates_toggle.param.watch(self._on_iterate_view_change, 'value')
         self.iterate_player.param.watch(self._on_iterate_change, 'value')
@@ -310,12 +315,14 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         try:
             body_angles = calculate_body_angles(self._meas_global, state)
             self.tracker.body_angles = body_angles
-            
-            obj_cost = self.tracker.objective_function(
-                state, self._state_pred, self._P_pred, self._z_flat
+            meas_cost, prior_cost = self.tracker.objective_function(
+                state, self._state_pred, self._P_pred, self._z_flat, return_components=True
             )
             
-            total_cost = obj_cost
+            if self.cost_component_select.value == 'Measurement Only':
+                return meas_cost
+            
+            total_cost = meas_cost + prior_cost
             if self.penalty_toggle.value:
                 penalty = self.tracker.penalty_function(
                     state, self._mean_lidar_angle, self._lower_diff, self._upper_diff
@@ -326,7 +333,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             return np.nan
 
     def _compute_cost_grid(self, x_param, y_param, rng, res, anchor_state):
-        cache_key = (x_param, y_param, rng, res, id(anchor_state), id(self._cursor_state), self._current_frame_idx, self.penalty_toggle.value, self.show_penalty_plots_toggle.value)
+        cache_key = (x_param, y_param, rng, res, id(anchor_state), id(self._cursor_state), self._current_frame_idx, self.penalty_toggle.value, self.show_penalty_plots_toggle.value, self.cost_component_select.value)
         if cache_key in self._cache_grid_data:
             return self._cache_grid_data[cache_key]
 
@@ -413,6 +420,19 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         cur_pt = hv.Points([(cur_x, cur_y)], label='Cursor').opts(color='blue', marker='o', size=10, backend='bokeh')
 
         plot = heatmap * est_pt * gt_pt * cur_pt
+
+        # Overlay measurements if axes are spatial (x and y)
+        if {x_param, y_param} == {'x', 'y'}:
+            # x is North, y is East.
+            mx = self._meas_global.x 
+            my = self._meas_global.y
+            
+            # Map meas coords to plot axes
+            px = mx if x_param == 'x' else my
+            py = my if y_param == 'y' else mx
+            
+            meas_pts = hv.Scatter((px, py), label='Measurements').opts(color='red', size=4, alpha=0.6, backend='bokeh')
+            plot = plot * meas_pts
 
         traj_data = self._get_iterates_trajectory(x_param, y_param)
         if traj_data:
@@ -573,7 +593,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             legend_position='top_right', backend='bokeh'
         )
 
-    def view_stats_table(self, x_param, y_param, _trigger, include_penalty=None):
+    def view_stats_table(self, cost_component, x_param, y_param, _trigger, include_penalty=None):
         self._get_frame_data()
         anchor_state = self._get_anchor_state()
         
@@ -719,7 +739,8 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         )
 
         dmap_stats = pn.bind(self.view_stats_table, 
-                             self.x_axis_select, self.y_axis_select, 
+                 self.cost_component_select,
+            self.x_axis_select, self.y_axis_select, 
                              self.update_trigger.param.clicks,
                              include_penalty=self.penalty_toggle)
 
@@ -736,6 +757,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             pn.layout.Divider(),
             "### View Options",
             self.cost_scale_toggle,
+            self.cost_component_select,
             self.penalty_toggle,
             self.show_penalty_plots_toggle,
             pn.Row(self.range_slider, self.keep_zoom_toggle, align='end'),
