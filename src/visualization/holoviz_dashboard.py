@@ -3,6 +3,7 @@ import panel as pn
 import plotly.graph_objects as go
 import numpy as np
 import pickle
+import argparse
 from pathlib import Path
 import matplotlib.pyplot as plt
 import sys
@@ -858,4 +859,8 @@ tmpl.add_panel('cost_landscape', cost_landscape_view)
 tmpl.servable(title="GP-PCA-EOT Simulation Analysis Dashboard")
 
 if __name__ == "__main__":
-    pn.serve(tmpl, port=5006, show=True, static_dirs={'assets': str(ASSETS_DIR)})
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=5007, help='Port to run the dashboard on')
+    args = parser.parse_args()
+    
+    pn.serve(tmpl, port=args.port, show=True, static_dirs={'assets': str(ASSETS_DIR)})
