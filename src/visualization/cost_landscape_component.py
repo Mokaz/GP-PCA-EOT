@@ -73,7 +73,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         )
 
         self.cost_component_select = pn.widgets.RadioButtonGroup(
-            name='Cost Component', options=['Total Cost', 'Measurement Only'], value='Total Cost', button_type='warning'
+            name='Cost Component', options=['Total Cost', 'Measurement Only', 'Prior Only'], value='Total Cost', button_type='warning'
         )
 
         self.penalty_toggle = pn.widgets.Toggle(name='Include Penalty', value=True, button_type='success')
@@ -321,6 +321,8 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             
             if self.cost_component_select.value == 'Measurement Only':
                 return meas_cost
+            elif self.cost_component_select.value == 'Prior Only':
+                return prior_cost
             
             total_cost = meas_cost + prior_cost
             if self.penalty_toggle.value:
@@ -607,7 +609,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             'Ground Truth': cost_gt,
             'Estimate': cost_est,
             'Cursor': cost_cur,
-            'Error (GT)': cost_cur - cost_gt,
+            'Cursor error (GT)': cost_cur - cost_gt,
         }]
         
         df_cost = pd.DataFrame(cost_data)
@@ -626,7 +628,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
                 'Ground Truth': val_gt, 
                 'Estimate': val_est, 
                 'Cursor': val_cur, 
-                'Error (GT)': val_cur - val_gt
+                'Cursor error (GT)': val_cur - val_gt
             })
             
         df_params = pd.DataFrame(data)
@@ -663,13 +665,13 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         tab_cost = pn.widgets.Tabulator(
             df_cost, disabled=True, width=580, height=80, show_index=False,
             configuration={'columnDefaults': {'headerSort': False}},
-            formatters={'Ground Truth': fmt, 'Estimate': fmt, 'Cursor': fmt, 'Error (GT)': fmt}
+            formatters={'Ground Truth': fmt, 'Estimate': fmt, 'Cursor': fmt, 'Cursor error (GT)': fmt}
         )
         
         tab_params = pn.widgets.Tabulator(
             df_params, disabled=True, width=580, height=350, show_index=False,
             configuration={'columnDefaults': {'headerSort': False}},
-            formatters={'Ground Truth': fmt, 'Estimate': fmt, 'Cursor': fmt, 'Error (GT)': fmt}
+            formatters={'Ground Truth': fmt, 'Estimate': fmt, 'Cursor': fmt, 'Cursor error (GT)': fmt}
         )
         
         return pn.Column(

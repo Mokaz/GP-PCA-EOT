@@ -32,6 +32,7 @@ from src.visualization.plotly_offline_generator import (
 )
 from src.visualization.cost_landscape_component import CostLandscapeComponent
 from src.states.states import State_PCA, State_GP 
+from src.utils.tools import calculate_body_angles
 
 ASSETS_DIR = Path(__file__).parent / 'assets'
 
@@ -130,6 +131,13 @@ nis_field_selector = pn.widgets.Select(
     visible=False,
     sizing_mode='stretch_width'
 )
+# --- Cost Breakdown Widgets ---
+cost_breakdown_toggle = pn.widgets.Toggle(
+    name='Log Scale', 
+    value=True, 
+    width=100
+)
+
 
 # --- Plotting Control Widgets ---
 plotting_divider = pn.layout.Divider(visible=False)
@@ -269,11 +277,11 @@ def update_widgets(filename):
 
     # 3. Update Widgets
     frame_player.end = sim_result.config.sim.num_frames
-    frame_player.value = 0
+    frame_player.value = 1
     frame_player.visible = True
     
     frame_input.end = sim_result.config.sim.num_frames
-    frame_input.value = 0
+    frame_input.value = 1
     frame_input.visible = True
     
     # Update NEES Group Selector
@@ -306,6 +314,137 @@ def update_widgets(filename):
     save_button.visible = True
     save_status.visible = True
     custom_states_selector.visible = True
+    cost_breakdown_toggle.visible = True
+
+def calculate_detailed_cost_breakdown(sim_result, consistency_analyzer):
+    """
+    Computes measurement cost and prior cost for the posterior state at each time step.
+    Note: This re-evaluates the cost function, which might be expensive for long simulations.
+    """
+    measurement_costs = []
+    prior_costs = []
+    total_costs = []
+    frames = []
+
+    # If we can instantiate a tracker or at least reuse the one from CostLandscapeComponent logic...
+    # However, holoviz_dashboard doesn't inherently have a full Tracker instance ready.
+    # We need to minimally reconstruct the cost function logic or reuse the existing components.
+    # To keep it simple and robust, we will instantiate a minimal tracker helper similar to CostLandscapeComponent.
+    
+    # 1. Reconstruct Models (similar to CostLandscapeComponent)
+    config = sim_result.config
+    project_root = PROJECT_ROOT # Using global
+    
+    # Load PCA params if needed
+    pca_params = None
+    if hasattr(config.tracker, 'PCA_parameters_path'):
+        pca_params = np.load(project_root / config.tracker.PCA_parameters_path)
+
+    from src.dynamics.process_models import Model_PCA_CV
+    from src.sensors.LidarModel import LidarMeasurementModel
+    from src.tracker.BFGS import BFGS # Or just Tracker base if objective_function is there
+
+    filter_dyn_model = Model_PCA_CV(
+        x_pos_std_dev=config.tracker.pos_north_std_dev,
+        y_pos_std_dev=config.tracker.pos_east_std_dev,
+        yaw_std_dev=config.tracker.heading_std_dev,
+        N_pca=config.tracker.N_pca
+    )
+    
+    pca_eigenvectors = pca_params['eigenvectors'][:, :config.tracker.N_pca].real if pca_params else None
+    pca_mean = pca_params['mean'] if pca_params else None
+
+    sensor_model = LidarMeasurementModel(
+        lidar_position=np.array(config.lidar.lidar_position),
+        lidar_std_dev=config.tracker.lidar_std_dev,
+        pca_mean=pca_mean,
+        pca_eigenvectors=pca_eigenvectors,
+        extent_cfg=config.extent
+    )
+    
+    # Use BFGS essentially just for the objective_function method
+    tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
+
+    # 2. Iterate
+    for i, res in enumerate(sim_result.tracker_results_ts.values):
+        try:
+            # We need: state, state_pred, P_pred, z
+            state = res.state_posterior.mean
+            state_pred = res.state_prior.mean
+            P_pred = res.state_prior.cov
+            
+            # Measurements
+            # sim_result stores raw measurements usually in measurements_global_ts or local
+            # res.measurements is typically (2, N) or (N, 2) array of Cartesian points in local frame?
+            # TrackerUpdateResult often has 'measurements' as the raw z used.
+            # But the objective function expects flat z and needs body_angles.
+            
+            # Re-fetch global measurements to match CostLandscape logic if possible, 
+            # OR rely on what's in TrackerUpdateResult if it's sufficient.
+            # LidarMeasurementModel.h_lidar needs body_angles to be pre-calculated or passed.
+            
+            # Let's get global measurements for this frame
+            meas_global = sim_result.measurements_global_ts.values[i]
+            z_flat = meas_global.flatten('F') # Standard flattening used in tracker
+            
+            # Calculate body angles
+            body_angles = calculate_body_angles(meas_global, state)
+            tracker.body_angles = body_angles
+
+            meas_cost, prior_cost = tracker.objective_function(
+                state, state_pred, P_pred, z_flat, return_components=True
+            )
+            
+            measurement_costs.append(meas_cost)
+            prior_costs.append(prior_cost)
+            total_costs.append(meas_cost + prior_cost)
+            frames.append(i)
+        except Exception as e:
+            # Skip frames where calculation fails (e.g. init frame might have issues)
+            pass
+
+    return pd.DataFrame({
+        'Frame': frames,
+        'Measurement Cost': measurement_costs,
+        'Prior Cost': prior_costs,
+        'Total Cost': total_costs
+    }).set_index('Frame')
+
+@pn.depends(file_selector.param.value, cost_breakdown_toggle.param.value)
+def get_cost_breakdown_view(filename, log_scale):
+    loaded_data = load_data(filename)
+    if not loaded_data:
+        return pn.pane.Markdown("### Select a file to view Cost Breakdown")
+
+    # We cache the cost calculation as well to avoid re-running on toggle
+    # A simple way is to attach it to loaded_data if not present
+    if "cost_df" not in loaded_data:
+        df = calculate_detailed_cost_breakdown(loaded_data["sim_result"], loaded_data["consistency_analyzer"])
+        loaded_data["cost_df"] = df
+    else:
+        df = loaded_data["cost_df"]
+
+    if df.empty:
+        return pn.pane.Markdown("### Could not calculate costs.")
+
+    if log_scale:
+        # Avoid log(0) or log(neg) issues
+        plot_df = np.log1p(df.clip(lower=0))
+        y_label = "Log Cost"
+    else:
+        plot_df = df
+        y_label = "Cost"
+
+    plot = plot_df.hvplot.line(
+        title=f"Cost Components over Time ({'Log Scale' if log_scale else 'Linear'})",
+        ylabel=y_label,
+        responsive=True,
+        height=400,
+        grid=True,
+        line_width=2
+    )
+
+    return pn.pane.HoloViews(plot, sizing_mode="stretch_both")
     
     n_items = len(custom_state_options)
     custom_states_selector.size = min(n_items, 15)
@@ -837,6 +976,7 @@ nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
 data_browser_view = pn.Column(get_data_browser_view, sizing_mode="stretch_both")
 cost_landscape_view = pn.Column(get_cost_landscape_view, sizing_mode="stretch_both")
 
+cost_breakdown_view = pn.Column(cost_breakdown_toggle, get_cost_breakdown_view, sizing_mode="stretch_both")
 
 # --- Custom GoldenLayout Template ---
 template_file = ASSETS_DIR / 'golden_template.html'
@@ -855,6 +995,7 @@ tmpl.add_panel('error_view', error_view)
 tmpl.add_panel('covariance_view', covariance_view)
 tmpl.add_panel('nis_view', nis_view)
 tmpl.add_panel('data_browser_view', data_browser_view)
+tmpl.add_panel('cost_breakdown', cost_breakdown_view)
 tmpl.add_panel('cost_landscape', cost_landscape_view)
 tmpl.servable(title="GP-PCA-EOT Simulation Analysis Dashboard")
 
