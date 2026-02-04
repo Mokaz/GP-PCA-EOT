@@ -59,6 +59,111 @@ class Model_PCA_CV(DynamicModel):
         return Q
 
 @dataclass
+class Model_PCA_Temporal(DynamicModel):
+    """
+    Implements a Temporal GP (Ornstein-Uhlenbeck) model for the PCA coefficients.
+    Independent of Model_PCA_CV.
+    Eq (5): F^f = exp(-eta * T), Q^f = (1 - exp(-2 * eta * T)) * K
+    """
+    x_pos_std_dev: float
+    y_pos_std_dev: float
+    yaw_std_dev: float
+    N_pca: int
+
+    # Temporal parameters
+    eta_f: float = 0.1
+    pca_process_var: float = 1.0  # Scalar variance for K (assuming diagonal)
+
+    def F_d(self, x: State_PCA, dt: float) -> np.ndarray:
+        # Kinematics (CV)
+        F = np.eye(8 + self.N_pca)
+        t = np.array([[1, dt], [0, 1]])
+        F[:6, :6] = np.kron(t, np.eye(3))
+        
+        # Length/Width (Indices 6, 7): Random Walk / Static
+        # Keep F=1.0 for these states (no change)
+        F[6:8, 6:8] = np.eye(2) 
+
+        # PCA Coefficients (Indices 8+): Ornstein-Uhlenbeck (Decay)
+        decay = np.exp(-self.eta_f * dt)
+        pca_dim = self.N_pca
+        F[8:, 8:] = np.eye(pca_dim) * decay
+        
+        return F
+
+    def Q_d(self, x: State_PCA = None, dt: float = 0.1) -> np.ndarray:
+        # Kinematics Noise
+        Q_c_matrix = np.diag([
+            self.x_pos_std_dev**2, 
+            self.y_pos_std_dev**2, 
+            self.yaw_std_dev**2
+        ])
+        t_int = np.array([[(dt**3)/3, (dt**2)/2], [(dt**2)/2, dt]])
+        Qk = np.kron(t_int, Q_c_matrix)
+        
+        # Length/Width Noise (Small Random Walk to allow evolution)
+        # Or set to 0 if strictly static
+        Q_lw = np.eye(2) * 0.001 
+
+        # PCA Process Noise (Balances the decay to maintain variance)
+        scaling = (1 - np.exp(-2 * self.eta_f * dt))
+        q_val = scaling * self.pca_process_var
+        Q_pca = np.eye(self.N_pca) * q_val
+        
+        Q = block_diag(Qk, Q_lw, Q_pca)
+        return Q
+
+@dataclass
+class Model_PCA_Inflation(DynamicModel):
+    """
+    Implements Random Walk with Covariance Inflation for the Extent.
+    Independent of Model_PCA_CV.
+    Eq (14): Q^f = (1/lambda - 1) * P_extent
+    """
+    x_pos_std_dev: float
+    y_pos_std_dev: float
+    yaw_std_dev: float
+    N_pca: int
+
+    # Inflation parameter
+    lambda_f: float = 0.99
+
+    def F_d(self, x: State_PCA, dt: float) -> np.ndarray:
+        # Kinematics (CV) + Fixed Extent
+        F = np.eye(8 + self.N_pca)
+        t = np.array([[1, dt], [0, 1]])
+        F_kin = np.kron(t, np.eye(3))
+        F[:6, :6] = F_kin
+        return F
+
+    def Q_d(self, x: State_PCA = None, dt: float = 0.1) -> np.ndarray:
+        # Kinematics Noise Only (Extent noise added via inflation in pred_from_est)
+        Q_c_matrix = np.diag([
+            self.x_pos_std_dev**2, 
+            self.y_pos_std_dev**2, 
+            self.yaw_std_dev**2
+        ])
+        t_int = np.array([[(dt**3)/3, (dt**2)/2], [(dt**2)/2, dt]])
+        Qk = np.kron(t_int, Q_c_matrix)
+        Q_extent_pca = np.zeros((2 + self.N_pca, 2 + self.N_pca))
+        
+        Q = np.block([
+            [Qk,                  np.zeros((6, 2 + self.N_pca))],
+            [np.zeros((2 + self.N_pca, 6)), Q_extent_pca]
+        ])
+        return Q
+
+    def pred_from_est(self, x_est, dt: float):
+        x_pred = super().pred_from_est(x_est, dt)
+        
+        # Apply Inflation to Extent Block
+        idx_extent = slice(6, None)
+        inflation_factor = 1.0 / self.lambda_f
+        x_pred.cov[idx_extent, idx_extent] *= inflation_factor
+        
+        return x_pred
+
+@dataclass
 class GroundTruthModel(DynamicModel):
     rng: np.random.Generator = field(repr=False)
 

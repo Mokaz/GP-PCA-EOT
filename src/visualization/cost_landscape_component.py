@@ -251,8 +251,16 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         self._state_pred = res.state_prior.mean
         self._P_pred = res.state_prior.cov
         self._state_gt = self.sim_result.ground_truth_ts.values[idx]
-        self._meas_global = self.sim_result.measurements_global_ts.values[idx]
-        self._z_flat = self._meas_global.flatten('F')
+        
+        # Use measurements from tracker result to ensure consistency with visualization
+        if res.measurements is not None:
+            z_reshaped = res.measurements.reshape(-1, 2)
+            from types import SimpleNamespace
+            self._meas_global = SimpleNamespace(x=z_reshaped[:, 0], y=z_reshaped[:, 1])
+            self._z_flat = res.measurements
+        else:
+            self._meas_global = self.sim_result.measurements_global_ts.values[idx]
+            self._z_flat = self._meas_global.flatten('F')
         
         lidar_pos = self.config.lidar.lidar_position
         dx = self._meas_global.x - lidar_pos[0]

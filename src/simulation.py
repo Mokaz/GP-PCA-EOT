@@ -10,7 +10,7 @@ sys.path.append(PROJECT_ROOT)
 
 from global_project_paths import SIMDATA_PATH
 
-from src.dynamics.process_models import GroundTruthModel, Model_GP_CV, Model_PCA_CV
+from src.dynamics.process_models import GroundTruthModel, Model_GP_CV, Model_PCA_CV, Model_PCA_Temporal, Model_PCA_Inflation
 from src.sensors.LidarModel import LidarSimulator
 
 from tracker.EKF import EKF
@@ -98,12 +98,31 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
         )
 
     else:
-        filter_dyn_model = Model_PCA_CV(
+        common_kwargs = dict(
             x_pos_std_dev=tracker_cfg.pos_north_std_dev,
             y_pos_std_dev=tracker_cfg.pos_east_std_dev,
             yaw_std_dev=tracker_cfg.heading_std_dev,
             N_pca=tracker_cfg.N_pca
         )
+
+        if tracker_cfg.process_model == "cv":
+            filter_dyn_model = Model_PCA_CV(**common_kwargs)
+        
+        elif tracker_cfg.process_model == "temporal":
+            filter_dyn_model = Model_PCA_Temporal(
+                **common_kwargs,
+                eta_f=tracker_cfg.temporal_eta,
+                pca_process_var=tracker_cfg.temporal_pca_var
+            )
+
+        elif tracker_cfg.process_model == "inflation":
+            filter_dyn_model = Model_PCA_Inflation(
+                **common_kwargs,
+                lambda_f=tracker_cfg.inflation_lambda
+            )
+        else:
+            raise ValueError(f"Unknown process model: {tracker_cfg.process_model}")
+
 
         pca_params = np.load(Path(tracker_cfg.PCA_parameters_path))
         lidar_model = LidarMeasurementModel(

@@ -170,6 +170,12 @@ if __name__ == "__main__":
             tracker_cfg = get_gp_tracker_config(lidar_base.lidar_position, N_gp)
         else:
             tracker_cfg = get_pca_tracker_config(lidar_base.lidar_position, N_pca)
+            
+            # --- Process Model Selection ---
+            # Options: 'cv' (Constant Velocity), 'temporal' (OU Process), 'inflation' (Covariance Inflation)
+            tracker_cfg.process_model = 'cv' 
+            # tracker_cfg.inflation_lambda = 0.99
+            # tracker_cfg.temporal_eta = 1.0
 
         config = Config(sim=sim_base, lidar=lidar_base, tracker=tracker_cfg, extent=extent_base)
 

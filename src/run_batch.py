@@ -37,9 +37,9 @@ if __name__ == "__main__":
     # Values: List of options to sweep over
     param_grid = {
         "method": ["ekf", "iekf"],
-        "tracker.use_initialize_centroid": [True, False],
-        # "sim.seed": [42, 100],  # Uncomment to test robustness
-        # "tracker.lidar_std_dev": [0.05, 0.1, 0.2] # Uncomment to sweep noise
+        "tracker.process_model": ["cv", "inflation", "temporal"],
+        "tracker.inflation_lambda": [0.99, 0.95],
+        "tracker.temporal_eta": [0.1, 0.5],
     }
 
     # --- 2. Generate Combinations ---

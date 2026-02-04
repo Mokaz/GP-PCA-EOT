@@ -135,6 +135,14 @@ class TrackerConfig:
     N_pca: int = 4
     PCA_parameters_path : str = 'data/input_parameters/FourierPCAParameters_scaled.npz'
 
+    # Process Model selection: 'cv', 'temporal', 'inflation'
+    process_model: str = 'cv'
+    
+    # Process Model Params
+    temporal_eta: float = 0.1
+    temporal_pca_var: float = 1.0
+    inflation_lambda: float = 0.99
+
     # GP Specifics
     N_gp_points: int = 20
     gp_length_scale: float = 0.5
