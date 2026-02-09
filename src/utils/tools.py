@@ -37,6 +37,20 @@ def ur(angles):
 def ut(angles):
     return np.stack([[-np.sin(angles)], [np.cos(angles)]], axis=1)
 
+def unit_vector(angles: float | np.ndarray) -> np.ndarray:
+    """
+    Returns the unit vectors [cos(angles), sin(angles)] stacked along the first axis.
+    Shape: (2, ...)
+    """
+    return np.stack([np.cos(angles), np.sin(angles)], axis=0)
+
+def unit_tangent_vector(angles: float | np.ndarray) -> np.ndarray:
+    """
+    Returns the unit tangent vectors [-sin(angles), cos(angles)] stacked along the first axis.
+    Shape: (2, ...)
+    """
+    return np.stack([-np.sin(angles), np.cos(angles)], axis=0)
+
 def isPositiveDefinite(A):
     return np.all(np.linalg.eigvals(A) >= -1e-6)
 
@@ -83,6 +97,24 @@ def fourier_basis_matrix(angles: np.ndarray, N_fourier: int) -> np.ndarray:
     cos_terms = np.cos(n * angles.reshape(1, -1))
 
     return np.vstack((constant_term, cos_terms))
+
+def fourier_basis_derivative_matrix(angles: np.ndarray, N_fourier: int) -> np.ndarray:
+    """
+    Computes g'(theta) = d/dtheta [0.5, cos(theta), ..., cos(n*theta)]^T
+                   = [0, -sin(theta), ..., -n*sin(n*theta)]^T
+    """
+    angles = np.atleast_1d(angles)
+    
+    # Derivative of constant 0.5 is 0
+    zero_term = np.zeros((1, angles.shape[0]))
+    if N_fourier == 1:
+        return zero_term
+
+    n = np.arange(1, N_fourier).reshape(-1, 1)
+    # d/dtheta cos(n*theta) = -n * sin(n*theta)
+    sin_terms = -n * np.sin(n * angles.reshape(1, -1))
+
+    return np.vstack((zero_term, sin_terms))
 
 def fourier_transform(angles: np.ndarray, func: np.ndarray, num_coeff: int = 64, symmetry: bool = True) -> np.ndarray:
     """

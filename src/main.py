@@ -161,7 +161,7 @@ if __name__ == "__main__":
     sim_base, lidar_base, extent_base = get_common_configs(N_pca)
 
     # method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
-    method_list = ["iekf"]
+    method_list = ["implicit_iekf"]
 
     for method in method_list:
         print(f"--- Setting up for method: {method} ---")
@@ -181,7 +181,7 @@ if __name__ == "__main__":
 
         # Create a unique name for this simulation configuration
         id_number = crc32(repr(config).encode())
-        config.sim.name = f"init_centroid_test_{tracker_cfg.use_initialize_centroid}_{method}_seed_{config.sim.seed}"
+        config.sim.name = f"{method}_seed_{config.sim.seed}"
 
         filename = f"{config.sim.name}.pkl"
         pickle_path = Path(SIMDATA_PATH) / filename
@@ -192,13 +192,3 @@ if __name__ == "__main__":
                 sim_result: SimulationResult = pickle.load(f)
         else:
             sim_result = run_single_simulation(config=config, method=method)
-
-        # if GENERATE_PLOTLY_HTML:
-        #     pickle_filename = os.path.join(SIMDATA_PATH, f"{config.sim.name}.pkl")
-        #     generate_plotly_html_from_pickle(pickle_filename)
-
-        # if CONSISTENCY_ANALYSIS:
-        #     analysis = create_consistency_analysis_from_sim_result(sim_result)
-        #     plotter = PlotterTrackerPCA(sim_result, analysis)
-        #     plotter.test_export_NEES_all_to_csv("nees_data.csv")
-        #     plotter.show()

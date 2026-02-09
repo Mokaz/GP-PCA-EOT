@@ -21,6 +21,7 @@ from src.tracker.BFGS import BFGS
 from src.tracker.SLSQP import SLSQP
 from src.tracker.smoothing_SLSQP import SmoothingSLSQP
 from src.tracker.UnscentedKalmanFilter import UKF
+from src.tracker.ImplicitIEKF import ImplicitIEKF
 
 from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 from src.sensors.LidarModel import LidarMeasurementModel
@@ -139,6 +140,8 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
             tracker = EKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
         elif method == "iekf":
             tracker = IterativeEKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
+        elif method == "implicit_iekf":
+            tracker = ImplicitIEKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
         else:
             raise ValueError(f"Unknown method {method}")
 
