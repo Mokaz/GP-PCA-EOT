@@ -317,6 +317,31 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             return penalty
         except Exception:
             return np.nan
+
+    def _calculate_all_costs(self, state):
+        """Calculate and return all cost components for a given state."""
+        try:
+            body_angles = calculate_body_angles(self._meas_global, state)
+            self.tracker.body_angles = body_angles
+            meas_cost, prior_cost = self.tracker.objective_function(
+                state, self._state_pred, self._P_pred, self._z_flat, return_components=True
+            )
+            
+            penalty = 0.0
+            if self.penalty_toggle.value:
+                penalty = self.tracker.penalty_function(
+                    state, self._mean_lidar_angle, self._lower_diff, self._upper_diff
+                )
+            
+            total_cost = meas_cost + prior_cost + penalty
+            return {
+                'Total Cost': total_cost,
+                'Measurement Only': meas_cost,
+                'Prior Only': prior_cost,
+                'Penalty': penalty
+            }
+        except Exception:
+            return {}
     
     def _calculate_cost_for_state(self, state):
         """Calculate the total cost for a given complete state."""
@@ -608,17 +633,26 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         anchor_state = self._get_anchor_state()
         
         # --- Cost Table ---
-        cost_gt = self._calculate_cost_for_state(self._state_gt)
-        cost_est = self._calculate_cost_for_state(self._state_est)
-        cost_cur = self._calculate_cost_for_state(self._cursor_state)
+        comps_gt = self._calculate_all_costs(self._state_gt)
+        comps_est = self._calculate_all_costs(self._state_est)
+        comps_cur = self._calculate_all_costs(self._cursor_state)
         
-        cost_data = [{
-            'Metric': 'Total Cost',
-            'Ground Truth': cost_gt,
-            'Estimate': cost_est,
-            'Cursor': cost_cur,
-            'Cursor error (GT)': cost_cur - cost_gt,
-        }]
+        cost_data = []
+        metrics = ['Total Cost', 'Measurement Only', 'Prior Only']
+        if include_penalty:
+            metrics.append('Penalty')
+            
+        for m in metrics:
+            val_gt = comps_gt.get(m, np.nan)
+            val_est = comps_est.get(m, np.nan)
+            val_cur = comps_cur.get(m, np.nan)
+            cost_data.append({
+                'Metric': m,
+                'Ground Truth': val_gt,
+                'Estimate': val_est,
+                'Cursor': val_cur,
+                'Cursor error (GT)': val_cur - val_gt,
+            })
         
         df_cost = pd.DataFrame(cost_data)
         
@@ -662,8 +696,10 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             s[:] = 'background-color: #e3f2fd; font-weight: bold; color: black'
             
             # Highlight if modified from anchor
-            cost_anchor = self._calculate_cost_for_state(anchor_state)
-            if abs(row['Cursor'] - cost_anchor) > 1e-6:
+            comps_anchor = self._calculate_all_costs(anchor_state)
+            val_anchor = comps_anchor.get(row['Metric'], np.nan)
+            
+            if abs(row['Cursor'] - val_anchor) > 1e-6:
                 s['Cursor'] = (s['Cursor'] or '') + '; color: #d32f2f; font-weight: bold;'
             return s
 
@@ -671,7 +707,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         fmt = {'type': 'number', 'func': '0.0000'}
         
         tab_cost = pn.widgets.Tabulator(
-            df_cost, disabled=True, width=580, height=80, show_index=False,
+            df_cost, disabled=True, width=580, height=150, show_index=False,
             configuration={'columnDefaults': {'headerSort': False}},
             formatters={'Ground Truth': fmt, 'Estimate': fmt, 'Cursor': fmt, 'Cursor error (GT)': fmt}
         )
