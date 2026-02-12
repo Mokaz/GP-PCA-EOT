@@ -13,6 +13,9 @@ class ImplicitIEKF(Tracker):
     """
     Implicit Iterated Extended Kalman Filter (I-IEKF).
     Uses the Implicit Measurement Model constraint g(x, z) = 0.
+    
+    This implementation projects the constraint onto the surface normals 
+    to avoid rank deficiency caused by the lack of tangential information.
     """
     def __init__(self, 
                  dynamic_model: Model_PCA_CV, 
@@ -32,14 +35,23 @@ class ImplicitIEKF(Tracker):
     def update(self, measurements_local: LidarScan, ground_truth: State_PCA = None) -> TrackerUpdateResult:
         polar_measurements = list(zip(measurements_local.angle, measurements_local.range))
 
+        # 1. Prior Setup
         state_prior_mean = self.state_estimate.mean.copy()        
         P_pred = self.state_estimate.cov.copy()
+        
+        # --- OPTIMIZATION: Precompute Prior Information ---
+        # Instead of inverting S (360x360), we will invert the Information Matrix (12x12)
+        # This is much more stable.
+        P_prior_inv = np.linalg.inv(P_pred)
+        
         state_pred = MultiVarGauss(mean=state_prior_mean, cov=P_pred)
 
+        # 2. Measurement Setup
         lidar_pos = self.sensor_model.lidar_position.reshape(2, 1)
         measurements_global_coords = measurements_local + lidar_pos
-        z_flat = measurements_global_coords.flatten('F') # Stacked [x1, y1, x2, y2...]
+        z_flat = measurements_global_coords.flatten('F') 
         
+        # 3. Initialization
         state_iter_mean = state_prior_mean.copy()
         
         if self.use_initialize_centroid:
@@ -51,57 +63,83 @@ class ImplicitIEKF(Tracker):
                 W_est=state_prior_mean.width
             )
 
-        prev_state_iter_mean = state_prior_mean.copy()
         iterates = [state_iter_mean.copy()]
 
-        for i in range(self.max_iterations):
-            H_imp, D_imp, theta_implicit = self.sensor_model.get_implicit_matrices(state_iter_mean, measurements_global_coords)
-            
-            z_pred_iter = self.sensor_model.h_from_theta(state_iter_mean, theta_implicit)
-            
-            # The residual y = z - h(x, theta(x,z))
-            innovation_iter = z_flat - z_pred_iter
+        # Variables for logging
+        H_scal = None
+        innovation_scalar = None
+        z_pred_2d = None
+        Info_Matrix = None # The (J) matrix
+        
+        # Noise parameters (Scalar R is just sigma^2 * I)
+        sigma2 = self.sensor_model.lidar_std_dev**2
+        inv_sigma2 = 1.0 / sigma2
 
-            # Effective Measurement Noise
-            # R_eff = D * R * D.T
-            num_meas = measurements_global_coords.shape[1]
-            R_std = self.sensor_model.R(num_meas)
-            R_eff = D_imp @ R_std @ D_imp.T
+        # 4. Iteration Loop
+        for i in range(self.max_iterations):
             
-            S = H_imp @ P_pred @ H_imp.T + R_eff
+            # A. Get Scalar Jacobian
+            H_scal, normals, theta_imp = self.sensor_model.get_implicit_matrices(state_iter_mean, measurements_global_coords)
             
-            # Numerical stability: use solve instead of inv
-            # K = P H^T S^-1
-            # S K^T = H P
-            K_transpose = np.linalg.solve(S, H_imp @ P_pred.T)
-            K = K_transpose.T
+            # B. Predict and Calculate Scalar Residual
+            z_pred_2d = self.sensor_model.h_from_theta(state_iter_mean, theta_imp).reshape(-1, 2)
+            z_meas_2d = measurements_global_coords.T 
             
-            # IEKF State Update Equation:
-            # x_{i+1} = x_prior + K * ( (z - h(x_i)) - H * (x_prior - x_i) )
+            resid_2d = z_meas_2d - z_pred_2d
+            innovation_scalar = np.sum(resid_2d * normals, axis=1) # Shape (N,)
+
+            # C. Update Step (Using Information Form)
+            # We solve: (P^-1 + H^T R^-1 H) * correction = P^-1(x_prior - x_curr) + H^T R^-1 y
+            
+            # 1. Compute Fisher Information (H^T R^-1 H)
+            # Since R is scalar diagonal, this is just (H^T H) / sigma^2
+            HtH = H_scal.T @ H_scal
+            Fisher_Information = HtH * inv_sigma2
+            
+            # 2. Compute Total Information Matrix (J)
+            # J = P_prior^-1 + Fisher_Info
+            # This is 12x12 (for PCA=4). Very easy to invert.
+            Info_Matrix = P_prior_inv + Fisher_Information
+            
+            # 3. Compute the "Right Hand Side" vector for the linear system
+            
+            # Term from measurement innovation: H^T * R^-1 * y
+            term_meas = (H_scal.T @ innovation_scalar) * inv_sigma2
+            
+            # Term from prior constraint: P^-1 * (x_prior - x_current)
             diff_state = state_prior_mean - state_iter_mean
             diff_state[2] = ssa(diff_state[2])
+            term_prior = P_prior_inv @ diff_state
             
-            state_next = state_prior_mean + K @ (innovation_iter + H_imp @ diff_state)
+            rhs = term_prior + term_meas
+            
+            # 4. Solve for correction (12x12 solve)
+            correction = np.linalg.solve(Info_Matrix, rhs)
+            
+            # Update state
+            state_next = state_iter_mean + correction
             state_next[2] = ssa(state_next[2])
             
             state_iter_mean = state_next
             iterates.append(state_iter_mean.copy())
 
             # Check convergence
-            step_diff = state_iter_mean - prev_state_iter_mean
-            step_diff[2] = ssa(step_diff[2])
-            if np.linalg.norm(step_diff) < self.convergence_threshold:
+            if np.linalg.norm(correction) < self.convergence_threshold:
                 break
-            
-            prev_state_iter_mean = state_iter_mean.copy()
 
-        I = np.eye(len(state_iter_mean))
-        state_post_cov = (I - K @ H_imp) @ P_pred @ (I - K @ H_imp).T + K @ R_eff @ K.T
+        # 5. Final Covariance Update
+        # P_post = J^-1 (Inverse of Information Matrix)
+        state_post_cov = np.linalg.inv(Info_Matrix)
         
         self.state_estimate = MultiVarGauss(mean=state_iter_mean, cov=state_post_cov)
 
-        z_pred_gauss = MultiVarGauss(mean=z_pred_iter, cov=S)
-        innovation_gauss = MultiVarGauss(mean=innovation_iter, cov=S)
+        # 6. Logging
+        z_pred_flat = z_pred_2d.flatten() 
+        z_pred_gauss = MultiVarGauss(mean=z_pred_flat, cov=np.eye(len(z_pred_flat))) 
+        
+        # Approximate R for logging purposes (we didn't use S in the update)
+        R_diag = np.eye(len(innovation_scalar)) * sigma2
+        innovation_gauss = MultiVarGauss(mean=innovation_scalar, cov=R_diag) 
 
         return TrackerUpdateResult(
             state_prior=state_pred,
@@ -111,6 +149,6 @@ class ImplicitIEKF(Tracker):
             iterates=iterates,
             innovation_gauss=innovation_gauss,
             iterations=i + 1,
-            H_jacobian=H_imp,
-            R_covariance=R_eff,
+            H_jacobian=H_scal,
+            R_covariance=R_diag,
         )

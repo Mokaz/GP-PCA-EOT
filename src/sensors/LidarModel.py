@@ -7,7 +7,7 @@ from scipy.linalg import block_diag
 from src.senfuslib import SensorModel
 from src.states.states import State_PCA, LidarScan
 from src.utils.geometry_utils import compute_exact_vessel_shape_global
-from src.utils.tools import cast_rays, add_noise_to_distances, ur, rot2D, drot2D, fourier_basis_matrix, pol2cart, fourier_basis_derivative_matrix, unit_vector
+from src.utils.tools import cast_rays, add_noise_to_distances, ur, rot2D, drot2D, fourier_basis_matrix, pol2cart, fourier_basis_derivative_matrix, unit_vector, unit_tangent_vector
 from src.utils.config_classes import ExtentConfig
 
 @dataclass
@@ -113,10 +113,9 @@ class LidarMeasurementModel(SensorModel[Sequence[LidarScan]]):
     def h_from_theta(self, x: np.ndarray, theta: np.ndarray) -> np.ndarray:
         """
         Calculates predicted measurements given the state and the 
-        PARAMETRIC angles (theta). 
+        parametric angles (theta). 
         
-        This skips the L/W normalization step found in h_lidar, 
-        as theta is assumed to be derived implicitly.
+        Used by ImplicitIEKF to avoid double-normalization of angles.
         """
         L = x[6]
         W = x[7]
@@ -129,160 +128,116 @@ class LidarMeasurementModel(SensorModel[Sequence[LidarScan]]):
         # 1. Calculate Radius r(theta)
         fourier_coeffs = self.pca_mean + self.pca_eigenvectors @ pca_coeffs.reshape(-1, 1)
         
-        # g(theta)
         g_mat = fourier_basis_matrix(theta, N_fourier=self.extent_cfg.N_fourier)
         r_vals = (g_mat.T @ fourier_coeffs).flatten() # Shape (N,)
 
         # 2. Project to Global Frame
-        # u(theta) = [cos, sin]
         u_vec = unit_vector(theta) # Shape (2, N)
         
         # h = p + R * S * u * r
-        # We multiply column-wise: (2, N) * (N,) -> (2, N)
         body_points = (LW_scaling @ u_vec) * r_vals
         z_pred = pos + R_heading @ body_points
 
-        return z_pred.flatten() # Return as flat array [x1, y1, x2, y2...]
-    
+        return z_pred.flatten() 
+
     def get_implicit_matrices(self, x: np.ndarray, z_measurements_global: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Calculates the Implicit State Jacobian (H_total), 
-        Measurement Jacobian (D), and the Implicit Angles (theta).
+        Calculates the Scalar Implicit Jacobian (H_scalar) projected onto the surface normals.
         
-        Args:
-            x: State vector
-            z_measurements_global: Shape (2, N) array of global measurement points
-            
         Returns:
-            H_total: (2N, state_dim)
-            D: (2N, 2N) - Block diagonal scaling of measurement noise
-            angles: (N,) - The parametric angles theta derived from x and z
+            H_scalar: (N_meas, state_dim) 
+            Normals: (N_meas, 2)
+            Angles: (N_meas,)
         """
         L = x[6]
         W = x[7]
         pca_coeffs = x[8:]
         N_meas = z_measurements_global.shape[1]
         
-        # 1. Calculate derived variables (theta, rho, normalized coords)
+        # 1. Derived variables (theta, rho)
         pos = x[:2].reshape(2, 1)
         R_mat = rot2D(x[2])
+        z_loc = R_mat.T @ (z_measurements_global - pos)
         
-        # Transform measurements to local body frame
-        # z_loc = R.T @ (z_global - p_c)
-        z_loc = R_mat.T @ (z_measurements_global - pos) # Shape (2, N)
-        
-        # Normalized coordinates
         x_tilde = z_loc[0, :] / L
         y_tilde = z_loc[1, :] / W
-        
-        # Rho squared and Theta
-        rho2 = x_tilde**2 + y_tilde**2
         angles = np.arctan2(y_tilde, x_tilde)
         
-        # 2. Calculate Fourier properties at these angles
-        # r(theta)
-        g_mat = fourier_basis_matrix(angles, self.extent_cfg.N_fourier) # (N_f, N)
+        # 2. Fourier properties
         fourier_weights = self.pca_mean + self.pca_eigenvectors @ pca_coeffs.reshape(-1, 1)
-        r_vals = (g_mat.T @ fourier_weights).flatten() # (N,)
         
-        # r'(theta)
+        g_mat = fourier_basis_matrix(angles, self.extent_cfg.N_fourier)
+        r_vals = (g_mat.T @ fourier_weights).flatten()
+        
         g_prime_mat = fourier_basis_derivative_matrix(angles, self.extent_cfg.N_fourier)
-        r_prime_vals = (g_prime_mat.T @ fourier_weights).flatten() # (N,)
+        r_prime_vals = (g_prime_mat.T @ fourier_weights).flatten()
         
-        # 3. Calculate the Tangent Vector h_theta
-        # h_theta = R @ S @ (u_perp * r + u * r_prime)
+        # 3. Calculate Tangent Vector (h_theta) to find Normals
+        # Use new helper functions
         u_vec = unit_vector(angles)       # [cos, sin], Shape (2, N)
-        u_perp = np.stack([-np.sin(angles), np.cos(angles)], axis=0) # [-sin, cos]
+        u_perp = unit_tangent_vector(angles) # [-sin, cos], Shape (2, N)
         
         S_mat = np.diag([L, W])
         
-        # Vectorized term inside parenthesis: (2, N)
+        # h_theta = R * S * (u_perp * r + u * r')
+        # term_inner shape: (2, N)
         term_inner = u_perp * r_vals + u_vec * r_prime_vals
-        
-        # Rotate and Scale: (2, N)
-        h_theta = R_mat @ S_mat @ term_inner
-        
-        # 4. Calculate Angle Gradients (dTheta/dX)
-        inv_rho2 = 1.0 / np.maximum(rho2, 1e-6) 
+        h_theta = R_mat @ S_mat @ term_inner 
 
-        if np.any(rho2 < 1e-6):
-            print("Warning: Small rho^2 encountered in ImplicitIEKF angle gradient computation.")
+        # 4. Calculate Normals
+        # Normal is orthogonal to tangent (-dy, dx)
+        # Note: h_theta is (2, N). h_theta[1, :] selects row 1 (y-coords)
+        normals = np.stack([-h_theta[1, :], h_theta[0, :]], axis=0) # Shape (2, N)
         
-        # dTheta/dPsi = -1/rho^2 * (y~^2 * W/L + x~^2 * L/W)
-        dtheta_dpsi = -inv_rho2 * ((y_tilde**2 * (W/L)) + (x_tilde**2 * (L/W)))
-        
-        # dTheta/dL = (x~ * y~) / (rho^2 * L)
-        dtheta_dL = (x_tilde * y_tilde) / (L * rho2)
-        
-        # dTheta/dW = -(x~ * y~) / (rho^2 * W)
-        dtheta_dW = -(x_tilde * y_tilde) / (W * rho2)
-        
-        # dTheta/dPc (Position)
-        term_L = y_tilde / L
-        term_W = x_tilde / W
-        
-        # Derived from: 1/rho^2 * [ (-y~ * -1/L * R_row1) + (x~ * -1/W * R_row2) ]
-        dtheta_dpc_x = inv_rho2 * (term_L * R_mat[0,0] - term_W * R_mat[0,1])
-        dtheta_dpc_y = inv_rho2 * (term_L * R_mat[1,0] - term_W * R_mat[1,1])
-        
-        # 5. Assemble H_total (Implicit State Jacobian)
+        # Normalize
+        norms = np.linalg.norm(normals, axis=0)
+        normals = normals / np.maximum(norms, 1e-6) 
+
+        # 5. Assemble Scalar Jacobian (Projected Explicit Terms)
         jacobians_list = []
-        D_blocks_list = []
-
-        # Precompute explicit Rotation/Scaling components reused in loop
         J_rot = np.array([[0, -1], [1, 0]])
         
         for i in range(N_meas):
-            # --- Assemble H_i (2 x N_state) ---
             r = r_vals[i]
+            # Select column i from (2, N) array -> Shape (2, 1) for matrix math
             u_i = u_vec[:, i].reshape(2, 1)
-
-            # A. Explicit Terms
-            dh_dpc_exp = np.eye(2)
-            dh_dpsi_exp = R_mat @ J_rot @ S_mat @ u_i * r
-            dh_dL_exp = R_mat @ np.diag([1, 0]) @ u_i * r
-            dh_dW_exp = R_mat @ np.diag([0, 1]) @ u_i * r
-
-            # PCA
+            
+            # Select column i from (2, N) normal -> Shape (1, 2) row vector
+            n_i = normals[:, i].reshape(1, 2) 
+            
+            # --- Explicit Jacobians (Projected) ---
+            
+            # Pos: I -> Project -> n^T
+            h_dpc = n_i 
+            
+            # Heading: R * J * S * u * r -> Project -> n^T @ (...)
+            dh_dpsi_vec = R_mat @ J_rot @ S_mat @ u_i * r
+            h_dpsi = n_i @ dh_dpsi_vec
+            
+            # Length: R * diag(1,0) * u * r
+            dh_dL_vec = R_mat @ np.diag([1, 0]) @ u_i * r
+            h_dL = n_i @ dh_dL_vec
+            
+            # Width: R * diag(0,1) * u * r
+            dh_dW_vec = R_mat @ np.diag([0, 1]) @ u_i * r
+            h_dW = n_i @ dh_dW_vec
+            
+            # PCA: R * S * u * (g.T @ M)
             g_vec = g_mat[:, i].reshape(-1, 1)
-            dr_de = g_vec.T @ self.pca_eigenvectors
-            dh_de_exp = (R_mat @ S_mat @ u_i) @ dr_de
+            dr_de = g_vec.T @ self.pca_eigenvectors # (1, N_pca)
+            dh_de_vec = (R_mat @ S_mat @ u_i) @ dr_de # (2, N_pca)
+            h_de = n_i @ dh_de_vec # (1, N_pca)
             
-            # B. Implicit Corrections (h_theta * dTheta/dX)
-            h_t = h_theta[:, i].reshape(2, 1) # (2, 1)
-            
-            # Pos
-            dth_dpc = np.array([[dtheta_dpc_x[i], dtheta_dpc_y[i]]]) # (1, 2)
-            dh_dpc_imp = h_t @ dth_dpc 
-            
-            # Heading, Length, Width
-            dh_dpsi_imp = h_t * dtheta_dpsi[i]
-            dh_dL_imp = h_t * dtheta_dL[i]
-            dh_dW_imp = h_t * dtheta_dW[i]
-
-            # C. Combine
-            H_i = np.hstack([
-                dh_dpc_exp + dh_dpc_imp,       # Pos
-                dh_dpsi_exp + dh_dpsi_imp,     # Heading
-                np.zeros((2, 2)),              # Vel
-                np.zeros((2, 1)),              # Rate
-                dh_dL_exp + dh_dL_imp,         # Length
-                dh_dW_exp + dh_dW_imp,         # Width
-                dh_de_exp                      # PCA
+            # Combine into row
+            # [Pos(2), Head(1), Vel(2), Rate(1), L(1), W(1), PCA(N)]
+            H_i_scal = np.hstack([
+                h_dpc, h_dpsi, np.zeros((1, 3)), h_dL, h_dW, h_de
             ])
-            jacobians_list.append(H_i)
+            jacobians_list.append(H_i_scal)
             
-            # --- Assemble D_i (2 x 2) ---
-            # D = I - h_theta * dTheta/dZ
-            # dTheta/dZ = -dTheta/dPc
-            dth_dz = -dth_dpc 
-            D_i = np.eye(2) - (h_t @ dth_dz)
-            D_blocks_list.append(D_i)
-            
-        H_total = np.vstack(jacobians_list)
-        D_total = block_diag(*D_blocks_list)
+        H_scalar = np.vstack(jacobians_list) # (N_meas, State_dim)
         
-        return H_total, D_total, angles
+        return H_scalar, normals.T, angles
 
 
 @dataclass
