@@ -1,7 +1,8 @@
 
 *.pkl
-*.html
+
 *.csv
+*.stl
 
 # Ignore cache
 data/cache/
