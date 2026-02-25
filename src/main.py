@@ -45,11 +45,24 @@ def get_common_configs(N_pca=4):
     sim_config = SimulationConfig(
         name = "",
         num_simulations=1,
-        num_frames=300,
+        num_frames=500,
         dt=0.1,
         seed=42,
         initial_state_gt=initial_state_gt,
     )
+
+    # sim_config.trajectory.type = "linear" # "linear", "circle", "waypoints"
+    # Configure orbit
+    sim_config.trajectory.type = "circle"
+    sim_config.trajectory.center = (30.0, 0.0) # LiDAR pos
+    sim_config.trajectory.radius = 40.0        # Orbit at 40m distance
+    sim_config.trajectory.speed = 5.0          # Go faster
+
+    # Ensure initial state matches the start of the trajectory to avoid "snap"
+    # Starting at (30+40, 0) -> (70, 0) facing North (pi/2) for CCW orbit
+    initial_state_gt.x = 70.0
+    initial_state_gt.y = 0.0
+    initial_state_gt.yaw = np.pi / 2
 
     # LiDAR Parameters
     lidar_config = LidarConfig(
@@ -103,6 +116,8 @@ def get_pca_tracker_config(lidar_pos, N_pca=4):
         use_gt_state_for_bodyangles_calc = False,
         use_initialize_centroid = False,
         N_pca=N_pca,
+        # PCA_parameters_path="data/input_parameters/BoatPCAParameters.npz",
+        PCA_parameters_path="data/input_parameters/FourierPCAParameters_scaled.npz",
         pos_north_std_dev=0.3,
         pos_east_std_dev=0.3,
         heading_std_dev=0.1,
@@ -161,7 +176,8 @@ if __name__ == "__main__":
     sim_base, lidar_base, extent_base = get_common_configs(N_pca)
 
     # method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
-    method_list = ["implicit_iekf"]
+    method_list = ["ekf", "iekf"]
+    # method_list = ["implicit_iekf"]
 
     for method in method_list:
         print(f"--- Setting up for method: {method} ---")
@@ -181,7 +197,7 @@ if __name__ == "__main__":
 
         # Create a unique name for this simulation configuration
         id_number = crc32(repr(config).encode())
-        config.sim.name = f"{method}_seed_{config.sim.seed}"
+        config.sim.name = f"{config.sim.trajectory.type}_{method}_seed_{config.sim.seed}"
 
         filename = f"{config.sim.name}.pkl"
         pickle_path = Path(SIMDATA_PATH) / filename

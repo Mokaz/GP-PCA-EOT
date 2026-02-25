@@ -132,11 +132,11 @@ def generate_debug_plot(boat_id, mesh_vertices, points_2d, hull_points, aligned_
     ax2 = fig.add_subplot(2, 3, 2)
     step_2d = max(1, len(points_2d) // 1000)
     ax2.scatter(points_2d[::step_2d, 0], points_2d[::step_2d, 1], s=1, c='gray', alpha=0.5)
-    ax2.set_title("2. Top-Down Projection (Z dropped)")
+    ax2.set_title("2. Top-Down Projection")
     ax2.set_aspect('equal')
     ax2.grid(True)
 
-    # --- STEP 3: CONVEX HULL (The Rubber Band) ---
+    # --- STEP 3: CONVEX HULL ---
     ax3 = fig.add_subplot(2, 3, 3)
     
     # Close loop
@@ -145,7 +145,7 @@ def generate_debug_plot(boat_id, mesh_vertices, points_2d, hull_points, aligned_
     ax3.scatter(points_2d[::step_2d, 0], points_2d[::step_2d, 1], s=1, c='gray', alpha=0.2)
     ax3.plot(hull_viz[:,0], hull_viz[:,1], 'r-', linewidth=2, label='Convex Hull')
     ax3.scatter(hull_viz[:-1,0], hull_viz[:-1,1], c="#33db43", s=20, marker='o', label='Hull Vertices')
-    ax3.set_title("3. Convex Hull ('Rubber Band')")
+    ax3.set_title("3. Convex Hull")
     ax3.set_aspect('equal')
     ax3.legend()
     ax3.grid(True)
@@ -157,7 +157,7 @@ def generate_debug_plot(boat_id, mesh_vertices, points_2d, hull_points, aligned_
     
     ax4.plot(aligned_viz[:,0], aligned_viz[:,1], 'b-', linewidth=2, label='Aligned Hull')
     ax4.fill(aligned_viz[:,0], aligned_viz[:,1], 'b', alpha=0.1)
-    ax4.set_title("4. Centered & Normalized (Original Orientation)")
+    ax4.set_title("4. Centered & Normalized")
     ax4.set_aspect('equal')
     ax4.grid(True)
     ax4.set_xlim(-0.6, 0.6)
@@ -168,8 +168,8 @@ def generate_debug_plot(boat_id, mesh_vertices, points_2d, hull_points, aligned_
     
     target_angles = np.linspace(-np.pi, np.pi, len(radii), endpoint=False)
     
-    ax5.plot(target_angles, radii, 'g-', label='Exact Radii')
-    ax5.set_title("5. Polar Profile (Exact Intersection)")
+    ax5.plot(target_angles, radii, 'g-', label='Radii')
+    ax5.set_title("5. Polar Profile")
     ax5.legend()
 
     # --- STEP 6: RECONSTRUCTION VS TRUTH ---
@@ -266,12 +266,14 @@ for fname in tqdm(stl_files):
             "id": boat_id,
             "filename": fname,
             "original_length_m": float(length), 
-            "radii": radii.tolist(),
             "name": meta.get('ProjectName', 'Unknown'),
-            "type": meta.get('Designer', 'Unknown'),
+            "designer": meta.get('Designer', 'Unknown'),
+            "is_hull": safe_int(meta.get('Is Hull', 0)),
+            "is_solid": safe_int(meta.get('Is Solid', 0)),
             "is_boat": safe_int(meta.get('Is Boat', 0)),
             "is_kayak": safe_int(meta.get('Is Kayak', 0)),
-            "is_solid": safe_int(meta.get('Is Solid', 0))
+            "must_be_closed": safe_int(meta.get('Must be closed', 0)),
+            "radii": radii.tolist()
         }
         
         processed_list.append(entry)

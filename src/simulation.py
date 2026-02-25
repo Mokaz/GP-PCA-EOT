@@ -11,16 +11,17 @@ sys.path.append(PROJECT_ROOT)
 from global_project_paths import SIMDATA_PATH
 
 from src.dynamics.process_models import GroundTruthModel, Model_GP_CV, Model_PCA_CV, Model_PCA_Temporal, Model_PCA_Inflation
+from src.dynamics.trajectories import CircleTrajectory, WaypointTrajectory, ConstantVelocityTrajectory
 from src.sensors.LidarModel import LidarSimulator
 
 from tracker.EKF import EKF
 from src.tracker.IterativeEKF import IterativeEKF
-from src.tracker.gauss_newton import GaussNewton
-from src.tracker.levenberg_marquardt import LevenbergMarquardt
+# from src.tracker.gauss_newton import GaussNewton
+# from src.tracker.levenberg_marquardt import LevenbergMarquardt
 from src.tracker.BFGS import BFGS
-from src.tracker.SLSQP import SLSQP
-from src.tracker.smoothing_SLSQP import SmoothingSLSQP
-from src.tracker.UnscentedKalmanFilter import UKF
+# from src.tracker.SLSQP import SLSQP
+# from src.tracker.smoothing_SLSQP import SmoothingSLSQP
+# from src.tracker.UnscentedKalmanFilter import UKF
 from src.tracker.ImplicitIEKF import ImplicitIEKF
 
 from src.tracker.TrackerUpdateResult import TrackerUpdateResult
@@ -47,6 +48,28 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
     extent_cfg = config.extent
 
     rng = np.random.default_rng(seed=sim_cfg.seed)
+
+    # --- SETUP TRAJECTORY ---
+    traj_cfg = sim_cfg.trajectory
+    if traj_cfg.type == "circle":
+        trajectory_strategy = CircleTrajectory(
+            center=traj_cfg.center,
+            target_speed=traj_cfg.speed,
+            radius=traj_cfg.radius
+        )
+    elif traj_cfg.type == "waypoints":
+        trajectory_strategy = WaypointTrajectory(
+            waypoints=traj_cfg.waypoints,
+            target_speed=traj_cfg.speed
+        )
+    else:
+        trajectory_strategy = ConstantVelocityTrajectory()
+
+    gt_dynamic_model = GroundTruthModel(
+        rng=rng, 
+        yaw_rate_std_dev=sim_cfg.gt_yaw_rate_std_dev,
+        trajectory_strategy=trajectory_strategy
+    )
 
     gt_dynamic_model = GroundTruthModel(rng=rng, yaw_rate_std_dev=sim_cfg.gt_yaw_rate_std_dev)
 

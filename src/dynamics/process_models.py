@@ -1,13 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Optional, TypeVar
+from typing import TypeVar
 import numpy as np
 from scipy.linalg import block_diag
 
 from src.senfuslib import DynamicModel
 from src.states.states import State_PCA, State_GP
-from src.utils.tools import rot2D, ssa
+from src.utils.tools import ssa
 
 from src.utils.GaussianProcess import GaussianProcess
+from src.dynamics.trajectories import TrajectoryStrategy, ConstantVelocityTrajectory
 
 S = TypeVar('S', bound=np.ndarray)  # State type
 
@@ -48,7 +49,6 @@ class Model_PCA_CV(DynamicModel):
         t_int = np.array([[(dt**3)/3, (dt**2)/2], [(dt**2)/2, dt]])
         Qk = np.kron(t_int, Q_c_matrix)
         
-        # Assume zero process noise on extent and PCA coefficients TODO Martin: investigate this
         Q_extent_pca = np.zeros((2 + self.N_pca, 2 + self.N_pca))
         
         # Combine into the full Q matrix
@@ -166,35 +166,29 @@ class Model_PCA_Inflation(DynamicModel):
 @dataclass
 class GroundTruthModel(DynamicModel):
     rng: np.random.Generator = field(repr=False)
-
-    # Noise parameters
     yaw_rate_std_dev: float = 0.01
+    
+    trajectory_strategy: TrajectoryStrategy = field(default=None, repr=False)
 
-    _initial_speed: Optional[float] = field(default=None, init=False, repr=False)
+    def __post_init__(self):
+        if self.trajectory_strategy is None:
+            self.trajectory_strategy = ConstantVelocityTrajectory()
 
     def step_simulation(self, x: State_PCA, dt: float) -> State_PCA:
-        """
-        Propagates the ground truth state forward one time step.
-        This model now derives its speed from the initial state's velocity.
-        """
         new_state = x.copy()
 
-        # On the very first step, calculate and store the initial speed.
-        if self._initial_speed is None:
-            self._initial_speed = np.hypot(x.vel_x, x.vel_y)
+        target_speed, cmd_yaw_rate = self.trajectory_strategy.get_controls(x, dt)
 
-        # 1. Add true process noise (random fluctuation in yaw rate)
-        true_yaw_rate = self.rng.normal(0.0, self.yaw_rate_std_dev)
-        new_state.yaw_rate = true_yaw_rate
-
-        # 2. Propagate the state forward using the non-linear motion equations
+        # Yaw rate noise
+        noise = self.rng.normal(0.0, self.yaw_rate_std_dev)
+        
+        new_state.yaw_rate = cmd_yaw_rate + noise
         new_state.yaw = ssa(x.yaw + new_state.yaw_rate * dt)
         
-        # 3. Velocity is now determined by the stored initial speed and the new heading
-        velocity_in_body_frame = np.array([self._initial_speed, 0.0])
-        new_state.vel_x, new_state.vel_y = rot2D(new_state.yaw) @ velocity_in_body_frame
+        # Calculate velocity components based on target speed and new heading
+        new_state.vel_x = target_speed * np.cos(new_state.yaw)
+        new_state.vel_y = target_speed * np.sin(new_state.yaw)
 
-        # 4. Update position using an exact discrete-time step
         new_state.x += new_state.vel_x * dt
         new_state.y += new_state.vel_y * dt
         

@@ -14,19 +14,26 @@ from src.utils.geometry_utils import compute_estimated_shape_from_params
 pn.extension('plotly')
 
 class ShapeExplorer:
-    def __init__(self, pca_path: str):
-        # 1. Load PCA Data
-        if not Path(pca_path).exists():
-            raise FileNotFoundError(f"Could not find PCA file at: {pca_path}")
-            
-        data = np.load(pca_path)
-        self.eigenvectors = data['eigenvectors'].real 
-        self.mean_coeffs = data['mean']
-        self.num_pca_comps = self.eigenvectors.shape[1]
-        self.n_fourier_dim = self.mean_coeffs.shape[0]
-        self.angles = np.linspace(0, 2*np.pi, 200)
-
+    def __init__(self, data_dir: str):
+        self.data_dir = Path(data_dir)
+        if not self.data_dir.exists():
+             raise FileNotFoundError(f"Directory not found: {data_dir}")
+        
+        # 1. Find .npz files
+        self.npz_files = list(self.data_dir.glob("*.npz"))
+        if not self.npz_files:
+             raise FileNotFoundError(f"No .npz files found in {data_dir}")
+        
+        self.npz_options = {f.name: str(f) for f in self.npz_files}
+        
         # 2. Define GUI Widgets
+        self.file_selector = pn.widgets.Select(
+            name='Select PCA Model', 
+            options=self.npz_options,
+            value=self.npz_options.get('BoatPCAParameters.npz', list(self.npz_options.values())[0]),
+            sizing_mode='stretch_width'
+        )
+        
         self.slider_L = pn.widgets.FloatSlider(
             name='Length (L)', start=5.0, end=150.0, step=1.0, value=50.0, 
             sizing_mode='stretch_width'
@@ -55,32 +62,73 @@ class ShapeExplorer:
             sizing_mode='stretch_width'
         )
         self.set_coeff_btn.on_click(self.set_coefficients_from_text)
-
-        self.pca_sliders = []
-        for i in range(self.num_pca_comps):
-            s = pn.widgets.FloatSlider(
-                name=f'PCA Coeff {i}', start=-100.0, end=100.0, step=0.1, value=0.0,
-                sizing_mode='stretch_width'
-            )
-            self.pca_sliders.append(s)
-
+        
         self.plot_pane = pn.pane.Plotly(
             sizing_mode='stretch_both', 
             config={'responsive': True}
         )
 
-        pn.bind(self.update_plot, 
-                self.slider_L, 
-                self.slider_W, 
-                self.rotate_toggle, 
-                *self.pca_sliders, 
-                watch=True)
+        # Dynamic container for PCA sliders
+        self.pca_sliders_column = pn.Column(sizing_mode='stretch_width')
+        self.pca_sliders = []
+        
+        # Load initial model
+        self.load_model(self.file_selector.value)
+        
+        # Watch file selector
+        self.file_selector.param.watch(self.on_file_change, 'value')
 
-        self.update_plot(self.slider_L.value, self.slider_W.value, self.rotate_toggle.value, *[s.value for s in self.pca_sliders])
+        # Watch geometry widgets
+        self.slider_L.param.watch(lambda e: self.trigger_update(), 'value')
+        self.slider_W.param.watch(lambda e: self.trigger_update(), 'value')
+        self.rotate_toggle.param.watch(lambda e: self.trigger_update(), 'value')
+        
+        # Initial Plot
+        self.trigger_update()
+
+    def on_file_change(self, event):
+        self.load_model(event.new)
+        self.trigger_update()
+        
+    def load_model(self, pca_path):
+        data = np.load(pca_path)
+        self.eigenvectors = data['eigenvectors'].real 
+        self.mean_coeffs = data['mean']
+        self.num_pca_comps = self.eigenvectors.shape[1]
+        self.n_fourier_dim = self.mean_coeffs.shape[0]
+        self.angles = np.linspace(0, 2*np.pi, 200)
+        
+        # Re-create sliders
+        self.pca_sliders = []
+        self.pca_sliders_column.clear()
+        
+        for i in range(self.num_pca_comps):
+            s = pn.widgets.FloatSlider(
+                name=f'PCA Coeff {i}', start=-100.0, end=100.0, step=0.1, value=0.0,
+                sizing_mode='stretch_width'
+            )
+            # Bind update to slider change
+            s.param.watch(lambda e: self.trigger_update(), 'value')
+            self.pca_sliders.append(s)
+            self.pca_sliders_column.append(s)
+            
+        # Re-bind geometric sliders
+        # We need to unbind old watchers if any? 
+        # Easier to just rely on explicit watchers or a single trigger method.
+        # Im using trigger_update which reads values.
+
+    def trigger_update(self):
+        # Gather all current values
+        L = self.slider_L.value
+        W = self.slider_W.value
+        rotate = self.rotate_toggle.value
+        coeffs = [s.value for s in self.pca_sliders]
+        self.update_plot(L, W, rotate, *coeffs)
 
     def reset_coefficients(self, event=None):
         for slider in self.pca_sliders:
             slider.value = 0.0
+        self.trigger_update()
 
     def set_coefficients_from_text(self, event=None):
         """Parses the text input and updates sliders."""
@@ -96,6 +144,8 @@ class ShapeExplorer:
             for i, val in enumerate(values):
                 if i < len(self.pca_sliders):
                     self.pca_sliders[i].value = val
+                    
+            self.trigger_update()
                     
         except ValueError:
             print("Invalid input format. Please use comma-separated numbers.")
@@ -143,7 +193,7 @@ class ShapeExplorer:
         ))
 
         fig.update_layout(
-            title="Real-time Shape Exploration",
+            title=f"Real-time Shape Exploration ({Path(self.file_selector.value).name})",
             autosize=True,
             xaxis=dict(range=[-60, 60], constrain='domain', title="Width / Local Y [m]"), 
             yaxis=dict(range=[-80, 80], scaleanchor="x", scaleratio=1, title="Length / Local X [m]"), 
@@ -156,6 +206,9 @@ class ShapeExplorer:
 
     def view(self):
         sidebar = pn.Column(
+            pn.pane.Markdown("### PCA Model Selection"),
+            self.file_selector,
+            pn.layout.Divider(),
             pn.pane.Markdown("### Geometry Parameters"),
             self.slider_L,
             self.slider_W,
@@ -166,7 +219,7 @@ class ShapeExplorer:
             self.set_coeff_btn,
             self.reset_btn,
             pn.Spacer(height=10),
-            *self.pca_sliders,
+            self.pca_sliders_column,
             sizing_mode='stretch_width' 
         )
         
@@ -183,10 +236,13 @@ class ShapeExplorer:
         )
 
 if __name__ == "__main__":
-    PCA_FILE_PATH = PROJECT_ROOT / "data" / "input_parameters" / "FourierPCAParameters_scaled.npz" 
+    DATA_DIR = PROJECT_ROOT / "data" / "input_parameters"
     
-    if not PCA_FILE_PATH.exists():
-        print(f"WARNING: PCA file not found at {PCA_FILE_PATH}")
+    if not DATA_DIR.exists():
+        print(f"WARNING: Data directory not found at {DATA_DIR}")
     else:
-        explorer = ShapeExplorer(str(PCA_FILE_PATH))
-        explorer.view().show()
+        try:
+            explorer = ShapeExplorer(str(DATA_DIR))
+            explorer.view().show()
+        except FileNotFoundError as e:
+            print(f"Error initializing explorer: {e}")

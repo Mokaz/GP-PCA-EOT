@@ -99,7 +99,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         self.tap_stream = hv.streams.Tap(x=None, y=None)
         self.range_xy_stream = hv.streams.RangeXY()
         self.update_trigger = pn.widgets.Button(name='Refresh values', button_type='primary')
-        self.auto_refresh_toggle = pn.widgets.Checkbox(name='Auto Refresh', value=True, align='center')
+        self.auto_refresh_toggle = pn.widgets.Checkbox(name='Auto Refresh', value=False, align='center')
 
         # Setup Watchers
         self.x_axis_select.param.watch(self._on_axis_change, 'value')

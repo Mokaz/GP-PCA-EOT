@@ -3,6 +3,13 @@
     "id": "1",
     "filename": "1.stl",
     "original_length_m": 59.349998474121094,
+    "name": "Sailing yacht",
+    "designer": "Pier C",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999306055,
       0.5000001560417607,
@@ -364,17 +371,19 @@
       0.49913274651597017,
       0.4998175385665401,
       0.5000001561487198
-    ],
-    "name": "Sailing yacht",
-    "type": "Pier C",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "103",
     "filename": "103.stl",
     "original_length_m": 21.5,
+    "name": "VOR 70",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -736,17 +745,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "VOR 70",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "104",
     "filename": "104.stl",
     "original_length_m": 23.801413536071777,
+    "name": "ACC 2007 (America Cup)",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -1108,17 +1119,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "ACC 2007 (America Cup)",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "106",
     "filename": "106.stl",
     "original_length_m": 16.4830379486084,
+    "name": "Bisquine de Cancale \" La Perle \"",
+    "designer": "Gwenael Cheron",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999997640679,
       0.49968497705920084,
@@ -1480,17 +1493,19 @@
       0.4974904108288345,
       0.49923413315373216,
       0.4996849765727802
-    ],
-    "name": "Bisquine de Cancale \" La Perle \"",
-    "type": "Gwenael Cheron",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "107",
     "filename": "107.stl",
     "original_length_m": 25.12531566619873,
+    "name": "Ixous",
+    "designer": "Luc",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000395232917174,
@@ -1852,17 +1867,19 @@
       0.497432224687045,
       0.49920136777201873,
       0.5000395229279307
-    ],
-    "name": "Ixous",
-    "type": "Luc",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "108",
     "filename": "108.stl",
     "original_length_m": 15.598392009735107,
+    "name": "Classic 51",
+    "designer": "David Telles",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -2224,17 +2241,19 @@
       0.500643000403254,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "Classic 51",
-    "type": "David Telles",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "11",
     "filename": "11.stl",
     "original_length_m": 6.632800102233887,
+    "name": "Segelyacht 15 m2 SNS Neubau optimal ausgelegt unsinkbar",
+    "designer": "Rolf Philipp Hagen",
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.4999999999970775,
       0.5000487910048159,
@@ -2596,17 +2615,19 @@
       0.5005909465729864,
       0.5002499873922218,
       0.5000487910014185
-    ],
-    "name": "Segelyacht 15 m2 SNS Neubau optimal ausgelegt unsinkbar",
-    "type": "Rolf Philipp Hagen",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "112",
     "filename": "112.stl",
     "original_length_m": 15.24240255355835,
+    "name": "Multihull",
+    "designer": "John Wilkins",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -2968,17 +2989,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "Multihull",
-    "type": "John Wilkins",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "113",
     "filename": "113.stl",
     "original_length_m": 3.3550000190734863,
+    "name": "British Moth",
+    "designer": "David Peer",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -3340,17 +3363,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "British Moth",
-    "type": "David Peer",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "114",
     "filename": "114.stl",
     "original_length_m": 4.570000171661377,
+    "name": "Albacore",
+    "designer": "Uffa Fox",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -3712,17 +3737,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Albacore",
-    "type": "Uffa Fox",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "115",
     "filename": "115.stl",
     "original_length_m": 7.953881740570068,
+    "name": "26' Whale Boat",
+    "designer": "Ronaldo Fazanelli Migueis",
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.49999999977161663,
       0.49238219565696434,
@@ -4084,17 +4111,19 @@
       0.470498815324872,
       0.4811990193990118,
       0.4923821779819294
-    ],
-    "name": "26' Whale Boat",
-    "type": "Ronaldo Fazanelli Migueis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "116",
     "filename": "116.stl",
     "original_length_m": 5.892727851867676,
+    "name": "Pringle 18",
+    "designer": "William D. Anderson",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -4456,17 +4485,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Pringle 18",
-    "type": "William D. Anderson",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "118",
     "filename": "118.stl",
     "original_length_m": 4.876522541046143,
+    "name": "Texas style flats skeeter with tunnel",
+    "designer": "Sean Herron, San Antonio Lake Skeeter",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -4828,17 +4859,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Texas style flats skeeter with tunnel",
-    "type": "Sean Herron, San Antonio Lake Skeeter",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "119",
     "filename": "119.stl",
     "original_length_m": 31.032405853271484,
+    "name": "Research vessel",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999992777,
       0.5000651931230891,
@@ -5200,17 +5233,19 @@
       0.5004617035263348,
       0.500233371501431,
       0.5000651931145591
-    ],
-    "name": "Research vessel",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "120",
     "filename": "120.stl",
     "original_length_m": 5.08364462852478,
+    "name": "Goodnow Kayak",
+    "designer": "Ludwig Sigurdson.",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.49999999693649444,
       0.4341100306167306,
@@ -5572,17 +5607,19 @@
       0.3438206575647967,
       0.3836672481271663,
       0.43411002675439314
-    ],
-    "name": "Goodnow Kayak",
-    "type": "Ludwig Sigurdson.",
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "123",
     "filename": "123.stl",
     "original_length_m": 6.75,
+    "name": "Trace Demo",
+    "designer": "N. Schipper",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999998352,
       0.5000704819390966,
@@ -5944,17 +5981,19 @@
       0.5005447680622397,
       0.5002619988008242,
       0.5000704819363812
-    ],
-    "name": "Trace Demo",
-    "type": "N. Schipper",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "124",
     "filename": "124.stl",
     "original_length_m": 3.352811098098755,
+    "name": "Pickup Squared",
+    "designer": "Jim Michalak",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -6316,17 +6355,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Pickup Squared",
-    "type": "Jim Michalak",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "128",
     "filename": "128.stl",
     "original_length_m": 128.25,
+    "name": "Inland barge",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -6688,17 +6729,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "Inland barge",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "13",
     "filename": "13.stl",
     "original_length_m": 31.963940620422363,
+    "name": "Brigg Joachim Allwardt",
+    "designer": "J. M\u00f6ller",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -7060,17 +7103,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Brigg Joachim Allwardt",
-    "type": "J. M\u00f6ller",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "130",
     "filename": "130.stl",
     "original_length_m": 11.999340057373047,
+    "name": "YD-40",
+    "designer": "Lars Larsson & Rolf E. Eliasson",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -7432,17 +7477,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "YD-40",
-    "type": "Lars Larsson & Rolf E. Eliasson",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "131",
     "filename": "131.stl",
     "original_length_m": 16.62849235534668,
+    "name": "Hard chined sailing yacht",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -7804,17 +7851,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Hard chined sailing yacht",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "132",
     "filename": "132.stl",
     "original_length_m": 3.675854206085205,
+    "name": "4-whitey",
+    "designer": "Caldera BoatworX",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -8176,17 +8225,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "4-whitey",
-    "type": "Caldera BoatworX",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "134",
     "filename": "134.stl",
     "original_length_m": 4.200000286102295,
+    "name": "TAIKI V1-PICO",
+    "designer": "TAIKI FUKUNAGA, OHANA HOE OUTRIGGER CANOE CLUB, JAPAN",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999039047,
       0.4912181338052276,
@@ -8548,17 +8599,19 @@
       0.4732214371301739,
       0.48197845136605566,
       0.49121812609104465
-    ],
-    "name": "TAIKI V1-PICO",
-    "type": "TAIKI FUKUNAGA, OHANA HOE OUTRIGGER CANOE CLUB, JAPAN",
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "135",
     "filename": "135.stl",
     "original_length_m": 23.60200023651123,
+    "name": "Twee Gebroeders",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999284767,
       0.49972849298675875,
@@ -8920,17 +8973,19 @@
       0.4966633463678156,
       0.49853106353484855,
       0.499728493668265
-    ],
-    "name": "Twee Gebroeders",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "136",
     "filename": "136.stl",
     "original_length_m": 4.949999809265137,
+    "name": "Sztrandek 4.95 (chine import from original data)",
+    "designer": "Zeljko Horvatovic (original by Wojciech Kasprzak)",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -9292,17 +9347,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Sztrandek 4.95 (chine import from original data)",
-    "type": "Zeljko Horvatovic (original by Wojciech Kasprzak)",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "137",
     "filename": "137.stl",
     "original_length_m": 57.277000427246094,
+    "name": "Supplier",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999997411,
       0.5000744236540379,
@@ -9664,17 +9721,19 @@
       0.5006809413129967,
       0.5003012887741302,
       0.5000744236546389
-    ],
-    "name": "Supplier",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "139",
     "filename": "139.stl",
     "original_length_m": 236.88662719726562,
+    "name": "Supertanker",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -10036,17 +10095,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Supertanker",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "140",
     "filename": "140.stl",
     "original_length_m": 51.43659973144531,
+    "name": "Fishing trawler",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999976963,
       0.500067516279728,
@@ -10408,17 +10469,19 @@
       0.5006270756650695,
       0.500287463777385,
       0.5000675162751262
-    ],
-    "name": "Fishing trawler",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "141",
     "filename": "141.stl",
     "original_length_m": 4.908395290374756,
+    "name": "Sliver",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -10780,17 +10843,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Sliver",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "142",
     "filename": "142.stl",
     "original_length_m": 5.463358640670776,
+    "name": "Shivaree",
+    "designer": "Phillip Bolger",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -11152,17 +11217,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Shivaree",
-    "type": "Phillip Bolger",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "143",
     "filename": "143.stl",
     "original_length_m": 101.4730339050293,
+    "name": "One Meter Circular Hull",
+    "designer": "Jean-marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999981263,
       0.5000351584125178,
@@ -11524,17 +11591,19 @@
       0.5003319492458737,
       0.5001466925888142,
       0.5000351584696113
-    ],
-    "name": "One Meter Circular Hull",
-    "type": "Jean-marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "144",
     "filename": "144.stl",
     "original_length_m": 3.109999895095825,
+    "name": "micronesian proa (test, do not build this one!)",
+    "designer": "luna",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.4999999998320679,
       0.49991725025794576,
@@ -11896,17 +11965,19 @@
       0.5002080790725983,
       0.49998680300956283,
       0.4999172499169406
-    ],
-    "name": "micronesian proa (test, do not build this one!)",
-    "type": "luna",
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "145",
     "filename": "145.stl",
     "original_length_m": 4.343414306640625,
+    "name": "Moosabec Reach Boat",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -12268,17 +12339,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Moosabec Reach Boat",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "146",
     "filename": "146.stl",
     "original_length_m": 2.743208885192871,
+    "name": "MY VIHLEN APRIL FOOL WITH STANDING HEADROM",
+    "designer": "Sean Herron",
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -12640,17 +12713,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "MY VIHLEN APRIL FOOL WITH STANDING HEADROM",
-    "type": "Sean Herron",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "147",
     "filename": "147.stl",
     "original_length_m": 1.0,
+    "name": "F100 - RC Yacht",
+    "designer": "J.Colliot/Nef",
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.49999999967317255,
       0.49956199629254566,
@@ -13012,17 +13087,19 @@
       0.4978883346211806,
       0.49895461343204417,
       0.4995619969504719
-    ],
-    "name": "F100 - RC Yacht",
-    "type": "J.Colliot/Nef",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "149",
     "filename": "149.stl",
     "original_length_m": 2.299999952316284,
+    "name": "BBM 2.30",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -13384,17 +13461,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "BBM 2.30",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "152",
     "filename": "152.stl",
     "original_length_m": 12.650490283966064,
+    "name": "12.650",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999994,
       0.5000709118424455,
@@ -13756,17 +13835,19 @@
       0.5005749043025047,
       0.5002731625894735,
       0.5000709118333179
-    ],
-    "name": "12.650",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "154",
     "filename": "154.stl",
     "original_length_m": 11.760174751281738,
+    "name": "Sport_Fisher",
+    "designer": "Felipe Garcia",
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -14128,17 +14209,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Sport_Fisher",
-    "type": "Felipe Garcia",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "155",
     "filename": "155.stl",
     "original_length_m": 4.829412460327148,
+    "name": "A light sculling training boat.",
+    "designer": "Modified by HECS",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999642654025,
       0.46635330527277835,
@@ -14500,17 +14583,19 @@
       0.4113553335414468,
       0.43707422202055823,
       0.46635329600730036
-    ],
-    "name": "A light sculling training boat.",
-    "type": "Modified by HECS",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "156",
     "filename": "156.stl",
     "original_length_m": 3.9877140522003174,
+    "name": "Scrappy",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -14872,17 +14957,19 @@
       0.48206861691243974,
       0.49504824714573575,
       0.5000761640219539
-    ],
-    "name": "Scrappy",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "157",
     "filename": "157.stl",
     "original_length_m": 8.534427642822266,
+    "name": "Rozinante",
+    "designer": "L. Francis Herreshoff",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999956685926,
       0.4874466110254157,
@@ -15244,17 +15331,19 @@
       0.46343367350178133,
       0.47536877918037934,
       0.4874466028155983
-    ],
-    "name": "Rozinante",
-    "type": "L. Francis Herreshoff",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "158",
     "filename": "158.stl",
     "original_length_m": 8.147632598876953,
+    "name": "RiverRunner25",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -15616,17 +15705,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "RiverRunner25",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "159",
     "filename": "159.stl",
     "original_length_m": 8.779979705810547,
+    "name": "Riva Aquarama Sp\u00e9cial",
+    "designer": "Carlo RIVA Spa - Carlo Riva & Giorgio Barilani",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000489617626844,
@@ -15988,17 +16079,19 @@
       0.5001314841648682,
       0.5000945541500967,
       0.5000489618096985
-    ],
-    "name": "Riva Aquarama Sp\u00e9cial",
-    "type": "Carlo RIVA Spa - Carlo Riva & Giorgio Barilani",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "160",
     "filename": "160.stl",
     "original_length_m": 11.819999694824219,
+    "name": "Rapid_Craft",
+    "designer": "Felipe Garcia",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -16360,17 +16453,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "Rapid_Craft",
-    "type": "Felipe Garcia",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "161",
     "filename": "161.stl",
     "original_length_m": 5.820079326629639,
+    "name": "Pretty Runabout 18\"",
+    "designer": "Giuseppe Balsamo",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -16732,17 +16827,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Pretty Runabout 18\"",
-    "type": "Giuseppe Balsamo",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "162",
     "filename": "162.stl",
     "original_length_m": 2.969066619873047,
+    "name": "PoorBoySkiff",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -17104,17 +17201,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "PoorBoySkiff",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "163",
     "filename": "163.stl",
     "original_length_m": 5.100537300109863,
+    "name": "PocketCruiser3",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -17476,17 +17575,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "PocketCruiser3",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "165",
     "filename": "165.stl",
     "original_length_m": 27.000200271606445,
+    "name": "Patrol craft",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -17848,17 +17949,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Patrol craft",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "166",
     "filename": "166.stl",
     "original_length_m": 3.9505345821380615,
+    "name": "PEEP14",
+    "designer": "G. Carlson",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -18220,17 +18323,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "PEEP14",
-    "type": "G. Carlson",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "167",
     "filename": "167.stl",
     "original_length_m": 167.90999603271484,
+    "name": "Parent 61 - Ro-Ro vessel",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999997677674,
       0.4998527086703614,
@@ -18592,17 +18697,19 @@
       0.49973448564255346,
       0.49979888473692424,
       0.49985270872775406
-    ],
-    "name": "Parent 61 - Ro-Ro vessel",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "168",
     "filename": "168.stl",
     "original_length_m": 110.17039108276367,
+    "name": "Parent 62 - ZUIGER",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999874596945,
       0.4965288242602132,
@@ -18964,17 +19071,19 @@
       0.48780537975412913,
       0.4926707668612139,
       0.496528821450069
-    ],
-    "name": "Parent 62 - ZUIGER",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "169",
     "filename": "169.stl",
     "original_length_m": 90.04000091552734,
+    "name": "Parent 60 - Container feeder",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -19336,17 +19445,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "Parent 60 - Container feeder",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "170",
     "filename": "170.stl",
     "original_length_m": 140.6999969482422,
+    "name": "Parent 51 - Containership",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.499999999999815,
       0.5000721249340054,
@@ -19708,17 +19819,19 @@
       0.5006740178243964,
       0.5002966878825937,
       0.5000721249338044
-    ],
-    "name": "Parent 51 - Containership",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "171",
     "filename": "171.stl",
     "original_length_m": 161.89922332763672,
+    "name": "Parent 58 - RO-RO ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -20080,17 +20193,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Parent 58 - RO-RO ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "172",
     "filename": "172.stl",
     "original_length_m": 18.122304916381836,
+    "name": "Parent 50 - Motoryacht",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999997602,
       0.5000755707658109,
@@ -20452,17 +20567,19 @@
       0.5006843896156475,
       0.5003035847350954,
       0.5000755707663067
-    ],
-    "name": "Parent 50 - Motoryacht",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "173",
     "filename": "173.stl",
     "original_length_m": 300.20497131347656,
+    "name": "Parent 49 - Tanker",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999993859,
       0.5000737993942016,
@@ -20824,17 +20941,19 @@
       0.5006790647564703,
       0.5003000393143634,
       0.5000737993955237
-    ],
-    "name": "Parent 49 - Tanker",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "174",
     "filename": "174.stl",
     "original_length_m": 118.1819953918457,
+    "name": "parent 48 - Ferry",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999988254,
       0.500073102964543,
@@ -21196,17 +21315,19 @@
       0.5006769712602362,
       0.5002986454065151,
       0.5000731029644143
-    ],
-    "name": "parent 48 - Ferry",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "175",
     "filename": "175.stl",
     "original_length_m": 10.500472068786621,
+    "name": "Parent 47 - Cutter yacht",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.4950132288598629,
@@ -21568,17 +21689,19 @@
       0.48274736643345345,
       0.4888253709363731,
       0.49501323417649173
-    ],
-    "name": "Parent 47 - Cutter yacht",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "176",
     "filename": "176.stl",
     "original_length_m": 65.67000007629395,
+    "name": "Parent 45 - Small coastal trader",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.499999999999082,
       0.5000737473936191,
@@ -21940,17 +22063,19 @@
       0.5006789084414479,
       0.5002999352357379,
       0.5000737473954923
-    ],
-    "name": "Parent 45 - Small coastal trader",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "177",
     "filename": "177.stl",
     "original_length_m": 22.56599998474121,
+    "name": "Parent 43 - Cutter",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999991811,
       0.5000726176793574,
@@ -22312,17 +22437,19 @@
       0.5006755124791565,
       0.5002976741071882,
       0.5000726176777692
-    ],
-    "name": "Parent 43 - Cutter",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "178",
     "filename": "178.stl",
     "original_length_m": 34.39799880981445,
+    "name": "Parent 42 - Cutter",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999828554,
       0.5000732243189079,
@@ -22684,17 +22811,19 @@
       0.5006773236117483,
       0.500298888302686,
       0.5000732243223669
-    ],
-    "name": "Parent 42 - Cutter",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "179",
     "filename": "179.stl",
     "original_length_m": 129.5009994506836,
+    "name": "Parent 41 - Ro-Ro ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999993117,
       0.5000749928445701,
@@ -23056,17 +23185,19 @@
       0.5006826523364439,
       0.5003024280149756,
       0.5000749928444603
-    ],
-    "name": "Parent 41 - Ro-Ro ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "180",
     "filename": "180.stl",
     "original_length_m": 79.83935546875,
+    "name": "Parent 40 - Icebreaker",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999997813,
       0.5000752307476058,
@@ -23428,17 +23559,19 @@
       0.5006833674903883,
       0.5003029041810158,
       0.5000752307471124
-    ],
-    "name": "Parent 40 - Icebreaker",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "181",
     "filename": "181.stl",
     "original_length_m": 64.17099952697754,
+    "name": "Parent 39 - River coaster",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999917205,
       0.5000735010126883,
@@ -23800,17 +23933,19 @@
       0.5006781400488958,
       0.5002994294188877,
       0.5000735010109905
-    ],
-    "name": "Parent 39 - River coaster",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "182",
     "filename": "182.stl",
     "original_length_m": 135.3810043334961,
+    "name": "Parent 38 - High speed displacement vessel",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999980943,
       0.5000751256151272,
@@ -24172,17 +24307,19 @@
       0.5006830514544118,
       0.5003026937569949,
       0.5000751256148177
-    ],
-    "name": "Parent 38 - High speed displacement vessel",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "183",
     "filename": "183.stl",
     "original_length_m": 209.68074798583984,
+    "name": "Parent 37 - Ro-Ro ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999994293,
       0.500075626958552,
@@ -24544,17 +24681,19 @@
       0.5006845585351437,
       0.500303697205335,
       0.5000756269586403
-    ],
-    "name": "Parent 37 - Ro-Ro ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "184",
     "filename": "184.stl",
     "original_length_m": 221.5999984741211,
+    "name": "Parent 36 - Shallow draft tanker",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.499999999999765,
       0.5000754333878112,
@@ -24916,17 +25055,19 @@
       0.5006839766434246,
       0.5003033097688785,
       0.5000754333872871
-    ],
-    "name": "Parent 36 - Shallow draft tanker",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "185",
     "filename": "185.stl",
     "original_length_m": 13.45009994506836,
+    "name": "Parent 34 - Sailing yacht",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -25288,17 +25429,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Parent 34 - Sailing yacht",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "186",
     "filename": "186.stl",
     "original_length_m": 16.053332328796387,
+    "name": "Parent 33 - Tug",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999986,
       0.5000761266588868,
@@ -25660,17 +25803,19 @@
       0.5006860606817861,
       0.5003046973663402,
       0.5000761266588892
-    ],
-    "name": "Parent 33 - Tug",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "187",
     "filename": "187.stl",
     "original_length_m": 87.5739974975586,
+    "name": "Parent 32 - Ferryboat",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999997967,
       0.5000746554936513,
@@ -26032,17 +26177,19 @@
       0.500681620804766,
       0.500301750891925,
       0.5000746554932105
-    ],
-    "name": "Parent 32 - Ferryboat",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "188",
     "filename": "188.stl",
     "original_length_m": 258.64964294433594,
+    "name": "Parent 31 - Containership",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999376,
       0.5000758172114281,
@@ -26404,17 +26551,19 @@
       0.5006851304523487,
       0.5003040780001095,
       0.5000758172113209
-    ],
-    "name": "Parent 31 - Containership",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "189",
     "filename": "189.stl",
     "original_length_m": 183.0193634033203,
+    "name": "Parent 30 - Bulkcarrier",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.499999999999814,
       0.5000754041675668,
@@ -26776,17 +26925,19 @@
       0.4936632511589849,
       0.500303249542594,
       0.5000754041671522
-    ],
-    "name": "Parent 30 - Bulkcarrier",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "190",
     "filename": "190.stl",
     "original_length_m": 144.02999877929688,
+    "name": "Parent 29 - Heavy load ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999989025,
       0.5000755551454968,
@@ -27148,17 +27299,19 @@
       0.5006843398893597,
       0.500303553470321,
       0.5000755551457204
-    ],
-    "name": "Parent 29 - Heavy load ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "191",
     "filename": "191.stl",
     "original_length_m": 59.50653648376465,
+    "name": "Parent 27 - Supplier",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -27520,17 +27673,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Parent 27 - Supplier",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "192",
     "filename": "192.stl",
     "original_length_m": 186.74993896484375,
+    "name": "Parent 26 - Containership",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999963446,
       0.5000741432760619,
@@ -27892,17 +28047,19 @@
       0.5006800984776829,
       0.5003007275927506,
       0.5000741432751904
-    ],
-    "name": "Parent 26 - Containership",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "193",
     "filename": "193.stl",
     "original_length_m": 66.00010299682617,
+    "name": "Parent 25 - Sterntrawler",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999958,
       0.5000759650454472,
@@ -28264,17 +28421,19 @@
       0.5006855748557244,
       0.5003043738932855,
       0.5000759650454415
-    ],
-    "name": "Parent 25 - Sterntrawler",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "194",
     "filename": "194.stl",
     "original_length_m": 95.11724472045898,
+    "name": "Parent 23 - Refrigerated ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999995614,
       0.5000738248204308,
@@ -28636,17 +28795,19 @@
       0.5006791411883046,
       0.5003000902046586,
       0.5000738248214469
-    ],
-    "name": "Parent 23 - Refrigerated ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "195",
     "filename": "195.stl",
     "original_length_m": 48.349998474121094,
+    "name": "Parent 22 - Sterntrawler",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999184,
       0.5000759848153333,
@@ -29008,17 +29169,19 @@
       0.5006856342862724,
       0.5003044134634139,
       0.5000759848154975
-    ],
-    "name": "Parent 22 - Sterntrawler",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "196",
     "filename": "196.stl",
     "original_length_m": 87.97098159790039,
+    "name": "Parent 21 - Refrigerated ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999755681,
       0.4910116034043194,
@@ -29380,17 +29543,19 @@
       0.47325001560561414,
       0.4821952298088717,
       0.4910116091028035
-    ],
-    "name": "Parent 21 - Refrigerated ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "197",
     "filename": "197.stl",
     "original_length_m": 244.59900665283203,
+    "name": "Parent 20 - Barge carrier",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999307,
       0.5000755903002999,
@@ -29752,17 +29917,19 @@
       0.5006844483366553,
       0.5003036238327282,
       0.500075590300128
-    ],
-    "name": "Parent 20 - Barge carrier",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "198",
     "filename": "198.stl",
     "original_length_m": 113.43000030517578,
+    "name": "Parent 19 - Container ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999964784,
       0.500074908344587,
@@ -30124,17 +30291,19 @@
       0.5006823983218238,
       0.5003022588859437,
       0.5000749083437863
-    ],
-    "name": "Parent 19 - Container ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "199",
     "filename": "199.stl",
     "original_length_m": 119.08000564575195,
+    "name": "Parent 18 - multi purpose ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999847,
       0.5000760454265096,
@@ -30496,17 +30665,19 @@
       0.5006858164890298,
       0.5003045347777659,
       0.5000760454264721
-    ],
-    "name": "Parent 18 - multi purpose ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "2",
     "filename": "2.stl",
     "original_length_m": 18.335580825805664,
+    "name": "Sport Fisherman",
+    "designer": "Pier C",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999997289346,
       0.4998884211710968,
@@ -30868,17 +31039,19 @@
       0.49937215332062707,
       0.4997243541528429,
       0.49988842125372224
-    ],
-    "name": "Sport Fisherman",
-    "type": "Pier C",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "20",
     "filename": "20.stl",
     "original_length_m": 54.44110298156738,
+    "name": "Resolution 1669",
+    "designer": "Sir Anthony Deane",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999997484335,
       0.4997890192157582,
@@ -31240,17 +31413,19 @@
       0.49958659592996824,
       0.49967234610922284,
       0.499789019275201
-    ],
-    "name": "Resolution 1669",
-    "type": "Sir Anthony Deane",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "200",
     "filename": "200.stl",
     "original_length_m": 170.57998657226562,
+    "name": "Parent 17 - Multi purpose ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999602,
       0.5000749263820087,
@@ -31612,17 +31787,19 @@
       0.500682452545223,
       0.5003022949892736,
       0.5000749263819516
-    ],
-    "name": "Parent 17 - Multi purpose ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "201",
     "filename": "201.stl",
     "original_length_m": 28.174999237060547,
+    "name": "Parent 13 - River supply tanker",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999997773389,
       0.4944733960210823,
@@ -31984,17 +32161,19 @@
       0.4837244136473053,
       0.48908191960211683,
       0.49447339611606783
-    ],
-    "name": "Parent 13 - River supply tanker",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "202",
     "filename": "202.stl",
     "original_length_m": 147.86000061035156,
+    "name": "Parent 12 - Reefer",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -32356,17 +32535,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "Parent 12 - Reefer",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "203",
     "filename": "203.stl",
     "original_length_m": 149.15000915527344,
+    "name": "Parent 11 - Ferry ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999873057,
       0.5000720745266403,
@@ -32728,17 +32909,19 @@
       0.5006117824197506,
       0.5002816683567318,
       0.5000720745288981
-    ],
-    "name": "Parent 11 - Ferry ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "204",
     "filename": "204.stl",
     "original_length_m": 212.01599884033203,
+    "name": "Parent 10 - Ro-ro ship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999987027,
       0.5000756242045167,
@@ -33100,17 +33283,19 @@
       0.5006845502557165,
       0.5003036916926491,
       0.500075624204297
-    ],
-    "name": "Parent 10 - Ro-ro ship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "205",
     "filename": "205.stl",
     "original_length_m": 51.178205490112305,
+    "name": "Parent 09 - Sterntrawler",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.499999999999022,
       0.500073838236189,
@@ -33472,17 +33657,19 @@
       0.5006791815103449,
       0.5003001170516734,
       0.5000738382341492
-    ],
-    "name": "Parent 09 - Sterntrawler",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "206",
     "filename": "206.stl",
     "original_length_m": 81.05999755859375,
+    "name": "Parent 08 - Coaster",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999716,
       0.5000759798813176,
@@ -33844,17 +34031,19 @@
       0.5006856194538873,
       0.5003044035876845,
       0.5000759798813628
-    ],
-    "name": "Parent 08 - Coaster",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "207",
     "filename": "207.stl",
     "original_length_m": 63.25399971008301,
+    "name": "Parent 07 - Supplier vessel",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999961113,
       0.4999620855094634,
@@ -34216,17 +34405,19 @@
       0.5002188520404873,
       0.500048381948811,
       0.4999620855179986
-    ],
-    "name": "Parent 07 - Supplier vessel",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "208",
     "filename": "208.stl",
     "original_length_m": 358.8899841308594,
+    "name": "Parent 06 - Crude oil tanker",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -34588,17 +34779,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Parent 06 - Crude oil tanker",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "209",
     "filename": "209.stl",
     "original_length_m": 314.5,
+    "name": "Parent 05 - Containership",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -34960,17 +35153,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "Parent 05 - Containership",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "21",
     "filename": "21.stl",
     "original_length_m": 27.76194667816162,
+    "name": "El Cazador",
+    "designer": "unknown",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.499999999992436,
       0.5000566706354621,
@@ -35332,17 +35527,19 @@
       0.5006275784313835,
       0.5002657571651745,
       0.5000566706202715
-    ],
-    "name": "El Cazador",
-    "type": "unknown",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "210",
     "filename": "210.stl",
     "original_length_m": 288.1680145263672,
+    "name": "Parent 04 - Containership",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -35704,17 +35901,19 @@
       0.48987570920301704,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "Parent 04 - Containership",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "211",
     "filename": "211.stl",
     "original_length_m": 201.55999755859375,
+    "name": "Parent 03 - Bulkcarrier",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.499999999837006,
       0.4983829243752981,
@@ -36076,17 +36275,19 @@
       0.48329106675385275,
       0.4933746919947857,
       0.4983829256604285
-    ],
-    "name": "Parent 03 - Bulkcarrier",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "212",
     "filename": "212.stl",
     "original_length_m": 211.24413299560547,
+    "name": "Parent 02 - Containership",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -36448,17 +36649,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Parent 02 - Containership",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "213",
     "filename": "213.stl",
     "original_length_m": 159.1800994873047,
+    "name": "Parent 01 - Fast cargoship",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -36820,17 +37023,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Parent 01 - Fast cargoship",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "214",
     "filename": "214.stl",
     "original_length_m": 26.22232437133789,
+    "name": "NPL 100A - High speed round bilge displacement hull series",
+    "designer": "NMI (formerly Ship Division NPL)",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -37192,17 +37397,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "NPL 100A - High speed round bilge displacement hull series",
-    "type": "NMI (formerly Ship Division NPL)",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "215",
     "filename": "215.stl",
     "original_length_m": 4.880016326904297,
+    "name": "Notus",
+    "designer": "R.W. Gibson",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999923969477,
       0.4774495469588155,
@@ -37564,17 +37771,19 @@
       0.4377397209003885,
       0.4568184972895231,
       0.4774495321048181
-    ],
-    "name": "Notus",
-    "type": "R.W. Gibson",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "217",
     "filename": "217.stl",
     "original_length_m": 10.926824569702148,
+    "name": "Deep V motorcraft",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -37936,17 +38145,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Deep V motorcraft",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "218",
     "filename": "218.stl",
     "original_length_m": 25.054000854492188,
+    "name": "Motorboat",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -38308,17 +38519,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Motorboat",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "219",
     "filename": "219.stl",
     "original_length_m": 16.80998992919922,
+    "name": "Developable motorboat",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -38680,17 +38893,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Developable motorboat",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "22",
     "filename": "22.stl",
     "original_length_m": 59.445627212524414,
+    "name": "Wappen von Hamburg",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.499999999621609,
       0.4989770972899165,
@@ -39052,17 +39267,19 @@
       0.4973967411403338,
       0.4981097894156459,
       0.4989770964830969
-    ],
-    "name": "Wappen von Hamburg",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "220",
     "filename": "220.stl",
     "original_length_m": 5.2086403369903564,
+    "name": "Modern (1875) Malecite St. John River Canoe",
+    "designer": "Lines collected by Edwin Adney",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.49999998652492367,
       0.4616597413334212,
@@ -39424,17 +39641,19 @@
       0.4005988495918715,
       0.42890193703888574,
       0.46165971967628383
-    ],
-    "name": "Modern (1875) Malecite St. John River Canoe",
-    "type": "Lines collected by Edwin Adney",
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "221",
     "filename": "221.stl",
     "original_length_m": 21.72018051147461,
+    "name": "Mathilde",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -39796,17 +40015,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Mathilde",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "222",
     "filename": "222.stl",
     "original_length_m": 40.6200008392334,
+    "name": "Mary Rose",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -40168,17 +40389,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "Mary Rose",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "223",
     "filename": "223.stl",
     "original_length_m": 8.712993621826172,
+    "name": "M2 JMN (28Pds)",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -40540,17 +40763,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "M2 JMN (28Pds)",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "224",
     "filename": "224.stl",
     "original_length_m": 23.90111541748047,
+    "name": "Luna Rossa (Ita 45) (Spirit of ...)",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000738525177488,
@@ -40912,17 +41137,19 @@
       0.5005274489876236,
       0.5002732009894866,
       0.5000738525167955
-    ],
-    "name": "Luna Rossa (Ita 45) (Spirit of ...)",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "225",
     "filename": "225.stl",
     "original_length_m": 10.415854454040527,
+    "name": "Little America 9m",
+    "designer": "Kiyoshi  Yano",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999995308636,
       0.49975717119300944,
@@ -41284,17 +41511,19 @@
       0.49879900204684763,
       0.4994900225085829,
       0.49975717107361145
-    ],
-    "name": "Little America 9m",
-    "type": "Kiyoshi  Yano",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "226",
     "filename": "226.stl",
     "original_length_m": 6.350019931793213,
+    "name": "Seabrite to fit Garage at Maximum Displacement",
+    "designer": "M. Sanderse",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -41656,17 +41885,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Seabrite to fit Garage at Maximum Displacement",
-    "type": "M. Sanderse",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "227",
     "filename": "227.stl",
     "original_length_m": 4.151374578475952,
+    "name": "Laser open class sailboat",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -42028,17 +42259,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "Laser open class sailboat",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "228",
     "filename": "228.stl",
     "original_length_m": 5.349427700042725,
+    "name": "KittyCat175",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999923707,
       0.5000641756356118,
@@ -42400,17 +42633,19 @@
       0.5006501291397734,
       0.5002807776576566,
       0.500064175620329
-    ],
-    "name": "KittyCat175",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "229",
     "filename": "229.stl",
     "original_length_m": 16.00450038909912,
+    "name": "Kirawan",
+    "designer": "Philip L. Rhodes",
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.49999999999888445,
       0.4995840384970168,
@@ -42772,17 +43007,19 @@
       0.4964479970353666,
       0.4984051974808989,
       0.49958403909427423
-    ],
-    "name": "Kirawan",
-    "type": "Philip L. Rhodes",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "23",
     "filename": "23.stl",
     "original_length_m": 6.068084001541138,
+    "name": "SLOOP-55-M",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -43144,17 +43381,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "SLOOP-55-M",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "231",
     "filename": "231.stl",
     "original_length_m": 5.280677795410156,
+    "name": "Igdlorssuit: Kayak measurements from boat built for Kenneth Taylor",
+    "designer": "Bryan Hansel / Andrey Factor",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.49999999956123187,
       0.4472205740770785,
@@ -43516,17 +43755,19 @@
       0.36922361579144614,
       0.40463140279477433,
       0.4472205744584702
-    ],
-    "name": "Igdlorssuit: Kayak measurements from boat built for Kenneth Taylor",
-    "type": "Bryan Hansel / Andrey Factor",
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "232",
     "filename": "232.stl",
     "original_length_m": 5.042322635650635,
+    "name": "Igdlorssuit",
+    "designer": "Built in Igdlorssuit for Kenneth Taylor in 1959",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.4999999897611626,
       0.443154647452583,
@@ -43888,17 +44129,19 @@
       0.3613361767375795,
       0.39802421782409336,
       0.44315463358006874
-    ],
-    "name": "Igdlorssuit",
-    "type": "Built in Igdlorssuit for Kenneth Taylor in 1959",
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "233",
     "filename": "233.stl",
     "original_length_m": 4.630841493606567,
+    "name": "Guideboat15",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -44260,17 +44503,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Guideboat15",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "234",
     "filename": "234.stl",
     "original_length_m": 5.3357930183410645,
+    "name": "Grean RL1  A kayak based on a s-o-f built by Bryan for Bryan",
+    "designer": "Andrey Factor / Bryan Hansel",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.4999999913903741,
       0.4545962916686295,
@@ -44632,17 +44877,19 @@
       0.3796760888139081,
       0.4149773048748054,
       0.45459627683609566
-    ],
-    "name": "Grean RL1  A kayak based on a s-o-f built by Bryan for Bryan",
-    "type": "Andrey Factor / Bryan Hansel",
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "235",
     "filename": "235.stl",
     "original_length_m": 27.911707878112793,
+    "name": "Demo tug",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -45004,17 +45251,19 @@
       0.5006845842524597,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Demo tug",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "236",
     "filename": "236.stl",
     "original_length_m": 11.869999885559082,
+    "name": "40 sailing yacht",
+    "designer": "Marven",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999995927,
       0.500051679979144,
@@ -45376,17 +45625,19 @@
       0.5000513061408254,
       0.5001157041629534,
       0.5000516799791015
-    ],
-    "name": "40 sailing yacht",
-    "type": "Marven",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "237",
     "filename": "237.stl",
     "original_length_m": 11.869999885559082,
+    "name": "40 sailing yacht",
+    "designer": "Marven",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999889735,
       0.5000563918604292,
@@ -45748,17 +45999,19 @@
       0.5003260643755804,
       0.5001821612059618,
       0.5000563918378405
-    ],
-    "name": "40 sailing yacht",
-    "type": "Marven",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "238",
     "filename": "238.stl",
     "original_length_m": 63.35000038146973,
+    "name": "FREE!ship demo 6",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -46120,17 +46373,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "FREE!ship demo 6",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "239",
     "filename": "239.stl",
     "original_length_m": 174.32550048828125,
+    "name": "FREE!ship demo 5",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -46492,17 +46747,19 @@
       0.5006602045048588,
       0.500298001943871,
       0.5000761640219538
-    ],
-    "name": "FREE!ship demo 5",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "24",
     "filename": "24.stl",
     "original_length_m": 5.079287528991699,
+    "name": "POLYESTER-CABIN",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -46864,17 +47121,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "POLYESTER-CABIN",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "240",
     "filename": "240.stl",
     "original_length_m": 67.69999694824219,
+    "name": "Supplier",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999978954,
       0.5000695933682762,
@@ -47236,17 +47495,19 @@
       0.500666421454579,
       0.5002916209944903,
       0.5000695933642116
-    ],
-    "name": "Supplier",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "241",
     "filename": "241.stl",
     "original_length_m": 130.62740325927734,
+    "name": "120m containership",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -47608,17 +47869,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "120m containership",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "242",
     "filename": "242.stl",
     "original_length_m": 91.73030471801758,
+    "name": "FREE!ship demo 2",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999999234,
       0.5000759689868535,
@@ -47980,17 +48243,19 @@
       0.5006855867040039,
       0.5003043817821206,
       0.5000759689868643
-    ],
-    "name": "FREE!ship demo 2",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "244",
     "filename": "244.stl",
     "original_length_m": 15.239919662475586,
+    "name": "Fishing vessel",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -48352,17 +48617,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Fishing vessel",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "245",
     "filename": "245.stl",
     "original_length_m": 15.990417003631592,
+    "name": "16m-Fahrtenketch",
+    "designer": "Manfred Schlott",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000747692933861,
@@ -48724,17 +48991,19 @@
       0.5004048285918778,
       0.5002375491106005,
       0.5000747693006773
-    ],
-    "name": "16m-Fahrtenketch",
-    "type": "Manfred Schlott",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "246",
     "filename": "246.stl",
     "original_length_m": 9.474185943603516,
+    "name": "Eric",
+    "designer": "William Atkin",
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.4999999920830744,
       0.4867593134602382,
@@ -49096,17 +49365,19 @@
       0.4626049178457002,
       0.4743425392973514,
       0.486759298549378
-    ],
-    "name": "Eric",
-    "type": "William Atkin",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "248",
     "filename": "248.stl",
     "original_length_m": 11.894871711730957,
+    "name": "Eka from Senoren",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -49468,17 +49739,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "Eka from Senoren",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "249",
     "filename": "249.stl",
     "original_length_m": 10.0,
+    "name": "Double_Chine",
+    "designer": "Martin Monteverde_ARGENTINA",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -49840,17 +50113,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Double_Chine",
-    "type": "Martin Monteverde_ARGENTINA",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "25",
     "filename": "25.stl",
     "original_length_m": 9.355982780456543,
+    "name": "Revelry Alden Malabar Junior 599a",
+    "designer": "John Alden",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999981798476,
       0.499709837658333,
@@ -50212,17 +50487,19 @@
       0.49852476272662305,
       0.4992622296981054,
       0.4997098370611645
-    ],
-    "name": "Revelry Alden Malabar Junior 599a",
-    "type": "John Alden",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "251",
     "filename": "251.stl",
     "original_length_m": 5.490065574645996,
+    "name": "Motichine 8",
+    "designer": "Andrey Factor",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.4999999957552251,
       0.46003325889827434,
@@ -50584,17 +50861,19 @@
       0.3949908545201427,
       0.42555473333270954,
       0.4600332526279963
-    ],
-    "name": "Motichine 8",
-    "type": "Andrey Factor",
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "252",
     "filename": "252.stl",
     "original_length_m": 5.8912034034729,
+    "name": "DEFAULT-3b",
+    "designer": "Bryan Hansel",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.49999999449194765,
       0.45238237904057105,
@@ -50956,17 +51235,19 @@
       0.3781747695168569,
       0.4127720579220752,
       0.4523823721074016
-    ],
-    "name": "DEFAULT-3b",
-    "type": "Bryan Hansel",
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "253",
     "filename": "253.stl",
     "original_length_m": 4.572014808654785,
+    "name": "Double ended rowboat after Bolgers Cartoon 5",
+    "designer": "Bruce Hallman",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.4849384256986102,
@@ -51328,17 +51609,19 @@
       0.45271925659293516,
       0.4682473405474842,
       0.4849384189723977
-    ],
-    "name": "Double ended rowboat after Bolgers Cartoon 5",
-    "type": "Bruce Hallman",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "254",
     "filename": "254.stl",
     "original_length_m": 30.76003646850586,
+    "name": "Classe 1 M",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999852,
       0.5000737023619661,
@@ -51700,17 +51983,19 @@
       0.5005539149522105,
       0.5002773456257189,
       0.5000737023606923
-    ],
-    "name": "Classe 1 M",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "257",
     "filename": "257.stl",
     "original_length_m": 4.808716297149658,
+    "name": "Canot Breton",
+    "designer": "Roland Grard",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -52072,17 +52357,19 @@
       0.5006286803763341,
       0.5002966967584449,
       0.5000761640219538
-    ],
-    "name": "Canot Breton",
-    "type": "Roland Grard",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "258",
     "filename": "258.stl",
     "original_length_m": 5.399990081787109,
+    "name": "CANOT540",
+    "designer": "mare25",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -52444,17 +52731,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "CANOT540",
-    "type": "mare25",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "259",
     "filename": "259.stl",
     "original_length_m": 6.777878046035767,
+    "name": "Canoe Yawl",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999998800322726,
       0.4847837338545096,
@@ -52816,17 +53105,19 @@
       0.45721587565119004,
       0.47056235252471496,
       0.48478371068378234
-    ],
-    "name": "Canoe Yawl",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "260",
     "filename": "260.stl",
     "original_length_m": 4.261604309082031,
+    "name": "Raritania",
+    "designer": "W P Stephens",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999087897357,
       0.47637614368811476,
@@ -53188,17 +53479,19 @@
       0.4338315971791637,
       0.4544992390973412,
       0.4763761259833303
-    ],
-    "name": "Raritania",
-    "type": "W P Stephens",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "261",
     "filename": "261.stl",
     "original_length_m": 20.649999618530273,
+    "name": "Camaronero 21 - 21m shrimp trawler",
+    "designer": "Jesus Garcia",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -53560,17 +53853,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "Camaronero 21 - 21m shrimp trawler",
-    "type": "Jesus Garcia",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "262",
     "filename": "262.stl",
     "original_length_m": 161.1729965209961,
+    "name": "Bulkcarrier",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -53932,17 +54227,19 @@
       0.49723337776833143,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Bulkcarrier",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "263",
     "filename": "263.stl",
     "original_length_m": 4.27940559387207,
+    "name": "BrierCreekBoat",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -54304,17 +54601,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "BrierCreekBoat",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "264",
     "filename": "264.stl",
     "original_length_m": 10.071000099182129,
+    "name": "Twin keel yacht",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999874464,
       0.4997203276725579,
@@ -54676,17 +54975,19 @@
       0.4992680327380789,
       0.4995030929611229,
       0.49972032767255786
-    ],
-    "name": "Twin keel yacht",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "265",
     "filename": "265.stl",
     "original_length_m": 9.858579635620117,
+    "name": "Benacus 33 fast",
+    "designer": "Giuseppe Balsamo",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -55048,17 +55349,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Benacus 33 fast",
-    "type": "Giuseppe Balsamo",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "266",
     "filename": "266.stl",
     "original_length_m": 23.83598041534424,
+    "name": "America Cup Class",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -55420,17 +55723,19 @@
       0.498774066413962,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "America Cup Class",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "267",
     "filename": "267.stl",
     "original_length_m": 123.42320251464844,
+    "name": "Model 5415",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999964817,
       0.49985614271188616,
@@ -55792,17 +56097,19 @@
       0.4979096514594454,
       0.4991504665335676,
       0.4998561424514754
-    ],
-    "name": "Model 5415",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "268",
     "filename": "268.stl",
     "original_length_m": 18.288000106811523,
+    "name": "60 Pds JMN",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -56164,17 +56471,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "60 Pds JMN",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "269",
     "filename": "269.stl",
     "original_length_m": 12.298722267150879,
+    "name": "Ocean Cruiser for 2",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.49809013912890593,
@@ -56536,17 +56845,19 @@
       0.4765796017082825,
       0.48702331359482426,
       0.49809012781350137
-    ],
-    "name": "Ocean Cruiser for 2",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "271",
     "filename": "271.stl",
     "original_length_m": 7.953479766845703,
+    "name": "26 Pieds Rule Box",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999925,
       0.5000760972526125,
@@ -56908,17 +57219,19 @@
       0.5006846411952901,
       0.5003043675752302,
       0.5000760972525298
-    ],
-    "name": "26 Pieds Rule Box",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "272",
     "filename": "272.stl",
     "original_length_m": 30.0,
+    "name": "26 meter tug",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -57280,17 +57593,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "26 meter tug",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "274",
     "filename": "274.stl",
     "original_length_m": 3.657139301300049,
+    "name": "12 ft. Sailing Dinghy",
+    "designer": "Bruce Taylor",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -57652,17 +57967,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "12 ft. Sailing Dinghy",
-    "type": "Bruce Taylor",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "275",
     "filename": "275.stl",
     "original_length_m": 11.081015586853027,
+    "name": "11 m. sailing yacht",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999999268,
       0.5000723420344085,
@@ -58024,17 +58341,19 @@
       0.5005832944544205,
       0.5002742961665961,
       0.5000723420369128
-    ],
-    "name": "11 m. sailing yacht",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "276",
     "filename": "276.stl",
     "original_length_m": 11.401418685913086,
+    "name": "11m hull JMN",
+    "designer": "Jean-Marc NOURRY",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999997524,
       0.5000758164583704,
@@ -58396,17 +58715,19 @@
       0.5006772181677133,
       0.5003025372103982,
       0.5000758164586794
-    ],
-    "name": "11m hull JMN",
-    "type": "Jean-Marc NOURRY",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "277",
     "filename": "277.stl",
     "original_length_m": 3.0928142070770264,
+    "name": "Fisher10",
+    "designer": "Steven Lewis",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -58768,17 +59089,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "Fisher10",
-    "type": "Steven Lewis",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "3",
     "filename": "3.stl",
     "original_length_m": 1.2524263858795166,
+    "name": "Pegasus",
+    "designer": "Pier C",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -59140,17 +59463,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Pegasus",
-    "type": "Pier C",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "33",
     "filename": "33.stl",
     "original_length_m": 24.09416675567627,
+    "name": "Pilot Schooner \"GRODEN\"",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999988223,
       0.4996264117403199,
@@ -59512,17 +59837,19 @@
       0.49712029170307653,
       0.4987932569823466,
       0.4996264112234455
-    ],
-    "name": "Pilot Schooner \"GRODEN\"",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "35",
     "filename": "35.stl",
     "original_length_m": 37.41412925720215,
+    "name": "Scuna - Brigantino Goletta",
+    "designer": "Ambrogio Terrizzano",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999995246375,
       0.49998685397799,
@@ -59884,17 +60211,19 @@
       0.4979800734465827,
       0.4994567384185204,
       0.49998685370946305
-    ],
-    "name": "Scuna - Brigantino Goletta",
-    "type": "Ambrogio Terrizzano",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "37",
     "filename": "37.stl",
     "original_length_m": 7.897709846496582,
+    "name": "Planing 01",
+    "designer": "pstylianopoulos",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -60256,17 +60585,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Planing 01",
-    "type": "pstylianopoulos",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "39",
     "filename": "39.stl",
     "original_length_m": 5.2140021324157715,
+    "name": "Whitehall",
+    "designer": "David Telles",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -60628,17 +60959,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "Whitehall",
-    "type": "David Telles",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "40",
     "filename": "40.stl",
     "original_length_m": 5.882354021072388,
+    "name": "Hard chined sailing dinghy",
+    "designer": "Jo Dierickx",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -61000,17 +61333,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Hard chined sailing dinghy",
-    "type": "Jo Dierickx",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "43",
     "filename": "43.stl",
     "original_length_m": 9.611000061035156,
+    "name": "33 ft sailing boat",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -61372,17 +61707,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "33 ft sailing boat",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "44",
     "filename": "44.stl",
     "original_length_m": 5.949999809265137,
+    "name": "Caledonian yawl",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999630213404,
       0.49093456425635157,
@@ -61744,17 +62081,19 @@
       0.4739477827224851,
       0.4823017981600928,
       0.4909345718553968
-    ],
-    "name": "Caledonian yawl",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "45",
     "filename": "45.stl",
     "original_length_m": 16.395219802856445,
+    "name": "Jet services",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 1,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -62116,17 +62455,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Jet services",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 1,
-    "is_solid": 0
+    ]
   },
   {
     "id": "46",
     "filename": "46.stl",
     "original_length_m": 4.644339203834534,
+    "name": "Dolphin",
+    "designer": "Ken Swan",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -62488,17 +62829,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Dolphin",
-    "type": "Ken Swan",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "5",
     "filename": "5.stl",
     "original_length_m": 115.0,
+    "name": "Destroyer Class Tribal",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.4999999999423556,
       0.49943815288732235,
@@ -62860,17 +63203,19 @@
       0.4840180821288709,
       0.49539298233417867,
       0.49943815273852293
-    ],
-    "name": "Destroyer Class Tribal",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "51",
     "filename": "51.stl",
     "original_length_m": 337.0032958984375,
+    "name": "VLCS  COLOMBO EXPRESS Class",
+    "designer": "Hyundai Heavy Industries Co. Ltd. Ulsan, 2006",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -63232,17 +63577,19 @@
       0.5006861729989605,
       0.5003047721494109,
       0.5000761640219538
-    ],
-    "name": "VLCS  COLOMBO EXPRESS Class",
-    "type": "Hyundai Heavy Industries Co. Ltd. Ulsan, 2006",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "52",
     "filename": "52.stl",
     "original_length_m": 285.7005920410156,
+    "name": "MS Bremen",
+    "designer": "Anton Rudolph",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999322504,
       0.4954702034718747,
@@ -63604,17 +63951,19 @@
       0.47152452988224947,
       0.4861610591177521,
       0.49547020216440574
-    ],
-    "name": "MS Bremen",
-    "type": "Anton Rudolph",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "56",
     "filename": "56.stl",
     "original_length_m": 10.059645175933838,
+    "name": "Stortebeker III",
+    "designer": "Abeking & Rasmussen",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999997472023,
       0.4993731664867426,
@@ -63976,17 +64325,19 @@
       0.4966321439997765,
       0.4980957158051166,
       0.4993731675046798
-    ],
-    "name": "Stortebeker III",
-    "type": "Abeking & Rasmussen",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "58",
     "filename": "58.stl",
     "original_length_m": 4.999971151351929,
+    "name": "snipa as workboat from figeholm sweden",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.49424989423812654,
@@ -64348,17 +64699,19 @@
       0.46922182419417535,
       0.4813374650956086,
       0.49424990205902847
-    ],
-    "name": "snipa as workboat from figeholm sweden",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "59",
     "filename": "59.stl",
     "original_length_m": 16.0,
+    "name": "s spant 1600",
+    "designer": "Michiel Bonke",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.499999999848406,
       0.4995177610676443,
@@ -64720,17 +65073,19 @@
       0.49613127286837555,
       0.498547362025092,
       0.49951776154162547
-    ],
-    "name": "s spant 1600",
-    "type": "Michiel Bonke",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "6",
     "filename": "6.stl",
     "original_length_m": 3.1995514631271362,
+    "name": "Gig-10ft-6-final-final",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999958891,
       0.5000428550196405,
@@ -65092,17 +65447,19 @@
       0.5004837114169288,
       0.5002122476249395,
       0.5000428550285219
-    ],
-    "name": "Gig-10ft-6-final-final",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "64",
     "filename": "64.stl",
     "original_length_m": 10.395957946777344,
+    "name": "Sparkman & Stephens 6 M",
+    "designer": "Olin Stephens",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.4997789561275953,
@@ -65464,17 +65821,19 @@
       0.48432608182220344,
       0.49772890695236105,
       0.4997789565582046
-    ],
-    "name": "Sparkman & Stephens 6 M",
-    "type": "Olin Stephens",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "65",
     "filename": "65.stl",
     "original_length_m": 18.5,
+    "name": "River Push boat 18,5m,1300hp",
+    "designer": "Razmik Baharyan",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -65836,17 +66195,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "River Push boat 18,5m,1300hp",
-    "type": "Razmik Baharyan",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "66",
     "filename": "66.stl",
     "original_length_m": 55.0,
+    "name": "Wave Piercing Catamaran JCM-001",
+    "designer": "Jesus Cruz Mayora",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -66208,17 +66569,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Wave Piercing Catamaran JCM-001",
-    "type": "Jesus Cruz Mayora",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "68",
     "filename": "68.stl",
     "original_length_m": 16.200000286102295,
+    "name": "Multihull Houseboat",
+    "designer": "Marius Liebenberg",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -66580,17 +66943,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "Multihull Houseboat",
-    "type": "Marius Liebenberg",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "70",
     "filename": "70.stl",
     "original_length_m": 37.750173568725586,
+    "name": "Push boat 3150 hp - Project 592A",
+    "designer": "Shipbuilding Institute in Rousse sity - Bulgaria",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -66952,17 +67317,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219539
-    ],
-    "name": "Push boat 3150 hp - Project 592A",
-    "type": "Shipbuilding Institute in Rousse sity - Bulgaria",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "71",
     "filename": "71.stl",
     "original_length_m": 9.364948749542236,
+    "name": "Sheperd",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999992594613,
       0.49858495014328597,
@@ -67324,17 +67691,19 @@
       0.49545060080767966,
       0.49715984673244534,
       0.4985849484365115
-    ],
-    "name": "Sheperd",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "72",
     "filename": "72.stl",
     "original_length_m": 4.2994279861450195,
+    "name": "TRL_4_3m_50hp",
+    "designer": "D.A.Kurbatov",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999998089,
       0.5000759127507592,
@@ -67696,17 +68065,19 @@
       0.5006854176536251,
       0.5003042692248916,
       0.5000759127511464
-    ],
-    "name": "TRL_4_3m_50hp",
-    "type": "D.A.Kurbatov",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "74",
     "filename": "74.stl",
     "original_length_m": 37.49052429199219,
+    "name": "123.0ft (37.5m) Planing Hull Project",
+    "designer": "Jeffry Fontaine",
+    "is_hull": 1,
+    "is_solid": 1,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 0,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -68068,17 +68439,19 @@
       0.5006861729989605,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "123.0ft (37.5m) Planing Hull Project",
-    "type": "Jeffry Fontaine",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 1
+    ]
   },
   {
     "id": "77",
     "filename": "77.stl",
     "original_length_m": 74.55000305175781,
+    "name": "Smit Rotterdam",
+    "designer": "IHC Merwede BV",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -68440,17 +68813,19 @@
       0.49998339432189004,
       0.500198810494564,
       0.5000761640219539
-    ],
-    "name": "Smit Rotterdam",
-    "type": "IHC Merwede BV",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "81",
     "filename": "81.stl",
     "original_length_m": 10.960624694824219,
+    "name": "SAIL-1",
+    "designer": "GV",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999187723,
       0.4999100558873627,
@@ -68812,17 +69187,19 @@
       0.5001871399376558,
       0.4999724014121382,
       0.49991005573211117
-    ],
-    "name": "SAIL-1",
-    "type": "GV",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "82",
     "filename": "82.stl",
     "original_length_m": 13.22291612625122,
+    "name": "LE 17",
+    "designer": "Michiel Bonke",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.49846536754843274,
@@ -69184,17 +69561,19 @@
       0.4934573586898824,
       0.4958731869060457,
       0.4984653703168675
-    ],
-    "name": "LE 17",
-    "type": "Michiel Bonke",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "85",
     "filename": "85.stl",
     "original_length_m": 12.87986421585083,
+    "name": "Zeeschouw 1200",
+    "designer": "Michiel Bonke",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999479433,
       0.4948783953767691,
@@ -69556,17 +69935,19 @@
       0.48269285038233783,
       0.48863524414138,
       0.49487839797349537
-    ],
-    "name": "Zeeschouw 1200",
-    "type": "Michiel Bonke",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "87",
     "filename": "87.stl",
     "original_length_m": 4.476384282112122,
+    "name": "Blackwater 15",
+    "designer": "Chris Harris",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999999593163,
       0.499977395059776,
@@ -69928,17 +70309,19 @@
       0.5003496490252761,
       0.500097128996571,
       0.49997739498427995
-    ],
-    "name": "Blackwater 15",
-    "type": "Chris Harris",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "88",
     "filename": "88.stl",
     "original_length_m": 4.570017576217651,
+    "name": "3.5m Grand Banks Dory",
+    "designer": "Phil Nelson",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219538,
@@ -70300,17 +70683,19 @@
       0.5006861729989606,
       0.5003047721494108,
       0.5000761640219538
-    ],
-    "name": "3.5m Grand Banks Dory",
-    "type": "Phil Nelson",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "91",
     "filename": "91.stl",
     "original_length_m": 6.652926445007324,
+    "name": "Blue moon",
+    "designer": NaN,
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.5,
       0.5000761640219539,
@@ -70672,17 +71057,19 @@
       0.5006861729989606,
       0.5003047721494109,
       0.5000761640219539
-    ],
-    "name": "Blue moon",
-    "type": NaN,
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "93",
     "filename": "93.stl",
     "original_length_m": 14.06175184249878,
+    "name": "M/Y INDEPENDANCE",
+    "designer": "CG Pettersson 1911, rudder &  prop  J. Sass 2007",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.4999999976610752,
       0.4940867530315007,
@@ -71044,17 +71431,19 @@
       0.4831030811377317,
       0.48845878018209427,
       0.49408674818492876
-    ],
-    "name": "M/Y INDEPENDANCE",
-    "type": "CG Pettersson 1911, rudder &  prop  J. Sass 2007",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   },
   {
     "id": "97",
     "filename": "97.stl",
     "original_length_m": 6.531142950057983,
+    "name": "Hard chined outboard powered dayboat",
+    "designer": "David Telles",
+    "is_hull": 1,
+    "is_solid": 0,
+    "is_boat": 1,
+    "is_kayak": 0,
+    "must_be_closed": 1,
     "radii": [
       0.49999999999926237,
       0.5000687366309945,
@@ -71416,11 +71805,6 @@
       0.5005300016436878,
       0.5002558606293607,
       0.5000687366211056
-    ],
-    "name": "Hard chined outboard powered dayboat",
-    "type": "David Telles",
-    "is_boat": 1,
-    "is_kayak": 0,
-    "is_solid": 0
+    ]
   }
 ]

@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List
 
 from dataclasses import dataclass, field
 
@@ -7,9 +7,22 @@ from src.utils.tools import cart2pol, pol2cart, ssa
 from src.states.states import State_PCA
 
 @dataclass
+class TrajectoryConfig:
+    type: str = "linear"  # "linear", "circle", "waypoints"
+    speed: float = 3.0
+    
+    # For Circle
+    center: Tuple[float, float] = (30.0, 0.0) # E.g., circle around LiDAR
+    radius: float = 40.0
+    
+    # For Waypoints
+    waypoints: List[Tuple[float, float]] = field(default_factory=lambda: [
+        (0, -40), (0, 40), (60, 40), (60, -40)
+    ])
+
+@dataclass
 class SimulationConfig:
     name: str = "default_simulation"
-    # method : str = "iekf"
 
     num_simulations: int = 1
     num_frames: int = 100
@@ -18,6 +31,7 @@ class SimulationConfig:
 
     gt_yaw_rate_std_dev: float = 0.1
     initial_state_gt: State_PCA = None
+    trajectory: TrajectoryConfig = field(default_factory=TrajectoryConfig)
 
 @dataclass
 class ExtentConfig:

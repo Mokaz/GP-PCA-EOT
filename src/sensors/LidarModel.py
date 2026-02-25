@@ -72,6 +72,9 @@ class LidarMeasurementModel(SensorModel[Sequence[LidarScan]]):
         L = x[6]
         W = x[7]
 
+        if len(body_angles) == 0:
+            return np.zeros((0, x.shape[0]))
+
         # Normalize the angles
         normalized_angles = np.arctan2(np.sin(body_angles) / W, np.cos(body_angles) / L)
 
@@ -306,8 +309,18 @@ class LidarSimulator(SensorModel[Sequence[LidarScan]]):
             x_gt, self.extent_cfg.shape_coords_body
         )
 
-        polar_measurements = np.array(self.simulate_lidar_measurements(shape_x_coords, shape_y_coords))
+        polar_measurements_list = self.simulate_lidar_measurements(shape_x_coords, shape_y_coords)
+        
+        # Handle empty measurements
+        if not polar_measurements_list:
+             polar_measurements = np.zeros((0, 2))
+        else:
+             polar_measurements = np.array(polar_measurements_list)
+
         assert polar_measurements.shape[1] == 2, "Expected polar_measurements to have shape (N, 2)"
+
+        if polar_measurements.shape[0] == 0:
+             return LidarScan(x=np.array([]), y=np.array([]))
 
         x_coords, y_coords = pol2cart(polar_measurements[:, 0], polar_measurements[:, 1])
         

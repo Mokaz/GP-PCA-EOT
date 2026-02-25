@@ -1,0 +1,94 @@
+import numpy as np
+from abc import ABC, abstractmethod
+from typing import List, Tuple
+from src.utils.tools import ssa
+
+class TrajectoryStrategy(ABC):
+    @abstractmethod
+    def get_controls(self, current_state, dt: float) -> Tuple[float, float]:
+        """
+        Returns (target_speed, target_yaw_rate) based on current state.
+        """
+        pass
+
+class ConstantVelocityTrajectory(TrajectoryStrategy):
+    """Original behavior: maintain initial velocity, zero turn rate (plus noise)"""
+    def get_controls(self, current_state, dt: float) -> Tuple[float, float]:
+        speed = np.hypot(current_state.vel_x, current_state.vel_y)
+        return speed, 0.0
+
+class CircleTrajectory(TrajectoryStrategy):
+    """
+    Orbits a specific point (center_x, center_y).
+    This ensures the boat shows different aspects to the sensor.
+    """
+    def __init__(self, center: Tuple[float, float], target_speed: float, radius: float = None, clockwise: bool = True):
+        self.center = np.array(center)
+        self.target_speed = target_speed
+        self.clockwise = clockwise
+        self.radius = radius # If None, maintains current radius
+        
+        # Simple P-controller gain for radius correction
+        self.Kp = 0.5 
+
+    def get_controls(self, current_state, dt: float) -> Tuple[float, float]:
+        # Vector from center to ship
+        dp = np.array([current_state.x, current_state.y]) - self.center
+        dist = np.linalg.norm(dp)
+        
+        # Desired heading: Tangent to the circle
+        # Angle of the position vector
+        angle_to_ship = np.arctan2(dp[1], dp[0])
+        
+        # Tangent angle (add/sub 90 degrees)
+        offset = -np.pi/2 if self.clockwise else np.pi/2
+        desired_heading = ssa(angle_to_ship + offset)
+        
+        # Radial correction: If we drifted out, turn in slightly
+        if self.radius is not None:
+            err_r = dist - self.radius
+            # If too far out, turn towards center. If too close, turn away.
+            # Correction angle
+            correction = np.arctan(self.Kp * err_r) * (1 if self.clockwise else -1)
+            desired_heading = ssa(desired_heading + correction)
+
+        # Calculate Yaw Rate to achieve desired heading
+        # Simple P-controller for steering
+        heading_error = ssa(desired_heading - current_state.yaw)
+        target_yaw_rate = 2.0 * heading_error 
+
+        return self.target_speed, target_yaw_rate
+
+class WaypointTrajectory(TrajectoryStrategy):
+    """Follows a list of (x, y) waypoints using Line-of-Sight."""
+    def __init__(self, waypoints: List[Tuple[float, float]], target_speed: float, acceptance_radius: float = 5.0):
+        self.waypoints = waypoints
+        self.target_speed = target_speed
+        self.acceptance_radius = acceptance_radius
+        self.current_idx = 0
+        self.loop = True
+
+    def get_controls(self, current_state, dt: float) -> Tuple[float, float]:
+        if self.current_idx >= len(self.waypoints):
+            return 0.0, 0.0 # Stop
+
+        target = np.array(self.waypoints[self.current_idx])
+        pos = np.array([current_state.x, current_state.y])
+        
+        dist = np.linalg.norm(target - pos)
+        
+        # Check if reached
+        if dist < self.acceptance_radius:
+            self.current_idx += 1
+            if self.loop and self.current_idx >= len(self.waypoints):
+                self.current_idx = 0
+            return self.get_controls(current_state, dt)
+
+        # LOS Guidance
+        desired_heading = np.arctan2(target[1] - pos[1], target[0] - pos[0])
+        heading_error = ssa(desired_heading - current_state.yaw)
+        
+        # P-Controller for yaw rate
+        target_yaw_rate = 1.5 * heading_error
+        
+        return self.target_speed, target_yaw_rate
