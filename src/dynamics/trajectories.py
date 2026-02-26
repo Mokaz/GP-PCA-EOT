@@ -32,22 +32,17 @@ class CircleTrajectory(TrajectoryStrategy):
         self.Kp = 0.5 
 
     def compute_velocity_commands(self, current_state, dt: float) -> Tuple[float, float]:
-        # Vector from center to ship
+        # Ship position relative to Center:
         dp = np.array([current_state.x, current_state.y]) - self.center
         dist = np.linalg.norm(dp)
-        
-        # Desired heading: Tangent to the circle
-        # Angle of the position vector
-        angle_to_ship = np.arctan2(dp[1], dp[0])
-        
-        # Tangent angle (add/sub 90 degrees)
-        offset = -np.pi/2 if self.clockwise else np.pi/2
+        angle_to_ship = np.arctan2(dp[1], dp[0]) 
+
+        offset = np.pi/2 if self.clockwise else -np.pi/2
         desired_heading = ssa(angle_to_ship + offset)
         
         # Radial correction: If we drifted out, turn in slightly
         if self.radius is not None:
             err_r = dist - self.radius
-            # If too far out, turn towards center. If too close, turn away.
             # Correction angle
             correction = np.arctan(self.Kp * err_r) * (1 if self.clockwise else -1)
             desired_heading = ssa(desired_heading + correction)

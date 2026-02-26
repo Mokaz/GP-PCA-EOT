@@ -170,10 +170,6 @@ class GroundTruthModel(DynamicModel):
     
     trajectory_strategy: TrajectoryStrategy = field(default=None, repr=False)
 
-    def __post_init__(self):
-        if self.trajectory_strategy is None:
-            self.trajectory_strategy = ConstantVelocityTrajectory()
-
     def step_simulation(self, x: State_PCA, dt: float) -> State_PCA:
         new_state = x.copy()
 

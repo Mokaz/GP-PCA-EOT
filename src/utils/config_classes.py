@@ -14,6 +14,7 @@ class TrajectoryConfig:
     # For Circle
     center: Tuple[float, float] = (30.0, 0.0) # E.g., circle around LiDAR
     radius: float = 40.0
+    clockwise: bool = True
     
     # For Waypoints
     waypoints: List[Tuple[float, float]] = field(default_factory=lambda: [

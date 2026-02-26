@@ -17,19 +17,49 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 from global_project_paths import SIMDATA_PATH
-from src.utils.config_classes import TrackerConfig, SimulationConfig, Config, ExtentConfig, LidarConfig
+from src.utils.config_classes import TrackerConfig, SimulationConfig, Config, ExtentConfig, LidarConfig, TrajectoryConfig, TrajectoryConfig
 from src.states.states import State_GP, State_PCA
 
 from src.experiment_runner import run_single_simulation
 from src.utils import SimulationResult
 
-def get_common_configs(N_pca=4):
+def get_common_configs(traj_type="circle", N_pca=4):
     """Returns configs shared by all methods (Sim, Lidar, Extent)."""
 
+    if traj_type == "circle":
+        trajectory = TrajectoryConfig(
+            type="circle",   
+            center=(30.0, 0.0),
+            radius=30.0,
+            speed=5.0,
+            clockwise=False
+        )
+        # Start at (0,0) facing North (pi/2) for CCW orbit around (30,0) with radius 30
+        start_x, start_y, start_yaw = 0.0, 0.0, np.pi/2
+
+    elif traj_type == "linear":
+        trajectory = TrajectoryConfig(
+            type="linear",
+            speed=5.0
+        )
+        # Linear starting south
+        start_x, start_y, start_yaw = 0.0, -40.0, np.pi/2
+    
+    elif traj_type == "waypoints":
+        trajectory = TrajectoryConfig(
+            type="waypoints",
+            speed=5.0,
+            waypoints=[(0, -40), (0, 40), (60, 40), (60, -40)]
+        )
+        start_x, start_y, start_yaw = 0.0, -40.0, np.pi/2
+        
+    else:
+        raise ValueError(f"Unknown trajectory type: {traj_type}")
+
     initial_state_gt = State_PCA(
-        x=0.0,          # North position
-        y=-40.0,        # East position
-        yaw=np.pi / 2,  # Heading angle
+        x=start_x,      # North position
+        y=start_y,      # East position
+        yaw=start_yaw,  # Heading angle
         vel_x=0.0,      # North Velocity
         vel_y=3.0,      # East Velocity
         yaw_rate=0.0,   # Yaw Rate
@@ -41,31 +71,19 @@ def get_common_configs(N_pca=4):
     sim_config = SimulationConfig(
         name = "",
         num_simulations=1,
-        num_frames=500,
+        num_frames=300,
         dt=0.1,
         seed=42,
         initial_state_gt=initial_state_gt,
+        gt_yaw_rate_std_dev= 0.1 if traj_type == "linear" else 0.0, # More noise for linear to prevent perfect straight line
+        trajectory=trajectory
     )
-
-    # sim_config.trajectory.type = "linear" # "linear", "circle", "waypoints"
-    # Configure orbit
-    sim_config.trajectory.type = "circle"
-    sim_config.trajectory.center = (30.0, 0.0) # LiDAR pos
-    sim_config.trajectory.radius = 30.0        # Orbit at 40m distance
-    sim_config.trajectory.speed = 5.0          
-
-    # Ensure initial state matches the start of the trajectory to avoid "snap"
-    # Starting at (30+40, 0) -> (70, 0) facing North (pi/2) for CCW orbit
-    initial_state_gt.x = 0.0
-    initial_state_gt.y = 0.0
-    initial_state_gt.yaw = np.pi / 2
 
     # LiDAR Parameters
     lidar_config = LidarConfig(
         lidar_position=(30.0, 0.0),
         num_rays=360,
         max_distance=140.0,
-        lidar_gt_mean=0.0,# NOTE: Currently unused
         lidar_gt_std_dev=0.0,
     )
 
@@ -85,15 +103,15 @@ def get_common_configs(N_pca=4):
     )
     return sim_config, lidar_config, extent_config
 
-def get_pca_tracker_config(lidar_pos, N_pca=4):
+def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
     """Returns TrackerConfig for PCA methods (EKF, IEKF, BFGS)."""
     # Tracker Config & Initial State
     initial_state_tracker = State_PCA(
-        x=0.0,          # North position
-        y=-40.0,        # East position
-        yaw=np.pi / 2,  # Heading angle
-        vel_x=0.0,      # North Velocity
-        vel_y=3.0,      # East Velocity
+        x=initial_state_gt.x,
+        y=initial_state_gt.y,
+        yaw=initial_state_gt.yaw,
+        vel_x=initial_state_gt.vel_x, 
+        vel_y=initial_state_gt.vel_y, # Start with perfect velocity? or 0? 
         yaw_rate=0.0,   # Yaw Rate
         length=20.0,    # Length
         width=6.0,      # Width
@@ -124,14 +142,19 @@ def get_pca_tracker_config(lidar_pos, N_pca=4):
     )
     return tracker_config
 
-def get_gp_tracker_config(lidar_pos, N_gp=20):
+def get_gp_tracker_config(lidar_pos, initial_state_gt, N_gp=20):
     """Returns TrackerConfig for GP methods."""
     
     # Initialize radii (circle of radius 10 m)
     initial_radii = np.ones(N_gp) * 10.0
     
     initial_state_tracker = State_GP(
-        x=0.0, y=-40.0, yaw=np.pi / 2, vel_x=0.0, vel_y=3.0, yaw_rate=0.0,
+        x=initial_state_gt.x, 
+        y=initial_state_gt.y, 
+        yaw=initial_state_gt.yaw, 
+        vel_x=initial_state_gt.vel_x, 
+        vel_y=initial_state_gt.vel_y, 
+        yaw_rate=0.0,
         radii=initial_radii
     )
 
@@ -163,25 +186,27 @@ def get_gp_tracker_config(lidar_pos, N_gp=20):
 if __name__ == "__main__":
     GENERATE_PLOTLY_HTML = False
     CONSISTENCY_ANALYSIS = False
-    LOAD_SIM_RESULT = False # TODO: ONLY USES CONFIG FOR ID GENERATION FOR NOW
-
+    
     N_pca = 4
     N_gp = 20
 
-    # Load base configs
-    sim_base, lidar_base, extent_base = get_common_configs(N_pca)
+    # --- SCENARIO SELECTION ---
+    # selected_trajectory = "linear"
+    # selected_trajectory = "circle"
+    selected_trajectory = "waypoints"
 
-    # method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
+    # Load base configs
+    sim_base, lidar_base, extent_base = get_common_configs(traj_type=selected_trajectory, N_pca=N_pca)
+
     method_list = ["ekf"]
-    # method_list = ["implicit_iekf"]
 
     for method in method_list:
         print(f"--- Setting up for method: {method} ---")
 
         if "gp" in method:
-            tracker_cfg = get_gp_tracker_config(lidar_base.lidar_position, N_gp)
+            tracker_cfg = get_gp_tracker_config(lidar_base.lidar_position, sim_base.initial_state_gt, N_gp)
         else:
-            tracker_cfg = get_pca_tracker_config(lidar_base.lidar_position, N_pca)
+            tracker_cfg = get_pca_tracker_config(lidar_base.lidar_position, sim_base.initial_state_gt, N_pca)
             
             # --- Process Model Selection ---
             # Options: 'cv' (Constant Velocity), 'temporal' (OU Process), 'inflation' (Covariance Inflation)
@@ -193,14 +218,14 @@ if __name__ == "__main__":
 
         # Create a unique name for this simulation configuration
         id_number = crc32(repr(config).encode())
-        config.sim.name = f"{config.sim.trajectory.type}_{method}_seed_{config.sim.seed}"
+        config.sim.name = f"A_{config.sim.trajectory.type}_{method}_seed_{config.sim.seed}"
 
         filename = f"{config.sim.name}.pkl"
         pickle_path = Path(SIMDATA_PATH) / filename
 
-        if pickle_path.exists() and LOAD_SIM_RESULT:
-            print(f"Loading existing result: {filename}")
-            with open(pickle_path, "rb") as f:
-                sim_result: SimulationResult = pickle.load(f)
-        else:
-            sim_result = run_single_simulation(config=config, method=method)
+        # if pickle_path.exists() and LOAD_SIM_RESULT:
+        #     print(f"Loading existing result: {filename}")
+        #     with open(pickle_path, "rb") as f:
+        #         sim_result: SimulationResult = pickle.load(f)
+        # else:
+        sim_result = run_single_simulation(config=config, method=method)

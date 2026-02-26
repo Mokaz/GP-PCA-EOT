@@ -55,11 +55,14 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
     rng = np.random.default_rng(seed=sim_cfg.seed)
 
     traj_cfg = sim_cfg.trajectory
-    if traj_cfg.type == "circle":
+    if traj_cfg.type == "linear":
+        trajectory_strategy = ConstantVelocityTrajectory()
+    elif traj_cfg.type == "circle":
         trajectory_strategy = CircleTrajectory(
             center=traj_cfg.center,
             target_speed=traj_cfg.speed,
-            radius=traj_cfg.radius
+            radius=traj_cfg.radius,
+            clockwise=traj_cfg.clockwise
         )
     elif traj_cfg.type == "waypoints":
         trajectory_strategy = WaypointTrajectory(
@@ -67,7 +70,7 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
             target_speed=traj_cfg.speed
         )
     else:
-        trajectory_strategy = ConstantVelocityTrajectory()
+        raise ValueError(f"Unknown trajectory type: {traj_cfg.type}")
 
     gt_dynamic_model = GroundTruthModel(
         rng=rng, 
@@ -75,55 +78,57 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
         trajectory_strategy=trajectory_strategy
     )
 
-    gt_dynamic_model = GroundTruthModel(rng=rng, yaw_rate_std_dev=sim_cfg.gt_yaw_rate_std_dev)
-
     if method == "gp_iekf":
-        # 1. Initialize GP Math Utils
-        gp_utils = GaussianProcess(
-            n_test_points=tracker_cfg.N_gp_points, 
-            length_scale=tracker_cfg.gp_length_scale,
-            signal_var=tracker_cfg.gp_signal_var,
-            symmetric=True
-        )
+        exit("GP-IEKF currently disabled")
+        # NOTE GP disabled for now
 
-        # 2. Initialize GP Process Model
-        filter_dyn_model = Model_GP_CV(
-            gp_utils=gp_utils,
-            x_pos_std_dev=tracker_cfg.pos_north_std_dev,
-            y_pos_std_dev=tracker_cfg.pos_east_std_dev,
-            yaw_std_dev=tracker_cfg.heading_std_dev,
-            forgetting_factor=tracker_cfg.gp_forgetting_factor
-        )
+        # # 1. Initialize GP Math Utils
+        # gp_utils = GaussianProcess(
+        #     n_test_points=tracker_cfg.N_gp_points, 
+        #     length_scale=tracker_cfg.gp_length_scale,
+        #     signal_var=tracker_cfg.gp_signal_var,
+        #     symmetric=True
+        # )
 
-        # 3. Initialize GP Sensor Model
-        lidar_model = LidarModelGP(
-            lidar_position=np.array(lidar_cfg.lidar_position),
-            num_rays=lidar_cfg.num_rays,
-            max_distance=lidar_cfg.max_distance,
-            lidar_gt_std_dev=lidar_cfg.lidar_gt_std_dev,
-            lidar_std_dev=tracker_cfg.lidar_std_dev, # Use tracker config for noise
-            gp_utils=gp_utils,
-            rng=rng,
-            shape_coords_body=extent_cfg.shape_coords_body # Needed for GT generation
-        )
+        # # 2. Initialize GP Process Model
+        # filter_dyn_model = Model_GP_CV(
+        #     gp_utils=gp_utils,
+        #     x_pos_std_dev=tracker_cfg.pos_north_std_dev,
+        #     y_pos_std_dev=tracker_cfg.pos_east_std_dev,
+        #     yaw_std_dev=tracker_cfg.heading_std_dev,
+        #     forgetting_factor=tracker_cfg.gp_forgetting_factor
+        # )
 
-        # 4. Initialize GP Tracker
-        tracker = GP_IEKF(
-            dynamic_model=filter_dyn_model, 
-            lidar_model=lidar_model, 
-            config=config,
-            use_negative_info=tracker_cfg.gp_use_negative_info
-        )
+        # # 3. Initialize GP Sensor Model
+        # lidar_model = LidarModelGP(
+        #     lidar_position=np.array(lidar_cfg.lidar_position),
+        #     num_rays=lidar_cfg.num_rays,
+        #     max_distance=lidar_cfg.max_distance,
+        #     lidar_gt_std_dev=lidar_cfg.lidar_gt_std_dev,
+        #     lidar_std_dev=tracker_cfg.lidar_std_dev, # Use tracker config for noise
+        #     gp_utils=gp_utils,
+        #     rng=rng,
+        #     shape_coords_body=extent_cfg.shape_coords_body # Needed for GT generation
+        # )
 
-        simulator = Simulator(
-            dynamic_model=gt_dynamic_model,
-            sensor_model=lidar_model, # TODO: Separate GT and filter sensor models for GP too
-            sensor_setter=None,
-            init_state=sim_cfg.initial_state_gt,
-            dt=sim_cfg.dt,
-            end_time=sim_cfg.num_frames * sim_cfg.dt,
-            seed=str(sim_cfg.seed)
-        )
+        # # 4. Initialize GP Tracker
+        # tracker = GP_IEKF(
+        #     dynamic_model=filter_dyn_model, 
+        #     lidar_model=lidar_model, 
+        #     config=config,
+        #     use_negative_info=tracker_cfg.gp_use_negative_info
+        # )
+
+        # simulator = Simulator(
+        #     dynamic_model=gt_dynamic_model,
+        #     sensor_model=lidar_model, # TODO: Separate GT and filter sensor models for GP too
+        #     sensor_setter=None,
+        #     init_state=sim_cfg.initial_state_gt,
+        #     dt=sim_cfg.dt,
+        #     end_time=sim_cfg.num_frames * sim_cfg.dt,
+        #     seed=str(sim_cfg.seed),
+        #     use_cache=False
+        # )
 
     else:
         common_kwargs = dict(
@@ -188,12 +193,73 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
             init_state=sim_cfg.initial_state_gt,
             dt=sim_cfg.dt,
             end_time=sim_cfg.num_frames * sim_cfg.dt,
-            seed=str(sim_cfg.seed)
+            seed=str(sim_cfg.seed),
+            use_cache=False
         )
 
     # --- Generate Simulation Data ---
     print(f"Generating simulation data for {sim_cfg.num_frames} frames...")
     ground_truth_ts = simulator.get_gt()
+    
+    DEBUG = True
+    # DEBUG: Plot GT Trajectory
+    if DEBUG:
+        ts_values = list(ground_truth_ts.values)
+        # NED Frame: x is North, y is East.
+        # We want North on Y-axis (vertical) and East on X-axis (horizontal).
+        # So Plot X = state.y (East), Plot Y = state.x (North)
+        
+        east_vals = [state.y for state in ts_values]
+        north_vals = [state.x for state in ts_values]
+        
+        p = figure(title="Debug: Ground Truth Trajectory with Vessel Extent", 
+                   x_axis_label='East (y)', y_axis_label='North (x)',
+                   match_aspect=True, width=800, height=800)
+
+        # Plot Trajectory
+        p.line(east_vals, north_vals, legend_label="GT Path", line_width=2, color="blue")
+        p.circle(east_vals, north_vals, size=4, color="blue", alpha=0.5)
+
+        # Start/End markers
+        p.scatter([east_vals[0]], [north_vals[0]], size=10, color="green", legend_label="Start")
+        p.scatter([east_vals[-1]], [north_vals[-1]], size=10, color="red", legend_label="End")
+
+        # Plot Center of Trajectory (if circle)
+        if traj_cfg.type == "circle":
+            center_north, center_east = traj_cfg.center
+            p.scatter([center_east], [center_north], size=10, color="orange", marker="cross", legend_label="Traj Center")
+
+        # Plot Waypoints (if waypoints)
+        if traj_cfg.type == "waypoints" and hasattr(traj_cfg, 'waypoints'):
+            wp_north = [wp[0] for wp in traj_cfg.waypoints]
+            wp_east = [wp[1] for wp in traj_cfg.waypoints]
+            p.scatter(wp_east, wp_north, size=10, color="purple", marker="triangle", legend_label="Waypoints")
+            # Connect waypoints with a dashed line to show intended path
+            p.line(wp_east, wp_north, line_color="purple", line_dash="dashed", line_width=1, alpha=0.5)
+
+        # Plot Lidar Position
+        lidar_north, lidar_east = lidar_cfg.lidar_position
+        p.scatter([lidar_east], [lidar_north], size=15, color="orange", marker="triangle", legend_label="Lidar")
+
+        # Plot vessel extent every 20 frames
+        for i in range(0, len(ts_values), 20):
+            state = ts_values[i]
+            shape_x, shape_y = compute_exact_vessel_shape_global(state, extent_cfg.shape_coords_body)
+            # shape_x is North, shape_y is East. Plot (East, North) -> (shape_y, shape_x)
+            p.line(shape_y, shape_x, line_color="black", line_width=1, line_alpha=0.5)
+
+        p.legend.location = "top_left"
+        p.legend.click_policy = "hide"
+        
+        # Open in browser
+        import webbrowser
+        from bokeh.io import show
+        # If running in a notebook, output_notebook() is needed, but assuming script execution here:
+        try:
+            show(p) 
+        except Exception as e:
+            print(f"Could not show Bokeh plot: {e}")
+
     measurements_lidar_frame_ts = simulator.get_meas()
 
     lidar_pos_global = np.array(lidar_cfg.lidar_position).reshape(2, 1)

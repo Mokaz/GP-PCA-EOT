@@ -20,7 +20,6 @@ import tqdm
 S = TypeVar('S', bound=np.ndarray)  # State type
 M = TypeVar('M', bound=np.ndarray)  # Measurement type
 
-
 @dataclass
 class Simulator:
     dynamic_model: DynamicModel[S]
@@ -31,6 +30,7 @@ class Simulator:
     dt: float
 
     seed: Optional[str] = field(default=None)
+    use_cache: bool = field(default=True)
     sensor_setter: Optional[Callable[[SensorModel[M], TimeSequence[S]],
                                      None]] = field(default=None, repr=False)
 
@@ -56,7 +56,7 @@ class Simulator:
         np.random.set_state(self._rand_state)
 
     def simulate(self) -> TimeSequence[S]:
-        if self.datapath and self.datapath.is_file():
+        if self.use_cache and self.datapath and self.datapath.is_file():
             logging.info('Loading ground truth data from file. '
                          '(Delete data/cache or change seed to regenerate)')
             with open(self.datapath, 'rb')as f:
@@ -89,22 +89,24 @@ class Simulator:
 
     def get_measurements(self, sensor_model: SensorModel[M]
                          ) -> TimeSequence[M]:
-
+        
+        meas_path = None
         if self.datapath:
             id_number = crc32(repr(sensor_model).encode())
             meas_path = self.datapath.with_name(
                 f'Sensor_{id_number}_{self.datapath.name}')
-            if meas_path.is_file():
-                logging.info('Loading measurements from file. '
-                            '(Delete data/cache or change seed to regenerate)')
-                with open(meas_path, 'rb')as f:
-                    return pickle.load(f)
+
+        if self.use_cache and meas_path and meas_path.is_file():
+            logging.info('Loading measurements from file. '
+                        '(Delete data/cache or change seed to regenerate)')
+            with open(meas_path, 'rb')as f:
+                return pickle.load(f)
 
         # logging.info('Generating measurements...')
         self._gt_data = self._gt_data or self.simulate()
         meas_data = sensor_model.from_states(self._gt_data[1:])
 
-        if self.datapath:
+        if self.datapath and meas_path:
             with open(meas_path, 'wb') as f:
                 pickle.dump(meas_data, f)
 
