@@ -116,3 +116,11 @@ class Simulator:
         if self.sensor_setter is not None:
             self.sensor_setter(self.sensor_model, self._gt_data)
         return self._gt_data, self.get_measurements(self.sensor_model)
+    
+    def get_gt(self) -> TimeSequence[S]:
+        return self._gt_data or self.simulate()
+    
+    def get_meas(self) -> TimeSequence[M]:
+        if self.sensor_setter is not None:
+            self.sensor_setter(self.sensor_model, self._gt_data)
+        return self.get_measurements(self.sensor_model)

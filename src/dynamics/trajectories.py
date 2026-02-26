@@ -5,7 +5,7 @@ from src.utils.tools import ssa
 
 class TrajectoryStrategy(ABC):
     @abstractmethod
-    def get_controls(self, current_state, dt: float) -> Tuple[float, float]:
+    def compute_velocity_commands(self, current_state, dt: float) -> Tuple[float, float]:
         """
         Returns (target_speed, target_yaw_rate) based on current state.
         """
@@ -13,7 +13,7 @@ class TrajectoryStrategy(ABC):
 
 class ConstantVelocityTrajectory(TrajectoryStrategy):
     """Original behavior: maintain initial velocity, zero turn rate (plus noise)"""
-    def get_controls(self, current_state, dt: float) -> Tuple[float, float]:
+    def compute_velocity_commands(self, current_state, dt: float) -> Tuple[float, float]:
         speed = np.hypot(current_state.vel_x, current_state.vel_y)
         return speed, 0.0
 
@@ -31,7 +31,7 @@ class CircleTrajectory(TrajectoryStrategy):
         # Simple P-controller gain for radius correction
         self.Kp = 0.5 
 
-    def get_controls(self, current_state, dt: float) -> Tuple[float, float]:
+    def compute_velocity_commands(self, current_state, dt: float) -> Tuple[float, float]:
         # Vector from center to ship
         dp = np.array([current_state.x, current_state.y]) - self.center
         dist = np.linalg.norm(dp)
@@ -68,7 +68,7 @@ class WaypointTrajectory(TrajectoryStrategy):
         self.current_idx = 0
         self.loop = True
 
-    def get_controls(self, current_state, dt: float) -> Tuple[float, float]:
+    def compute_velocity_commands(self, current_state, dt: float) -> Tuple[float, float]:
         if self.current_idx >= len(self.waypoints):
             return 0.0, 0.0 # Stop
 
@@ -82,7 +82,7 @@ class WaypointTrajectory(TrajectoryStrategy):
             self.current_idx += 1
             if self.loop and self.current_idx >= len(self.waypoints):
                 self.current_idx = 0
-            return self.get_controls(current_state, dt)
+            return self.compute_velocity_commands(current_state, dt)
 
         # LOS Guidance
         desired_heading = np.arctan2(target[1] - pos[1], target[0] - pos[0])

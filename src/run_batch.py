@@ -18,7 +18,7 @@ logging.basicConfig(
 
 from src.global_project_paths import SIMDATA_PATH
 from src.utils.config_classes import Config
-from src.simulation import run_single_simulation
+from src.experiment_runner import run_single_simulation
 from src.main import get_common_configs, get_pca_tracker_config, get_gp_tracker_config
 
 

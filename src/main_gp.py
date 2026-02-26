@@ -22,7 +22,7 @@ from src.utils.config_classes import TrackerConfig, SimulationConfig, Config, Ex
 from src.states.states import State_GP, State_PCA
 from src.visualization.plotly_offline_generator import generate_plotly_html_from_pickle
 
-from src.simulation import run_single_simulation
+from src.experiment_runner import run_single_simulation
 from src.analysis.analysis_utils import create_consistency_analysis_from_sim_result
 from src.analysis.consistency_analysis import PlotterTrackerPCA
 from src.utils import SimulationResult

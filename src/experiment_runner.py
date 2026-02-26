@@ -2,6 +2,10 @@ import os
 import sys
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
+from bokeh.plotting import figure, show
+from bokeh.io import output_notebook
+from bokeh.models import ColumnDataSource, HoverTool
 from pathlib import Path
 from tqdm import tqdm
 
@@ -31,6 +35,7 @@ from src.senfuslib.simulator import Simulator
 from src.senfuslib.timesequence import TimeSequence
 
 from src.utils.SimulationResult import SimulationResult
+from src.utils.geometry_utils import compute_exact_vessel_shape_global
 
 from src.utils.config_classes import Config
 
@@ -49,7 +54,6 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
 
     rng = np.random.default_rng(seed=sim_cfg.seed)
 
-    # --- SETUP TRAJECTORY ---
     traj_cfg = sim_cfg.trajectory
     if traj_cfg.type == "circle":
         trajectory_strategy = CircleTrajectory(
@@ -189,7 +193,8 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
 
     # --- Generate Simulation Data ---
     print(f"Generating simulation data for {sim_cfg.num_frames} frames...")
-    ground_truth_ts, measurements_lidar_frame_ts = simulator.get_gt_and_meas()
+    ground_truth_ts = simulator.get_gt()
+    measurements_lidar_frame_ts = simulator.get_meas()
 
     lidar_pos_global = np.array(lidar_cfg.lidar_position).reshape(2, 1)
     measurements_global_ts = measurements_lidar_frame_ts.map(lambda scan: scan + lidar_pos_global)

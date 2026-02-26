@@ -177,10 +177,13 @@ class GroundTruthModel(DynamicModel):
     def step_simulation(self, x: State_PCA, dt: float) -> State_PCA:
         new_state = x.copy()
 
-        target_speed, cmd_yaw_rate = self.trajectory_strategy.get_controls(x, dt)
+        target_speed, cmd_yaw_rate = self.trajectory_strategy.compute_velocity_commands(x, dt)
 
-        # Yaw rate noise
-        noise = self.rng.normal(0.0, self.yaw_rate_std_dev)
+        # Yaw rate noise (only for CV trajectory to prevent drifting off perfect circles/paths)
+        if isinstance(self.trajectory_strategy, ConstantVelocityTrajectory):
+            noise = self.rng.normal(0.0, self.yaw_rate_std_dev)
+        else:
+            noise = 0.0
         
         new_state.yaw_rate = cmd_yaw_rate + noise
         new_state.yaw = ssa(x.yaw + new_state.yaw_rate * dt)

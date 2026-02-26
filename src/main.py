@@ -7,7 +7,6 @@ from zlib import crc32
 
 import logging
 
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -20,11 +19,8 @@ sys.path.append(str(PROJECT_ROOT))
 from global_project_paths import SIMDATA_PATH
 from src.utils.config_classes import TrackerConfig, SimulationConfig, Config, ExtentConfig, LidarConfig
 from src.states.states import State_GP, State_PCA
-from src.visualization.plotly_offline_generator import generate_plotly_html_from_pickle
 
-from src.simulation import run_single_simulation
-from src.analysis.analysis_utils import create_consistency_analysis_from_sim_result
-from src.analysis.consistency_analysis import PlotterTrackerPCA
+from src.experiment_runner import run_single_simulation
 from src.utils import SimulationResult
 
 def get_common_configs(N_pca=4):
@@ -55,12 +51,12 @@ def get_common_configs(N_pca=4):
     # Configure orbit
     sim_config.trajectory.type = "circle"
     sim_config.trajectory.center = (30.0, 0.0) # LiDAR pos
-    sim_config.trajectory.radius = 40.0        # Orbit at 40m distance
-    sim_config.trajectory.speed = 5.0          # Go faster
+    sim_config.trajectory.radius = 30.0        # Orbit at 40m distance
+    sim_config.trajectory.speed = 5.0          
 
     # Ensure initial state matches the start of the trajectory to avoid "snap"
     # Starting at (30+40, 0) -> (70, 0) facing North (pi/2) for CCW orbit
-    initial_state_gt.x = 70.0
+    initial_state_gt.x = 0.0
     initial_state_gt.y = 0.0
     initial_state_gt.yaw = np.pi / 2
 
@@ -176,7 +172,7 @@ if __name__ == "__main__":
     sim_base, lidar_base, extent_base = get_common_configs(N_pca)
 
     # method_list = ["bfgs", "ekf", "iekf", "gp_iekf"]
-    method_list = ["ekf", "iekf"]
+    method_list = ["ekf"]
     # method_list = ["implicit_iekf"]
 
     for method in method_list:
