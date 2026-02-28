@@ -15,7 +15,7 @@ from src.utils.tools import fourier_transform
 
 # --- CONFIGURATION ---
 INPUT_JSON = "./data/processed_ships.json"
-OUTPUT_FILENAME = "BoatPCAParameters.npz"
+OUTPUT_FILENAME = "ShipDatasetPCAParameters.npz"
 OUTPUT_DIR = "data/input_parameters"
 
 # Filtering Toggles

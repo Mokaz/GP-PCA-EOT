@@ -15,7 +15,7 @@ sys.path.append(str(PROJECT_ROOT))
 
 DATA_DIR = PROJECT_ROOT / "data" / "input_parameters"
 INPUT_JSON = "./data/processed_ships.json"
-PCA_FILE = DATA_DIR / "BoatPCAParameters.npz"
+PCA_FILE = DATA_DIR / "ShipDatasetPCAParameters.npz"
 PDF_FILENAME = "all_boats_reconstruction.pdf"
 
 # Analysis Settings

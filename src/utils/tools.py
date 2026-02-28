@@ -119,7 +119,7 @@ def fourier_basis_derivative_matrix(angles: np.ndarray, N_fourier: int) -> np.nd
 def fourier_transform(angles: np.ndarray, func: np.ndarray, num_coeff: int = 64, symmetry: bool = True) -> np.ndarray:
     """
     Perform Fourier transform on a given function sampled at specific angles.
-
+    
     Args:
         angles (np.ndarray): Array of angles at which the function is sampled.
         func (np.ndarray): Array of function values corresponding to the angles.
@@ -128,9 +128,17 @@ def fourier_transform(angles: np.ndarray, func: np.ndarray, num_coeff: int = 64,
 
     Returns:
         np.ndarray: Array of Fourier coefficients.
+    
+    This interpolates the input (likely -pi to pi) onto a [0, 2pi) grid.
+    This ensures that index 0 of the FFT corresponds to Angle 0 (Bow/East/+X), 
+    preventing 180-degree rotation issues.
     """
     f_sample = 2 * num_coeff
-    angles_fft = np.linspace(-np.pi, np.pi, f_sample, endpoint=False)
+    
+    # Use 0 to 2pi for the FFT grid so index 0 == angle 0
+    angles_fft = np.linspace(0, 2 * np.pi, f_sample, endpoint=False)
+    
+    # Interp handles the wrapping from [-pi, pi] to [0, 2pi] automatically via period parameter
     r_fft = np.interp(angles_fft, angles, func, period=2 * np.pi)
 
     y = np.fft.rfft(r_fft) / angles_fft.size

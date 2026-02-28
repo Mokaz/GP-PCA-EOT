@@ -5,11 +5,12 @@ from pathlib import Path
 from tqdm import tqdm
 
 # Initialize project and import modules
-PROJECT_ROOT = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(PROJECT_ROOT)
+# --- SETUP PROJECT PATHS ---
+SRC_ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(SRC_ROOT))
+PROJECT_ROOT = SRC_ROOT.parent
+sys.path.append(str(PROJECT_ROOT))
+
 
 from extent_model.extent import Extent
 from utils.tools import fourier_transform

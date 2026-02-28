@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Tuple, List
 from dataclasses import dataclass, field
 
 from src.utils.tools import cart2pol, pol2cart, ssa
+from src.utils.ship_database import get_boat_radii
 from src.states.states import State_PCA
 
 @dataclass
@@ -70,7 +71,42 @@ class ExtentConfig:
         P = shape_params_true.get("P")
         shape_type = shape_params_true.get("type")
 
-        if shape_type == "box":
+        if shape_type == "database":
+            boat_id = shape_params_true.get("id")
+            if boat_id is None:
+                raise ValueError("Shape parameters for 'database' type must include 'id'")
+                
+            db_radii = get_boat_radii(str(boat_id))
+            
+            # 1. Reconstruct unit shape from DB radii
+            db_angles = np.linspace(-np.pi, np.pi, len(db_radii), endpoint=False)
+            x_unit = db_radii * np.cos(db_angles)
+            y_unit = db_radii * np.sin(db_angles)
+
+            # 2. Scale X by L and Y by W independently
+            # Note: Database shapes are normalized to Length=1. 
+            # We assume their width is proportional. To force specific W, we need 
+            # to know original aspect ratio or just stretch Y unit to W.
+            # Assuming x_unit refers to a ~1.0 length object.
+            
+            x_scaled = x_unit * L 
+            
+            # Use W scaling relative to the original aspect ratio found in the DB radius?
+            # Or force fit to W? Below forces fit to W box.
+            max_y_db = np.max(np.abs(y_unit))
+            if max_y_db > 0:
+                y_scaled = y_unit * ( (W/2.0) / max_y_db )
+            else:
+                y_scaled = y_unit * W
+
+            # 3. Convert back to radii for the requested 'angles'
+            target_angles_pol, target_radii_pol = cart2pol(x_scaled, y_scaled)
+            
+            # Sort is required for interp if angles wrap or aren't monotonic after conversion
+            sort_idx = np.argsort(target_angles_pol)
+            radii = np.interp(angles, target_angles_pol[sort_idx], target_radii_pol[sort_idx], period=2*np.pi)
+        
+        elif shape_type == "box":
             theta_0 = np.arctan2(W, L)
             radii = np.zeros(angles.shape)
 
@@ -81,7 +117,7 @@ class ExtentConfig:
                     radii[idx] = W / 2 / np.cos(np.pi/2 - angle)
                 else:
                     radii[idx] = L / 2 / np.cos(np.pi - angle)
-        
+
         elif shape_type == "ellipse":
             x_interpol = np.linspace(-L / 2, L / 2, num=nAngles, endpoint=True)
             y_interpol = (W / 2) * np.sqrt(1 - ((2 / L) * x_interpol)**2)

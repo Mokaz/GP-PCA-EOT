@@ -30,7 +30,7 @@ class ShapeExplorer:
         self.file_selector = pn.widgets.Select(
             name='Select PCA Model', 
             options=self.npz_options,
-            value=self.npz_options.get('BoatPCAParameters.npz', list(self.npz_options.values())[0]),
+            value=self.npz_options.get('ShipDatasetPCAParameters.npz', list(self.npz_options.values())[0]),
             sizing_mode='stretch_width'
         )
         
