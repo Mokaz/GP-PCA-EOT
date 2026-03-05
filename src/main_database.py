@@ -95,7 +95,8 @@ def get_common_configs(traj_type="circle", N_pca=4):
         seed=42,
         initial_state_gt=initial_state_gt,
         gt_yaw_rate_std_dev= 0.1 if traj_type == "linear" else 0.0, 
-        trajectory=trajectory
+        trajectory=trajectory,
+        use_cache=True
     )
 
     # LiDAR Parameters
@@ -173,31 +174,32 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
 
 
 if __name__ == "__main__":
-    N_pca = 4
-    
-    # Switch Scenario Here
-    # selected_trajectory = "circle" 
-    # selected_trajectory = "linear"
-    selected_trajectory = "waypoints"
+    for method in ["ekf", "iekf"]:
+        N_pca = 4
+        
+        # Switch Scenario Here
+        # selected_trajectory = "circle" 
+        # selected_trajectory = "linear"
+        selected_trajectory = "waypoints"
 
-    # Load Configs
-    sim_base, lidar_base, extent_base = get_common_configs(traj_type=selected_trajectory, N_pca=N_pca)
-    
-    print(f"Simulating boat from database (ID: {extent_base.shape_params_true.get('id', 'Unknown')})")
-    print(f"L={sim_base.initial_state_gt.length:.2f}, W={sim_base.initial_state_gt.width:.2f}")
+        # Load Configs
+        sim_base, lidar_base, extent_base = get_common_configs(traj_type=selected_trajectory, N_pca=N_pca)
+        
+        print(f"Simulating boat from database (ID: {extent_base.shape_params_true.get('id', 'Unknown')})")
+        print(f"L={sim_base.initial_state_gt.length:.2f}, W={sim_base.initial_state_gt.width:.2f}")
 
-    method = "ekf"
-    # method = "bfgs"
-    # method = "iekf"
-    
-    tracker_cfg = get_pca_tracker_config(lidar_base.lidar_position, sim_base.initial_state_gt, N_pca)
-    tracker_cfg.process_model = 'cv' 
+        # method = "ekf"
+        # method = "bfgs"
+        method = "iekf"
+        
+        tracker_cfg = get_pca_tracker_config(lidar_base.lidar_position, sim_base.initial_state_gt, N_pca)
+        tracker_cfg.process_model = 'cv' 
 
-    config = Config(sim=sim_base, lidar=lidar_base, tracker=tracker_cfg, extent=extent_base)
+        config = Config(sim=sim_base, lidar=lidar_base, tracker=tracker_cfg, extent=extent_base)
 
-    # Unique Name
-    boat_id = extent_base.shape_params_true.get('id', 'custom')
-    config.sim.name = f"ShipDataset_{boat_id}_{config.sim.trajectory.type}_{method}_GT_init"
+        # Unique Name
+        boat_id = extent_base.shape_params_true.get('id', 'custom')
+        config.sim.name = f"ShipDataset_{boat_id}_{config.sim.trajectory.type}_{method}"
 
-    # Run
-    sim_result = run_single_simulation(config=config, method=method)
+        # Run
+        sim_result = run_single_simulation(config=config, method=method)

@@ -194,7 +194,7 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
             dt=sim_cfg.dt,
             end_time=sim_cfg.num_frames * sim_cfg.dt,
             seed=str(sim_cfg.seed),
-            use_cache=False
+            use_cache=sim_cfg.use_cache
         )
 
     # --- Generate Simulation Data ---

@@ -35,6 +35,8 @@ class SimulationConfig:
     initial_state_gt: State_PCA = None
     trajectory: TrajectoryConfig = field(default_factory=TrajectoryConfig)
 
+    use_cache: bool = False
+
 @dataclass
 class ExtentConfig:
     N_fourier: int = 64
