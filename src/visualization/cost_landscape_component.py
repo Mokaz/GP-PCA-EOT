@@ -79,6 +79,9 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         self.penalty_toggle = pn.widgets.Toggle(name='Include Penalty', value=True, button_type='success')
         
         self.range_slider = pn.widgets.FloatSlider(name='Grid Range (+/-)', start=0.1, end=10.0, value=4.0)
+        self.max_range_input = pn.widgets.FloatInput(name='Max Slider Range', value=10.0, width=120)
+        self.max_range_input.param.watch(lambda e: setattr(self.range_slider, 'end', e.new), 'value')
+        
         self.resolution_slider = pn.widgets.IntSlider(name='Grid Resolution', start=10, end=100, value=30)
         
         self.reset_btn = pn.widgets.Button(name='Reset Cursor to Anchor', button_type='warning')
@@ -233,6 +236,9 @@ class CostLandscapeComponent(pn.viewable.Viewer):
                 # Add padding
                 new_rng = max_d * 1.5
                 new_rng = max(new_rng, 0.1) # Minimum range
+                
+                if new_rng > self.range_slider.end:
+                    self.max_range_input.value = float(new_rng)
                 
                 self.keep_zoom_toggle.value = False
                 self.range_slider.value = float(new_rng)
@@ -806,7 +812,7 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             self.cost_component_select,
             self.penalty_toggle,
             self.show_penalty_plots_toggle,
-            pn.Row(self.range_slider, self.keep_zoom_toggle, align='end'),
+            pn.Row(self.range_slider, self.max_range_input, self.keep_zoom_toggle, align='end'),
             self.resolution_slider,
 
         )

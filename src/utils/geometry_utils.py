@@ -65,8 +65,6 @@ def compute_estimated_shape_global(state, config, pca_params=None) -> tuple[np.n
         W = state.width
         pca_coeffs = state.pca_coeffs
         
-        # Extract config params
-        angles = config.extent.angles
         N_fourier = config.extent.N_fourier
         
         # PCA projection vectors
@@ -80,6 +78,9 @@ def compute_estimated_shape_global(state, config, pca_params=None) -> tuple[np.n
         # fourier_coeffs = mean + EigenVectors * StateCoeffs
         f_coeffs = fourier_coeff_mean + PCA_eigenvectors_M @ pca_coeffs.reshape(-1, 1)
         
+        # NOTE High resolution for smooth shape boundary
+        angles = np.linspace(0, 2 * np.pi, 1000, endpoint=False)
+        
         # Compute radius factor for all angles: g(theta)^T * f_coeffs
         # g_all shape: (N_f, N_angles)
         g_all = g_func(angles) 
@@ -88,6 +89,11 @@ def compute_estimated_shape_global(state, config, pca_params=None) -> tuple[np.n
         # Scale by L/W to get body coordinates
         bx = radius_factors * L * np.cos(angles)
         by = radius_factors * W * np.sin(angles)
+        
+        # NOTE Close the loop
+        bx = np.append(bx, bx[0])
+        by = np.append(by, by[0])
+
         body_points = np.vstack([bx, by])
 
         # Transform to Global

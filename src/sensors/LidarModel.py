@@ -145,7 +145,7 @@ class LidarMeasurementModel(SensorModel[Sequence[LidarScan]]):
         body_points = (LW_scaling @ u_vec) * r_vals
         z_pred = pos + R_heading @ body_points
 
-        return z_pred.flatten() # Return as flat array [x1, y1, x2, y2...]
+        return z_pred.flatten('F') # Return as flat array[x1, y1, x2, y2...]
     
     def get_implicit_matrices(self, x: np.ndarray, z_measurements_global: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -206,7 +206,7 @@ class LidarMeasurementModel(SensorModel[Sequence[LidarScan]]):
         h_theta = R_mat @ S_mat @ term_inner
         
         # 4. Calculate Angle Gradients (dTheta/dX)
-        inv_rho2 = 1.0 / np.maximum(rho2, 1e-6) 
+        inv_rho2 = 1.0 / np.maximum(rho2, 0.05)  # Avoid division by zero with a small threshold
 
         if np.any(rho2 < 1e-6):
             print("Warning: Small rho^2 encountered in ImplicitIEKF angle gradient computation.")

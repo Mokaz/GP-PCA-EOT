@@ -33,6 +33,7 @@ from src.visualization.plotly_offline_generator import (
 from src.visualization.cost_landscape_component import CostLandscapeComponent
 from src.states.states import State_PCA, State_GP 
 from src.utils.tools import calculate_body_angles
+from src.utils.geometry_utils import compute_estimated_shape_global
 
 ASSETS_DIR = Path(__file__).parent / 'assets'
 
@@ -68,6 +69,14 @@ def load_data(filename):
 
 # --- Widgets ---
 pickle_files = sorted([f.name for f in Path(SIMDATA_PATH).glob("*.pkl")], reverse=True)
+
+iterate_selector = pn.widgets.Select(
+    name='Filter Iterate',
+    options=['Final'],
+    value='Final',
+    visible=False,
+    sizing_mode='stretch_width'
+)
 
 file_selector = pn.widgets.Select(
     name='Select Simulation File', 
@@ -554,11 +563,12 @@ persistent_plotly_pane = pn.pane.Plotly(
     config={'responsive': True}
 )
 
-def update_plotly_view(frame_idx, filename):
+def update_plotly_view(frame_idx, filename, iterate_sel):
     loaded_data = load_data(filename)
 
     if not loaded_data:
         persistent_plotly_pane.object = create_empty_figure()
+        iterate_selector.visible = False
         return
     
     sim_result = loaded_data["sim_result"]
@@ -587,6 +597,101 @@ def update_plotly_view(frame_idx, filename):
             pca_params=pca_params
         )
 
+    has_iterates = hasattr(tracker_result, 'predicted_measurements_iterates') and tracker_result.predicted_measurements_iterates is not None and len(tracker_result.predicted_measurements_iterates) > 0
+    if has_iterates:
+        opts = ['Final', 'All'] + [f'Iterate {i}' for i in range(len(tracker_result.predicted_measurements_iterates))]
+        if list(iterate_selector.options) != opts:
+            iterate_selector.options = opts
+        iterate_selector.visible = True
+    else:
+        iterate_selector.visible = False
+
+    if tracker_result.predicted_measurement is not None:
+        if has_iterates and iterate_sel != 'Final':
+            if iterate_sel == 'All':
+                for i, z_pred in enumerate(tracker_result.predicted_measurements_iterates):
+                    z_pred_cart = z_pred.reshape((-1, 2))
+                    fig.add_trace(go.Scatter(
+                        x=z_pred_cart[:, 1], 
+                        y=z_pred_cart[:, 0], 
+                        mode='markers', 
+                        name=f'Predicted Meas. (It {i})', 
+                        marker=dict(color='orange', symbol='cross', size=6, opacity=0.5)
+                    ))
+            elif iterate_sel.startswith('Iterate') and iterate_sel in iterate_selector.options:
+                idx = int(iterate_sel.split(' ')[1])
+                z_pred = tracker_result.predicted_measurements_iterates[idx]
+                z_pred_cart = z_pred.reshape((-1, 2))
+                fig.add_trace(go.Scatter(
+                    x=z_pred_cart[:, 1], 
+                    y=z_pred_cart[:, 0], 
+                    mode='markers', 
+                    name=f'Predicted Meas. ({iterate_sel})', 
+                    marker=dict(color='orange', symbol='cross', size=8)
+                ))
+        else:
+            z_pred_cart = tracker_result.predicted_measurement.mean.reshape((-1, 2))
+            fig.add_trace(go.Scatter(
+                x=z_pred_cart[:, 1], 
+                y=z_pred_cart[:, 0], 
+                mode='markers', 
+                name='Predicted Meas. (Final)', 
+                marker=dict(color='orange', symbol='cross', size=8)
+            ))
+
+    if has_iterates and iterate_sel != 'Final':
+        if iterate_sel == 'All':
+            if hasattr(tracker_result, 'iterates') and tracker_result.iterates is not None:
+                for i, state_it in enumerate(tracker_result.iterates):
+                    prior_shape_x, prior_shape_y = compute_estimated_shape_global(state_it, config, pca_params)
+                    fig.add_trace(go.Scatter(
+                        x=prior_shape_y, 
+                        y=prior_shape_x, 
+                        mode='lines', 
+                        name=f'Prior/Iterate {i}', 
+                        line=dict(color='purple', dash='dot'),
+                        opacity=0.4
+                    ))
+        elif iterate_sel.startswith('Iterate'):
+            idx = int(iterate_sel.split(' ')[1])
+            if hasattr(tracker_result, 'iterates') and tracker_result.iterates is not None and len(tracker_result.iterates) > idx:
+                state_it = tracker_result.iterates[idx]
+                prior_shape_x, prior_shape_y = compute_estimated_shape_global(state_it, config, pca_params)
+                fig.add_trace(go.Scatter(
+                    x=prior_shape_y, 
+                    y=prior_shape_x, 
+                    mode='lines', 
+                    name=f'Iterate {idx} Extent', 
+                    line=dict(color='purple', dash='dot')
+                ))
+                fig.add_trace(go.Scatter(
+                    x=[state_it.y], 
+                    y=[state_it.x], 
+                    mode='markers', 
+                    name=f'Iterate {idx} Centroid', 
+                    marker=dict(color='purple', size=3, symbol='diamond')
+                ))
+    else:
+        if tracker_result.state_prior is not None:
+            prior_state = tracker_result.state_prior.mean
+            prior_shape_x, prior_shape_y = compute_estimated_shape_global(prior_state, config, pca_params)
+            
+            fig.add_trace(go.Scatter(
+                x=prior_shape_y, 
+                y=prior_shape_x, 
+                mode='lines', 
+                name='Prior Extent', 
+                line=dict(color='purple', dash='dot')
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=[prior_state.y], 
+                y=[prior_state.x], 
+                mode='markers', 
+                name='Prior Centroid', 
+                marker=dict(color='purple', size=3, symbol='diamond')
+            ))
+
     fig.update_layout(
         autosize=True,
         margin=dict(l=40, r=40, b=40, t=40, pad=4),
@@ -602,7 +707,7 @@ def update_plotly_view(frame_idx, filename):
     
     persistent_plotly_pane.object = fig
 
-pn.bind(update_plotly_view, frame_player, file_selector, watch=True)
+pn.bind(update_plotly_view, frame_player, file_selector, iterate_selector, watch=True)
 
 @pn.depends(nees_group_selector.param.value, custom_states_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
 def get_nees_view(selected_groups, custom_states, filename, backend):
@@ -953,6 +1058,7 @@ controls = pn.Column(
     file_selector,
     frame_player,
     frame_input,
+    iterate_selector,
     data_browser_mode,
     nees_group_selector,
     error_group_selector,

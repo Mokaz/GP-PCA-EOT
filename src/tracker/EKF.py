@@ -63,5 +63,6 @@ class EKF(Tracker):
             state_posterior=self.state_estimate,
             measurements=z,
             predicted_measurement=z_pred_gauss,
+            predicted_measurements_iterates=[z_pred.copy()],
             innovation_gauss=innovation_gauss,
         )

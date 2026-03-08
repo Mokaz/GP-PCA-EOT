@@ -62,12 +62,14 @@ class IterativeEKF(Tracker):
 
         prev_state_iter_mean = state_prior_mean.copy()
         iterates = [state_iter_mean.copy()]
+        predicted_measurements_iterates = []
 
         for i in range(self.max_iterations):
             self.body_angles = calculate_body_angles(measurements_global_coords, ground_truth if self.use_gt_state_for_bodyangles_calc else state_iter_mean)
 
             # Predict LiDAR measurement
             z_pred_iter = self.sensor_model.h_lidar(state_iter_mean, self.body_angles).flatten()
+            predicted_measurements_iterates.append(z_pred_iter.copy())
             innovation_iter = z - z_pred_iter
 
             num_meas = len(self.body_angles) 
@@ -118,6 +120,7 @@ class IterativeEKF(Tracker):
             measurements=z,
             predicted_measurement=z_pred_gauss,
             iterates=iterates,
+            predicted_measurements_iterates=predicted_measurements_iterates,
             innovation_gauss=innovation_gauss,
             iterations=i + 1,
             H_jacobian=H_lidar,

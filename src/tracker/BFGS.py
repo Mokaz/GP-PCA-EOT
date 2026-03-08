@@ -76,9 +76,12 @@ class BFGS(Tracker):
             ) # TODO Martin: Investigate if this should be used in penalty too
 
         iterates = [state_iter_mean.copy()]
+        predicted_measurements_iterates = [z_pred.copy()] # Store the initial guess
 
         def callback(xk):
-            iterates.append(State_PCA.from_array(xk))
+            s = State_PCA.from_array(xk)
+            iterates.append(s)
+            predicted_measurements_iterates.append(self.sensor_model.h_lidar(s, self.body_angles).flatten())
 
         res = minimize(
             fun=self.prob_with_penalty, 
@@ -140,6 +143,7 @@ class BFGS(Tracker):
             # Populate existing optional fields
             iterations=res.nit,
             iterates=iterates,
+            predicted_measurements_iterates=predicted_measurements_iterates,
             cost=res.fun,
             raw_optimizer_result=res,
         )

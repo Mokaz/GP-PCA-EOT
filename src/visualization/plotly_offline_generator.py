@@ -264,10 +264,8 @@ def generate_plotly_fig_for_frame(frame_idx, gt_state, est_state, z_lidar_cart, 
     lidar_pos = config.lidar.lidar_position
     lidar_ray_x, lidar_ray_y = [], []
     for z_pos in z_lidar_cart:
-        dist = np.linalg.norm(z_pos - np.array(lidar_pos))
-        if dist < config.lidar.max_distance:
-            lidar_ray_x.extend([lidar_pos[0], z_pos[0], None])
-            lidar_ray_y.extend([lidar_pos[1], z_pos[1], None])
+        lidar_ray_x.extend([lidar_pos[0], z_pos[0], None])
+        lidar_ray_y.extend([lidar_pos[1], z_pos[1], None])
     fig.add_trace(go.Scatter(x=lidar_ray_y, y=lidar_ray_x, mode='lines+markers', name='LiDAR Rays', line=dict(color='red', width=1)))
 
     # Estimated Heading

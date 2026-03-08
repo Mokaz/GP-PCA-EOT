@@ -25,6 +25,7 @@ class ImplicitIEKF(Tracker):
         self.max_iterations = max_iterations
         self.convergence_threshold = convergence_threshold
         self.use_initialize_centroid = config.tracker.use_initialize_centroid
+        self.time_counter = 0
 
     def predict(self):
         self.state_estimate = self.dynamic_model.pred_from_est(self.state_estimate, self.T)
@@ -53,11 +54,47 @@ class ImplicitIEKF(Tracker):
 
         prev_state_iter_mean = state_prior_mean.copy()
         iterates = [state_iter_mean.copy()]
+        predicted_measurements_iterates = []
 
         for i in range(self.max_iterations):
             H_imp, D_imp, theta_implicit = self.sensor_model.get_implicit_matrices(state_iter_mean, measurements_global_coords)
+            # print("H_implicit shape:", H_imp.shape)
+            # print("rank(H_implicit):", np.linalg.matrix_rank(H_imp))
+
+            if i == 0 and self.time_counter < 5:  # Only analyze the Jacobian in the first few iterations to avoid clutter
+                print(f"\nIteration {i+1} - Analyzing Implicit Jacobian at time step {self.time_counter}:")
+                # 1. Check Condition Number (High = Ill-conditioned/Explosive)
+                cond_num = np.linalg.cond(H_imp)
+                print(f"\nCondition Number of H_imp: {cond_num:.2e}")
+                if cond_num > 1e4:
+                    print("WARNING: Jacobian is ill-conditioned. Optimizer will likely explode.")
+
+                # 2. Singular Value Decomposition
+                U, S_vals, V_t = np.linalg.svd(H_imp, full_matrices=False)
+                
+                print("\nSingular Values (Small values indicate unobservable directions):")
+                print(np.round(S_vals, 4))
+
+                # 3. Analyze the Null-Space Vector (The smallest singular value's direction)
+                # Find the smallest NON-ZERO singular value (Assuming 3 velocity states are always 0)
+                # The observable states are the first 9 singular values.
+                null_vector = V_t[-4, :]  # -1, -2, -3 are velocities. -4 is the weakest shape parameter
+                
+                print("\nNull-Space Direction (How the filter can move state without changing measurements):")
+                print(f"Δ Pos_x:      {null_vector[0]:.4f}")
+                print(f"Δ Pos_y:      {null_vector[1]:.4f}")
+                print(f"Δ Heading:    {null_vector[2]:.4f}")
+                print(f"Δ Length (L): {null_vector[6]:.4f}")
+                print(f"Δ Width (W):  {null_vector[7]:.4f}")
+                print(f"Δ PCA_0:      {null_vector[8]:.4f}")
+                print(f"Δ PCA_1:      {null_vector[9]:.4f}")
+                print(f"Δ PCA_2:      {null_vector[10]:.4f}")
+                print(f"Δ PCA_3:      {null_vector[11]:.4f}")
+
+                self.time_counter += 1
             
             z_pred_iter = self.sensor_model.h_from_theta(state_iter_mean, theta_implicit)
+            predicted_measurements_iterates.append(z_pred_iter.copy())
             
             # The residual y = z - h(x, theta(x,z))
             innovation_iter = z_flat - z_pred_iter
@@ -83,6 +120,18 @@ class ImplicitIEKF(Tracker):
             
             state_next = state_prior_mean + K @ (innovation_iter + H_imp @ diff_state)
             state_next[2] = ssa(state_next[2])
+
+            # ==========================================
+            # SAFETY CLAMPS: Prevent Mathematical Collapse
+            # ==========================================
+            # 1. Do not allow Length or Width to become negative or zero
+            state_next.length = max(2.0, state_next.length)
+            state_next.width = max(1.0, state_next.width)
+            
+            # 2. Prevent PCA coefficients from warping the shape to infinity
+            # (Assuming PCA coeffs should mostly stay within +/- 2.0 based on your dataset)
+            state_next.pca_coeffs = np.clip(state_next.pca_coeffs, -3.0, 3.0)
+            # ==========================================
             
             state_iter_mean = state_next
             iterates.append(state_iter_mean.copy())
@@ -109,6 +158,7 @@ class ImplicitIEKF(Tracker):
             measurements=z_flat,
             predicted_measurement=z_pred_gauss,
             iterates=iterates,
+            predicted_measurements_iterates=predicted_measurements_iterates,
             innovation_gauss=innovation_gauss,
             iterations=i + 1,
             H_jacobian=H_imp,
