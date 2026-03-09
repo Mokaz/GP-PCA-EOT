@@ -1,0 +1,283 @@
+﻿BoatID;ProjectName;Designer;CreatedBy;FileVersion;DesignerComment;Is Hull;Is Solid;Is Boat;Is Kayak;;Must be closed
+1;Sailing yacht;Pier C;Pier c;6.11;50 inches model;1;0;1;;;1
+2;Sport Fisherman;Pier C;Pier C;14.30;56 inches model sport fisherman with twin engines;1;0;1;;;1
+3;Pegasus;Pier C;Pier C.;14.30;Plan drawn from the yacht kit's name;1;0;1;;;1
+4;Cat 7,80m demontierbar;Hendrik Möller;;14.20;;0;1;1;;;0
+5;Destroyer Class Tribal;;Marcelo Ariel Santillán;13.50;;1;1;1;;;0
+6;Gig-10ft-6-final-final;;;13.40;;1;0;1;;;1
+7;MDR-6;;;11.30;;0;1;0;;;0
+8;Pinque_13;;;13.10;;0;1;1;;;0
+9;Kosta snipa;;;13.10;;0;1;1;;;0
+10;Bateau Aroues Aaubes;;;13.10;;0;1;1;;;0
+11;Segelyacht 15 m2 SNS Neubau optimal ausgelegt unsinkbar;Rolf Philipp Hagen;Rolf Philipp Hagen mit Excel und Delft Ship;13.10;Segelyacht 15 m2 SNS, R = 4,02, WL = 4,558 m, VL = 5,060 m, V = 0,680 m3, S = 15,000 m2;1;1;1;;;0
+12;Hydrlift-p42;;;12.30;;0;1;1;;;0
+13;Brigg Joachim Allwardt;J. Möller;AxelF;12.30;www.classic-modellyacht-design.de;1;0;1;;;1
+14;LA-28;;Axel Franzen;12.30;;0;1;1;;;0
+15;Nagato;;;12.20;Japanese battle ship Nagato;0;1;1;;;0
+16;Segelyacht 15 m2 SNS Neubau, unsinkbar, optimal ausgelegt.;Rolf Philipp Hagen;Excel und Delft Ship;11.10;Segelyach 15 m2 SNS, Lf=5,065m, Lw=4,564m, V=0,681m3, S=15,00 m2;0;0;1;;;0
+17;LE CARTAHU;DIDIER CHAVANE;DIDIER CHAVANE;12.20;Cotre Breton conçu et construit par mon pére, dans les années 50 ;0;1;1;;;0
+18;BAWLEY de LEIGH;Didier CHAVANE;Didier CHAVANE;7.23;Bateau de péche du sud de lAngleterre - 19é et début 20éme siècle;0;1;1;;;0
+19;BARROTIN;;;9.30;;0;1;1;;;0
+20;Resolution 1669;Sir Anthony Deane;Th.Kowalle;12.20;;1;0;1;;;1
+21;El Cazador;unknown;Th.Kowalle;12.20;;1;0;1;;;1
+22;Wappen von Hamburg;;Th.Kowalle;12.20;;1;0;1;;;1
+23;SLOOP-55-M;;;12.20;;1;0;1;;;1
+24;POLYESTER-CABIN;;;12.20;;1;0;1;;;1
+25;Revelry Alden Malabar Junior 599a;John Alden;andrew trivett;9.30;;1;0;1;;;1
+26;Bente 39;Judel Volijk;AxelF;11.40;;0;1;1;;;0
+27;Rumpf-03;;;11.40;;0;1;1;;;0
+28;LCT;Rafidiala;Erwine Ratsima;10.30;;0;1;1;;;0
+29;NUCLEAR POWERED AGEIS CRUISER;C. E. WILKINS;C.E. Wilkins;11.20;"2 X 8""/60 MK 71 MOD 2, 192 cell MK 41 VLS, 2 X MK 31 RAM";0;1;1;;;0
+30;Laurin 28;Arvid Laurin 1966;AxelF;11.20;;0;1;1;;;0
+31;Invader II;William Fife III;AxelF;10.30;www.classic-modellyacht-design.de;0;1;1;;;0
+32;R/v Aranda;Unknown;AxelF;10.30;;0;1;1;;;0
+33;"Pilot Schooner ""GRODEN""";;Jurgen 54;8.13;An ancient and pretty workhorse;1;0;1;;;1
+34;NCC-1701-D;Matt Jefferies;Maarten;13.00;A.K.A. 'Enterprise D';0;1;1;;;0
+35;Scuna - Brigantino Goletta;Ambrogio Terrizzano;Firpo Giorgio + Jurgen 54;8.08;;1;0;1;;;1
+36;Dinghy 250;tgk-design;;7.22;;0;0;1;;;0
+37;Planing 01;pstylianopoulos;Pantelis Stylianopoulos;8.06;;1;0;1;;;1
+38;Xpedite 50;Cam Clarkson;Cam Clarkson;8.08;;0;0;1;;;0
+39;Whitehall;David Telles;;8.08;;1;0;1;;;1
+40;Hard chined sailing dinghy;Jo Dierickx;Jo Dierickx;8.08;;1;0;1;;;1
+41;HD-sportfisher;Glenn Kivinen;Glenn kivinen;8.08;;0;0;1;;;0
+42;min båd;søren udengaard;søren udengaard;8.08;;0;0;1;;;0
+43;33 ft sailing boat;;;8.08;;1;0;1;;;1
+44;Caledonian yawl;;;8.08;;1;0;1;;;1
+45;Jet services;;;8.08;;1;0;1;1;Katamaran;1
+46;Dolphin;Ken Swan;Chris Harris;8.08;;1;0;1;;;1
+47;CGN 25 (1977);C.E. Wilkins;C.E. Wilkins;6.27;;0;1;1;;;0
+48;WALRUS, class WALRUS (parent class HALNY-1);Waldemar Snopko, Wroclaw, 1.7.1988;L. Hubka, 4.1.2014;6.27;;0;1;1;;;0
+49;USS Long Beach CGN-9;C. E. Wilkins;C. E. Wilkins;6.23;;0;1;1;;;0
+50;LE CARTAHU;DIDIER CHAVANE;DIDIER CHAVANE;6.11;;0;0;1;;;0
+51;VLCS  COLOMBO EXPRESS Class;Hyundai Heavy Industries Co. Ltd. Ulsan, 2006;(c) Ralph Grothe, August 2012;6.11;;1;0;1;;;1
+52;MS Bremen;Anton Rudolph;Anton Rudolph;6.11;;1;0;1;;;1
+53;Dunkerque;Sam;Sam;6.11;Bâtiment de ligne de 26.500 Tonnes Washington;0;1;1;;;0
+54;Plataforma de Perforacion JCM-001;Jesus Cruz Mayora;Jesus Cruz Mayora;6.11;;1;1;0;;Oil rigg;0
+55;fishing-walk boat;HOF philippe;;6.11;;0;0;1;;;0
+56;Stortebeker III;Abeking & Rasmussen;Martijn van Engeland;6.11;;1;0;1;;;1
+57;Submarino de 50 mts.;Jesus Cruz Mayora;Jesus Cruz Mayora;6.11;;1;1;0;;Submarine;0
+58;snipa as workboat from figeholm sweden;;Henk Schoneveld;6.11;Snipa from Figeholm;1;0;1;;;1
+59;s spant 1600;Michiel Bonke;Michiel Bonke;6.11;;1;0;1;;;1
+60;4m waterline ballast-keel skiff;Nick Cook;njcook@ntlworld.com;6.11;For use with 2.4mR sails and rigging;0;0;1;;;0
+61;Lion1804;;;6.11;;0;0;1;;;0
+62;Helsa 1882;Carl-Edvard Smith ;Jürgen Sass. sass@sassdesign.net;6.11;Oldest sailing canoe in Sweden;0;0;1;;;0
+63;Jean Bart;Sam;Sam;6.11;Conception dun batiment de ligne;0;1;1;;;0
+64;Sparkman & Stephens 6 M;Olin Stephens;klzsailing;6.11;1928 design;1;0;1;;;1
+65;River Push boat 18,5m,1300hp;Razmik Baharyan;Razmik Baharyan;6.11;Task for a degree design: Push boat for Brazilian rivers Tiete - Parana;1;0;1;;;1
+66;Wave Piercing Catamaran JCM-001;Jesus Cruz Mayora;Jesus Cruz Mayora;6.11;;1;0;1;;;1
+67;26er Knickspant;Hartmut Loss;Hartmut Loss;6.11;originally imported from Carlsons hull program, elaborated in freeship and delftship;0;0;1;;;0
+68;Multihull Houseboat;Marius Liebenberg; Marius Liebenberg;6.11;16.2m Multihull Houseboat;1;0;1;;;1
+69;Lagoon 440;;Celso Ioneda;6.11;for job purpose, 3D design, e-mail to   celsoioneda@yahoo.com.br;0;0;1;;;0
+70;Push boat 3150 hp - Project 592A;Shipbuilding Institute in Rousse sity - Bulgaria;Razmik Baharyan;6.11;Three propellers river push boat for push-train 12000 t;1;0;1;;;1
+71;Sheperd;;KLZ Intelligent Sailing;6.11;;1;0;1;;;1
+72;TRL_4_3m_50hp;D.A.Kurbatov;Razmik Baharyan;6.11;Motor boat for cruise and fishing;1;0;1;;;1
+73;SWATH 30 mts. de Eslora;Jesus Cruz Mayora;Jesus Cruz Mayora;6.11;;0;0;1;;;0
+74;123.0ft (37.5m) Planing Hull Project;Jeffry Fontaine;Jeffry Fontaine;6.11;Based on an enlarged Tjeld or Nasty Class hull design;1;1;1;;;0
+75;HMS Tiger battlecruiser;Papp Miklos;Papp Miklos;6.11;;0;1;1;;;0
+76;Pemaquid ;"Howard L. Chapelle, using lines taken from a Friendship Sloop built at Bremen, Maine, by A.K. Carter, in 1914.  The cabin and cockpit design in this DELFTship model is taken from the Pemaquid-type boat included in WoodenBoats design catalog ""Fifty Wooden ";Bruce Taylor;6.11;"The DELFTship model was made to demonstrate the practicality of reproducing a historic boat, using background images of the lines plan.  In this case, the lines were scanned from an old copy of Howard L. Chapelles ""American Small Sailing Craft.""   When th";0;0;1;;;0
+77;Smit Rotterdam;IHC Merwede BV;P. Meuzelaar;6.11;Smit Rotterdam;1;0;1;;;1
+78;Loyalist 60;Richard J. Saunders;Richard J. Saunders;6.11;60 ft sailingyacht displacement=20.8 t.;0;0;1;;;0
+79;Longboat fr Vaxholm 1900;Jurgen Sass;J. Sass, Vaxholm, Sweden ;6.11;www.sassdesign.net ;0;0;1;;;0
+80;32Hard;Paul Badcock;Paul Badcock;6.11;El Cheapo yacht;0;1;1;;;0
+81;SAIL-1;GV;;6.11;;1;0;1;;;1
+82;LE 17;Michiel Bonke;Michiel Bonke;6.11;;1;0;1;;;1
+83;HEAVY-DUTY 45;Glenn Kivinen;Glenn Kivinen;6.11;steel construktion full displacement hull developable;0;0;1;;;0
+84;Emerald 70;K,Yano  e-mail : info@gibraltar-yacht.com;K,Yano;6.11;Traditional  Racrer / Cruser;0;0;1;;;0
+85;Zeeschouw 1200;Michiel Bonke;Michiel Bonke;6.11;;1;0;1;;;1
+86;Garde cote;;;6.11;;0;0;1;;;0
+87;Blackwater 15;Chris Harris;Chris Harris;6.11;An easy to build plywood skiff. A 15hp motor would be perfect for this one.;1;0;1;;;1
+88;3.5m Grand Banks Dory;Phil Nelson;;6.11;;1;0;1;;;1
+89;"""Caballero"" type cruiser boat (Old fashion )";;Sergio Diaz (sd_naval);6.11;Lines plan from Svensons free boat plans (not exactly the same).;0;0;1;;;0
+90;min b;soren udengaard;soren udengaard;6.11;home building projekt (hull finished 2007);0;0;1;;;0
+91;Blue moon;;Yuri Kuznetsov;6.11;;1;0;1;;;1
+92;WT35;;;6.11;;0;0;1;;;0
+93;M/Y INDEPENDANCE;CG Pettersson 1911, rudder &  prop  J. Sass 2007;J. Sass  Vaxholm  Sweden;6.11;www.independance.se;1;0;1;;;1
+94;Trinardo 6.4;Kjell Nilsson;;6.11;www.trinardo.com;0;0;1;;;0
+95;Casiopea- new one design class;"""Batog design""- Jakub Batog";"""Batog design""- Jakub Batog";6.11;Any questions, coments and thoughts on my project please send on kuba_sail@op.pl;0;0;1;;;0
+96;Storbat fr Roslagen for  Annelie Lundstedt;Jurgen Sass after J. Sioblom / F.H. Chapman  Stockholm 1797; Jurgen Sass, Vaxholm, Sweden    2007;6.11;Traditional lapstrake design. Under construction on Skeppsholmen in Stockholm.;0;0;1;;;0
+97;Hard chined outboard powered dayboat;David Telles;David Telles;6.11;Ply construction;1;0;1;;;1
+98;economy cruiser 47 ft;David Telles;;6.11;Ply construction motorsailer;0;0;1;;;0
+99;Schooner;Jo Dierickx;Jo Dierickx;6.11;Plate developable schooner model;0;0;1;;;0
+100;Azmyth 01;Rick Peters;;6.11;;0;0;1;;;0
+101;Windstorm 45;;Philippe Hof;6.11;45 ft. motoryacht;0;0;1;;;0
+102;Cruiser Hull;C. E. Wilkins;cjwilks;6.11;;0;1;1;;;0
+103;VOR 70;Jean-Marc NOURRY;jean-marc.nourry@cegetel.net;6.11;CRANA Organisation Modeler;1;0;1;;;1
+104;ACC 2007 (America Cup);Jean-Marc NOURRY;jean-marc.nourry@cegetel.net;6.11;CRANA Organisation Modeler;1;0;1;;;1
+105;Junior challenge  8m;Kiyoshi Yano  Engineer;Kiyoshi Yano;6.11;Contact :  gitana@circus.ocn.ne.jp;0;0;1;;;0
+106;"Bisquine de Cancale "" La Perle """;Gwenael Cheron;Gwenael Cheron;6.11;"Bisquine de Cancale "" La Perle """;1;0;1;;;1
+107;Ixous;Luc;Luc Bodet;6.11;"Traditional Belgian fishing cutter ""Ixous"" 1936";1;0;1;;;1
+108;Classic 51;David Telles;David Telles;6.11;40s era styling for carvel construction.;1;0;1;;;1
+109;50 feet Racer;Kiyoshi Yano          mail :  gitana@circus.ocn.ne.jp;;6.11;For the production boat builder;0;0;1;;;0
+110;33 x 12  Aluminum Pontoon Boat;Bill Hunt, NA;G Thibodeaux;6.11;Proposal for US Army Corps of Engineers, New Orleans District;0;0;1;;Person CAD model;0
+111;Surf Dinghy 9;Bruce Taylor;Bruce Taylor;6.11;Recreational Dinghy for use with Windsurfer Rig;0;0;1;;;0
+112;Multihull;John Wilkins;;6.11;50ft Cruising Cat;1;0;1;;;1
+113;British Moth;David Peer;David Peer;6.11;;1;0;1;;;1
+114;Albacore;Uffa Fox;David Peer;6.11;An Experiment;1;0;1;;;1
+115;26' Whale Boat;Ronaldo Fazanelli Migueis;Ronaldo Fazanelli Migueis;6.11;;1;1;1;;;0
+116;Pringle 18;William D. Anderson;Gilermo Jacuzzi;6.11;Modified Prindle 19, Preliminary offsets;1;0;1;;;1
+117;20 catamaran;Pietro Jaccuzi,;Pietro Jaccuzi;6.11;Preliminary lines, Carbon fiber rig,;0;0;1;;;0
+118;Texas style flats skeeter with tunnel;Sean Herron, San Antonio Lake Skeeter;Alberto Bertucci;6.11;Remove flap at end of tunnel.;1;0;1;;;1
+119;Research vessel;;;6.11;;1;0;1;;;1
+120;Goodnow Kayak;Ludwig Sigurdson.;Bryan Hansel, www.nessmuking.com;6.11;Kayak At Goodnow Library in Sudbury, MA. Collected in 1896. Survey and drawn by Mark Starr in 2001;1;0;1;1;;1
+121;27 Plywood Express;K,Yano    contact to:   gitana@sircus.ocn.ne.jp;;6.11;Plywood panel  easy construction system;0;0;1;;;0
+122;Smal power catamaran     sketch;J. Sass      Vaxholm   Sweden;J. Sass   Dec 20006;6.11;Catamaran for 10 - 15 hp engine;0;0;1;;Person CAD model;0
+123;Trace Demo;N. Schipper;M. van Engeland;6.11;Used for tutorial to demonstrate the use of background images in order to trace an existing design;1;0;1;;;1
+124;Pickup Squared;Jim Michalak;Stefan A.Probst;6.11;roughly drawn according to unprecise line plans;1;0;1;;;1
+125;60 knots boat;J. Sass    Vaxholm   Sweden    1969;J. Sass;6.11;"Aerodynamic balansed ""boat"", sails with just the daggerboard in the water";0;1;0;;;0
+126;Tancook Whaler 2 no masts;;;6.11;;0;0;1;;;0
+127;Hard chine cruiser 3 38 feet-1;;;6.11;;0;1;1;;;0
+128;Inland barge;;Philip Devon;6.11;Barge intended for use on inland waterways;1;0;1;;;1
+129;Yellow Leaf;Phil Bolger;Stefan A. Probst;6.11;"max. 2 sheet canoe, widened by 7.5"" (20cm), but needs one more joint";0;0;1;;Person CAD model;0
+130;YD-40;Lars Larsson & Rolf E. Eliasson;Martijn van Engeland;6.11;"From the book ""Principles of yacht design"" by Lars Larsson & Rolf E. Eliasson";1;0;1;;;1
+131;Hard chined sailing yacht;;M. van engeland;6.11;;1;0;1;;;1
+132;4-whitey;Caldera BoatworX;RMDomico;6.11;;1;0;1;;;1
+133;Adaptation of Sailing Canoe Vesper;R. W. Gibson (adapted by Bruce Taylor);Bruce Taylor;6.11;Lines from Gibsons Vesper, as recorded in W.P. Stephenss _ Canoe and Boatbuilding for Amateurs_.  Balanced lug racing rig has been replaced by batwing gunter rig.;0;0;1;;;0
+134;TAIKI V1-PICO;TAIKI FUKUNAGA, OHANA HOE OUTRIGGER CANOE CLUB, JAPAN;TAIKI FUKUNAGA;6.11;Recreational One Man Outrigger Canoe(V1/OC1);1;0;1;1;;1
+135;Twee Gebroeders;;Martijn van Engeland;6.11;"Traditional Dutch fishing cutter ""Twee Gebroeders"" ca. 1867";1;0;1;;;1
+136;Sztrandek 4.95 (chine import from original data);Zeljko Horvatovic (original by Wojciech Kasprzak);Zeljko Horvatovic;6.11;;1;0;1;;;1
+137;Supplier;;;6.11;;1;0;1;;;1
+138;Suberbella;Anders Martinsson;Anders Martinsson (anders.martinsson<at>bildning.habo.se);6.11;Low drag ice yatch based on the Isabella design.;0;1;0;;;0
+139;Supertanker;;Unknown;6.11;Tanker with elliptical bow;1;0;1;;;1
+140;Fishing trawler;;M. van Engeland;6.11;Fishing trawler;1;0;1;;;1
+141;Sliver;Steven Lewis;Steve Lewis;6.11;Slim Multi-chine Sail/Row hull;1;0;1;;;1
+142;Shivaree;Phillip Bolger;Bruce Hallman;6.11;Bolger design #648, outboard power runabout. 18 x 7;1;0;1;;;1
+143;One Meter Circular Hull;Jean-marc NOURRY;jean-marc.nourry@cegetel.net;6.11;CRANA Organisation Modeler;1;0;1;;;1
+144;micronesian proa (test, do not build this one!);luna;;6.11;hulls sizes and main hull profile are asymmetric;1;0;1;1;;1
+145;Moosabec Reach Boat;;Geoff McKonly;6.11;Offsets from John Gardner;1;0;1;;;1
+146;MY VIHLEN APRIL FOOL WITH STANDING HEADROM;Sean Herron;;6.11;;1;1;1;;;0
+147;F100 - RC Yacht;J.Colliot/Nef;JCDesign;6.11;1er dessin sous freeship;1;1;1;;;0
+148;Outboard-Powered Canal Cruiser, SBJ Cartoon #5;Phil Bolger;Stefan A. Probst;6.11;According to line plans from SBJ;0;1;1;;;0
+149;BBM 2.30;Jean-Marc NOURRY;;6.11;Small dinghy design and built for my daughter (6 years old);1;0;1;;;1
+150;Big Hunk by Glen-L.com;Glen-L.com, cabin by Stefan Probst;Stefan A. Probst;6.11;"original size: 267"" x 98"", short version: 258"", can be stretched by 3";0;0;1;;;0
+151;10m deep;Kiyoshi Yano;;6.11;;0;0;1;;;0
+152;12.650;;;6.11;;1;0;1;;;1
+153;high performance motor canoe;Leonel Murguia;Leonel Murguia;6.11;semi displacement hull;0;0;1;;;0
+154;Sport_Fisher;Felipe Garcia;Felipe;6.11;;1;1;1;;;0
+155;A light sculling training boat.;Modified by HECS;;6.11;;1;0;1;;;1
+156;Scrappy;Steven Lewis;Carene 2003 and imported;6.11;99% double ender but with sufficient transom to hand rudder and/or small motor;1;0;1;;;1
+157;Rozinante;L. Francis Herreshoff;Bruce Hallman;6.11;Design #98, October 1956;1;0;1;;;1
+158;RiverRunner25;Steven Lewis;Steven Lewis;6.11;Tunnel hull Jonboat with raised center console for super shallow river running and sand bar dodging;1;0;1;;;1
+159;Riva Aquarama Spécial;Carlo RIVA Spa - Carlo Riva & Giorgio Barilani;Thierry FABRE;6.11;redesigned from an original structure plan;1;0;1;;;1
+160;Rapid_Craft;Felipe Garcia;Felipe;6.11;;1;0;1;;;1
+161;"Pretty Runabout 18""";Giuseppe Balsamo;Cagliostro;6.11;Easy to build, stich & glue, outboard power with bracket.;1;0;1;;;1
+162;PoorBoySkiff;Steven Lewis;Carene 2003 and imported.;6.11;Easy to build traditional flat Iron skiff for two fishin buddies;1;0;1;;;1
+163;PocketCruiser3;Steven Lewis;Steven Lewis;6.11;;1;1;1;;;0
+164;Marven 102 Pluut;M. van Engeland;M. van Engeland;6.11;Offsets from an original pluut, the converted to a developable hull;0;0;1;;;0
+165;Patrol craft;;Steve O.;6.11;High-speed patrol craft;1;0;1;;;1
+166;PEEP14;G. Carlson;M. van Engeland;6.11;Imported from hulls programPeep 14;1;0;1;;;1
+167;Parent 61 - Ro-Ro vessel;;M. van Engeland;6.11;;1;0;1;;;1
+168;Parent 62 - ZUIGER;;M. van Engeland;6.11;;1;0;1;;;1
+169;Parent 60 - Container feeder;;M. van Engeland;6.11;;1;0;1;;;1
+170;Parent 51 - Containership;;M. van Engeland;6.11;;1;0;1;;;1
+171;Parent 58 - RO-RO ship;;M. van Engeland;6.11;;1;0;1;;;1
+172;Parent 50 - Motoryacht;;M. van Engeland;6.11;;1;0;1;;;1
+173;Parent 49 - Tanker;;M. van Engeland;6.11;;1;0;1;;;1
+174;parent 48 - Ferry;;M. van Engeland;6.11;;1;0;1;;;1
+175;Parent 47 - Cutter yacht;;M. van Engeland;6.11;;1;0;1;;;1
+176;Parent 45 - Small coastal trader;;M. van Engeland;6.11;;1;0;1;;;1
+177;Parent 43 - Cutter;;M. van Engeland;6.11;;1;0;1;;;1
+178;Parent 42 - Cutter;;M. van Engeland;6.11;;1;0;1;;;1
+179;Parent 41 - Ro-Ro ship;;M. van Engeland;6.11;;1;0;1;;;1
+180;Parent 40 - Icebreaker;;M. van Engeland;6.11;;1;0;1;;;1
+181;Parent 39 - River coaster;;M. van Engeland;6.11;;1;0;1;;;1
+182;Parent 38 - High speed displacement vessel;;M. van Engeland;6.11;;1;0;1;;;1
+183;Parent 37 - Ro-Ro ship;;M. van Engeland;6.11;;1;0;1;;;1
+184;Parent 36 - Shallow draft tanker;;M. van Engeland;6.11;;1;0;1;;;1
+185;Parent 34 - Sailing yacht;;M. van Engeland;6.11;;1;0;1;;;1
+186;Parent 33 - Tug;;M. van Engeland;6.11;;1;0;1;;;1
+187;Parent 32 - Ferryboat;;M. van Engeland;6.11;;1;0;1;;;1
+188;Parent 31 - Containership;;M. van Engeland;6.11;;1;0;1;;;1
+189;Parent 30 - Bulkcarrier;;M. van Engeland;6.11;;1;0;1;;;1
+190;Parent 29 - Heavy load ship;;M. van Engeland;6.11;;1;0;1;;;1
+191;Parent 27 - Supplier;;M. van Engeland;6.11;;1;0;1;;;1
+192;Parent 26 - Containership;;M. van Engeland;6.11;;1;0;1;;;1
+193;Parent 25 - Sterntrawler;;M. van Engeland;6.11;;1;0;1;;;1
+194;Parent 23 - Refrigerated ship;;M. van Engeland;6.11;;1;0;1;;;1
+195;Parent 22 - Sterntrawler;;M. van Engeland;6.11;;1;0;1;;;1
+196;Parent 21 - Refrigerated ship;;M. van Engeland;6.11;;1;0;1;;;1
+197;Parent 20 - Barge carrier;;M. van Engeland;6.11;;1;0;1;;;1
+198;Parent 19 - Container ship;;M. van Engeland;6.11;;1;0;1;;;1
+199;Parent 18 - multi purpose ship;;M. van Engeland;6.11;;1;0;1;;;1
+200;Parent 17 - Multi purpose ship;;M. van Engeland;6.11;;1;0;1;;;1
+201;Parent 13 - River supply tanker;;M. van Engeland;6.11;;1;0;1;;;1
+202;Parent 12 - Reefer;;M. van Engeland;6.11;;1;0;1;;;1
+203;Parent 11 - Ferry ship;;M. van Engeland;6.11;;1;0;1;;;1
+204;Parent 10 - Ro-ro ship;;M. van Engeland;6.11;;1;0;1;;;1
+205;Parent 09 - Sterntrawler;;M. van Engeland;6.11;;1;0;1;;;1
+206;Parent 08 - Coaster;;M. van Engeland;6.11;;1;0;1;;;1
+207;Parent 07 - Supplier vessel;;M. van Engeland;6.11;;1;0;1;;;1
+208;Parent 06 - Crude oil tanker;;M. van Engeland;6.11;;1;0;1;;;1
+209;Parent 05 - Containership;;M. van Engeland;6.11;;1;0;1;;;1
+210;Parent 04 - Containership;;M. van Engeland;6.11;;1;0;1;;;1
+211;Parent 03 - Bulkcarrier;;M. van Engeland;6.11;;1;0;1;;;1
+212;Parent 02 - Containership;;M. van engeland;6.11;;1;0;1;;;1
+213;Parent 01 - Fast cargoship;;M. van Engeland;6.11;;1;0;1;;;1
+214;NPL 100A - High speed round bilge displacement hull series;NMI (formerly Ship Division NPL);Sergio Diaz;6.11;Data taken from RINA paper dated 1976 and scaled by 10;1;0;1;;;1
+215;Notus;R.W. Gibson;Bryan Hansel;6.11;Racing and Cruising Canoe;1;0;1;;;1
+216;Notus;R.W. Gibson;Bryan Hansel (www.nessmuking.com);6.11;Racing and Cruising Canoe;0;0;1;;;0
+217;Deep V motorcraft;;Steve O.;6.11;10.92 m. planing motoryacht;1;0;1;;;1
+218;Motorboat;;;6.11;128 t. displacement;1;0;1;;;1
+219;Developable motorboat;;Imported from Autoyacht 4;6.11;Chined motorboat displacement 24.9 t.;1;0;1;;;1
+220;Modern (1875) Malecite St. John River Canoe;Lines collected by Edwin Adney;Bryan Hansel  www.nessmuking.com;6.11;Measurements taken from The Bark Canoes and Skin Boats of North America, p.79, figure 70;1;0;1;1;;1
+221;Mathilde;;Martijn van Engeland;6.11;Traditional Pilot Cutter;1;0;1;;;1
+222;Mary Rose;;Bertrand Dupuis;6.11;Downloaded from Wolfson unit as a VRML file;1;0;1;;;1
+223;M2 JMN (28Pds);Jean-Marc NOURRY;Jean-Marc NOURRY;6.11;CRANA Organisation Modeler;1;0;1;;;1
+224;Luna Rossa (Ita 45) (Spirit of ...);Jean-Marc NOURRY;Jean-Marc NOURRY;6.11;CRANA Organisation Modeller;1;0;1;;;1
+225;Little America 9m;Kiyoshi  Yano;;6.11;Design test;1;0;1;;;1
+226;Seabrite to fit Garage at Maximum Displacement;M. Sanderse;Marven;6.11;Imported from hulls program;1;0;1;;;1
+227;Laser open class sailboat;;M. van Engeland;6.11;;1;0;1;;;1
+228;KittyCat175;Steven Lewis;Carene 2003 and imported;6.11;17.5 ft CatBoat cruising hull suitable for small traditional cabin;1;0;1;;;1
+229;Kirawan;Philip L. Rhodes;Martijn van Engeland;6.11;11.81 m sailingyacht displacement=20.8 t.;1;1;1;;;0
+230;40 ft Sloop;Anders M;Anders M;6.11;Design test;0;1;1;;;0
+231;Igdlorssuit: Kayak measurements from boat built for Kenneth Taylor;Bryan Hansel / Andrey Factor;Andrey Factor;6.11;Brian created the hull in Hulls, and then Andrey imported the file into freeship scaled the hull and designed the deck.;1;0;1;1;;1
+232;Igdlorssuit;Built in Igdlorssuit for Kenneth Taylor in 1959;Bryan Hansel (www.nessmuking.com);6.11;Originally built skin on frame. Lines taken in 1964 formed the basis for the Anas Acuta.  Markers show the original offsets.;1;0;1;1;;1
+233;Guideboat15;Steven Lewis;Steven Lewis in Carene and imported;6.11;This is a transomed motor canoe for stitch and glue, one is currently being built.;1;0;1;;;1
+234;Grean RL1  A kayak based on a s-o-f built by Bryan for Bryan;Andrey Factor / Bryan Hansel;Andrey Factor;6.11;Heavily modified from the original design but using general shape.;1;0;1;1;;1
+235;Demo tug;;Marven;6.11;Demo tug used in the FREE!ship manual Displ. 283 t.;1;0;1;;;1
+236;40 sailing yacht;Marven;M. van Engeland;6.11;8.8 tonnes, CP=0.611;1;0;1;;;1
+237;40 sailing yacht;Marven;M. van Engeland;6.11;;1;0;1;;;1
+238;FREE!ship demo 6;;FREE!ship demo 6;6.11;;1;0;1;;;1
+239;FREE!ship demo 5;;;6.11;Chemical tanker;1;0;1;;;1
+240;Supplier;;;6.11;Supplier 3083 tonnes displacement;1;0;1;;;1
+241;120m containership;;M. van Engeland;6.11;;1;0;1;;;1
+242;FREE!ship demo 2;;;6.11;;1;0;1;;;1
+243;FREE!ship demo 1;;;6.11;;0;1;1;;;0
+244;Fishing vessel;;Jonas Dubois;6.11;;1;0;1;;;1
+245;16m-Fahrtenketch;Manfred Schlott;;6.11;Langfahrtyacht für weltweite Fahrt;1;0;1;;;1
+246;Eric;William Atkin;Bruce Hallman;6.11;Collin Archer type ketch;1;1;1;;;0
+247;Swedish  E-class sailing canoe;J. Sass,  Vaxholm     Sweden;J. Sass   May 2006;6.11;www.kanotseglarna.se;0;1;1;;;0
+248;Eka from Senoren;;Marcin Johansson;6.11;A old style wooden boat from southern part of Sweden. Not ready but wanted to share it. Still learning the program.;1;0;1;;;1
+249;Double_Chine;Martin Monteverde_ARGENTINA;Martin Monteverde;6.11;Double chine hull for low planning speed;1;0;1;;;1
+250;Dockbox;Jim Michalak, plans via duckworks magazine.com;Stefan A. Probst;6.11;Not 100% exact, but fairly close.;0;0;0;;;0
+251;Motichine 8;Andrey Factor;Andrey Factor using Hull as a base;6.11;Designed using Hull as a base;1;0;1;1;;1
+252;DEFAULT-3b;Bryan Hansel;;6.11;;1;0;1;1;;1
+253;Double ended rowboat after Bolgers Cartoon 5;Bruce Hallman;;6.11;;1;0;1;;;1
+254;Classe 1 M;Jean-Marc NOURRY;Jean-Marc NOURRY;6.11;CRANA Organisation Modeller;1;0;1;;;1
+255;Chubby Trailer Sailer;Bruce Taylor;Bruce Taylor;6.11;19 Flat-bottomed double-ender.  A concept drawing, done for practice.;0;0;1;;;0
+256;Chads boat;Bruce Taylor;Bruce Taylor;6.11;;0;0;1;;;0
+257;Canot Breton;Roland Grard;Roland Grard;6.11;;1;0;1;;;1
+258;CANOT540;mare25;;6.11;;1;0;1;;;1
+259;Canoe Yawl;;Bruce Hallman;6.11;Heavily influenced by Albert Strange design Wenda;1;0;1;;;1
+260;Raritania;W P Stephens;Graham Finney;6.11;"Lifted from offsets published in W.P.Stephens ""Canoe and Boatbuilding for Amateurs""";1;0;1;;;1
+261;Camaronero 21 - 21m shrimp trawler;Jesus Garcia;;6.11;;1;0;1;;;1
+262;Bulkcarrier;;Steve O.;6.11;152 m. Bulkcarrier;1;0;1;;;1
+263;BrierCreekBoat;Steven Lewis;Steven Lewis;6.11;This is an old timey poll/paddle boat from a small region in Gorgia USA, it is narrow at stern with a live well in the middle.;1;0;1;;;1
+264;Twin keel yacht;;Bertrand Dupuis;6.11;Downloaded from Wolfson Unit as a VRML file;1;0;1;;;1
+265;Benacus 33 fast;Giuseppe Balsamo;Cagliostro;6.11;;1;0;1;;;1
+266;America Cup Class;Jean-Marc NOURRY;jean-marc.nourry@cegetel.net;6.11;CRANA Organisation Modeler;1;0;1;;;1
+267;Model 5415;;M. van Engeland;6.11;Preliminary design for a Navy surface combatant ca. 1980 with sonar dome;1;0;1;;;1
+268;60 Pds JMN;Jean-Marc NOURRY;Jean-Marc NOURRY;6.11;CRANA Organisation Modeler;1;0;1;;;1
+269;Ocean Cruiser for 2;Steven Lewis;Steven Lewis;6.11;"This hull is designed for SailMotorCruising to the Sweet spots of the world. Adapted from George Buehlers ""Hagar"".";1;0;1;;;1
+270;34feet Sloop;Kiyoshi  Yano;;6.11;Design test;0;1;1;;;0
+271;26 Pieds Rule Box;Jean-Marc NOURRY;Jean-Marc NOURRY;6.11;CRANA Organisation Modeller;1;0;1;;;1
+272;26 meter tug;;;6.11;CB=0.51 CP=0.61 Displ 408 t.;1;0;1;;;1
+273;Multi-Pourpose Self-propelled Barge;Sergio Diaz;Sergio Diaz;6.11;October 2005;0;1;1;;;0
+274;12 ft. Sailing Dinghy;Bruce Taylor;Bruce Taylor;6.11;;1;0;1;;;1
+275;11 m. sailing yacht;;M. van Engeland;6.11;;1;0;1;;;1
+276;11m hull JMN;Jean-Marc NOURRY;Jean-Marc NOURRY;6.11;CRANA Organisation Modeller;1;0;1;;;1
+277;Fisher10;Steven Lewis;Carene 50 (way back when) and imported;6.11;Shallow Vee fishing boat for up to 3. This one has been built.;1;0;1;;;1
+278;6 X 1.5 Meters motorboat yacht with cabin;Leonel Murgu;;6.11;Future construction;0;0;1;;;0
+;;;;;;;;;;;182
+;;;;;;;;;;;
+;;;;;;;;;;;
+;;;;;;;;;;;
