@@ -16,7 +16,7 @@ sys.path.append(str(PROJECT_ROOT))
 DATA_DIR = PROJECT_ROOT / "data" / "input_parameters"
 INPUT_JSON = "./data/processed_ships.json"
 PCA_FILE = DATA_DIR / "ShipDatasetPCAParameters.npz"
-PDF_FILENAME = "all_boats_reconstruction.pdf"
+PDF_FILEPATH = PROJECT_ROOT / "figures"/ "all_boats_reconstruction.pdf"
 
 # Analysis Settings
 NUM_COEFF_FFT = 64
@@ -82,9 +82,9 @@ def inverse_fourier_transform(coeffs, num_points=360, symmetry=True):
 # --- PDF GENERATION ---
 
 def generate_pdf_report(valid_boats, mean_vec, basis, W_full):
-    print(f"\nGenerating PDF report: {PDF_FILENAME}...")
+    print(f"\nGenerating PDF report: {PDF_FILEPATH}...")
     
-    output_path = PDF_FILENAME
+    output_path = PDF_FILEPATH
     num_boats = len(valid_boats)
     
     # Pre-compute reconstruction vectors for all boats at visualization levels
@@ -241,7 +241,7 @@ def analyze_boats():
     ax2.set_yscale('log')
     ax2.grid(True, which='both')
 
-    summary_img = "pca_summary.png"
+    summary_img = PROJECT_ROOT / "figures" / "pca_summary.png"
     plt.savefig(summary_img)
     print(f"Summary image saved to {summary_img}")
     # plt.show() # Uncomment if running interactively
