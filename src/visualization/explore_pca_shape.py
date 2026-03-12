@@ -40,6 +40,7 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.all_boat_coeffs = []
         self.all_boat_status =[]
         self._ignore_callbacks = False  # Prevents recursive jumping
+        self.last_selected_gt_radii = None
         
         # --- Pre-compute Math Matrices ---
         self.angles_180 = np.linspace(-np.pi, np.pi, 180, endpoint=False)
@@ -63,6 +64,8 @@ class ShapeExplorer(pn.viewable.Viewer):
         # Feasibility controls
         self.x_axis_select = pn.widgets.Select(name='X Axis (Feasibility)', options=[], sizing_mode='stretch_width')
         self.y_axis_select = pn.widgets.Select(name='Y Axis (Feasibility)', options=[], sizing_mode='stretch_width')
+        self.z_axis_select = pn.widgets.Select(name='Z Axis (3D Feasibility)', options=[], sizing_mode='stretch_width')
+        self.show_3d_volume_toggle = pn.widgets.Checkbox(name='Show 3D Volume (Slower)', value=False, sizing_mode='stretch_width')
         self.color_by_feasibility_toggle = pn.widgets.Checkbox(name='Color boats by True Feasibility', value=True, sizing_mode='stretch_width')
         self.heatmap_res_slider = pn.widgets.IntSlider(name='Heatmap Resolution', start=100, end=1000, step=50, value=300, sizing_mode='stretch_width')
 
@@ -72,6 +75,7 @@ class ShapeExplorer(pn.viewable.Viewer):
         
         # Panes
         self.plotly_pane = pn.pane.Plotly(sizing_mode='stretch_both', config={'responsive': True})
+        self.plotly_feasibility_3d = pn.pane.Plotly(sizing_mode='stretch_both', config={'responsive': True})
         self.update_trigger = pn.widgets.Button(visible=False) # Hidden trigger for Bokeh updates
 
         # Bokeh Tap Stream
@@ -94,8 +98,10 @@ class ShapeExplorer(pn.viewable.Viewer):
         # Axis Fallback Watchers
         self.x_axis_select.param.watch(self._on_axis_change, 'value')
         self.y_axis_select.param.watch(self._on_axis_change, 'value')
+        self.z_axis_select.param.watch(self._on_axis_change, 'value')
         self.color_by_feasibility_toggle.param.watch(lambda e: self.trigger_update(), 'value')
         self.heatmap_res_slider.param.watch(lambda e: self.trigger_update(), 'value')
+        self.show_3d_volume_toggle.param.watch(lambda e: self.trigger_update(), 'value')
         
         self.tap_stream.param.watch(self._on_tap,['x', 'y'])
 
@@ -139,8 +145,10 @@ class ShapeExplorer(pn.viewable.Viewer):
         opts =[f"PC_{i}" for i in range(self.N_pca)]
         self.x_axis_select.options = opts
         self.y_axis_select.options = opts
+        self.z_axis_select.options = opts
         self.x_axis_select.value = opts[0]
         self.y_axis_select.value = opts[1] if self.N_pca > 1 else opts[0]
+        self.z_axis_select.value = opts[2] if self.N_pca > 2 else opts[0]
         
         self.load_boat_database() # Re-project boats to new N_pca
 
@@ -193,7 +201,8 @@ class ShapeExplorer(pn.viewable.Viewer):
                 'L': boat.get('original_length_m', 20.0),
                 'W': boat.get('original_width_m', 6.0),
                 'coeffs': coeffs,
-                'status': status
+                'status': status,
+                'radii': radii
             }
             self.all_boat_coeffs.append(coeffs)
             self.all_boat_status.append(status)
@@ -234,6 +243,7 @@ class ShapeExplorer(pn.viewable.Viewer):
         if boat_id == "Custom" or boat_id not in self.boat_db: return
         
         boat = self.boat_db[boat_id]
+        self.last_selected_gt_radii = boat.get('radii', None)
         
         self._ignore_callbacks = True
         self.slider_L.value = boat['L']
@@ -273,14 +283,31 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.trigger_update()
 
     def _on_axis_change(self, event):
-        """Prevents selecting the same PCA component for both X and Y axes."""
-        if self.x_axis_select.value == self.y_axis_select.value:
-            fallback = next(p for p in self.x_axis_select.options if p != event.new)
-            if event.obj is self.x_axis_select:
+        """Prevents selecting the same PCA component for X, Y, and Z axes."""
+        x_val = self.x_axis_select.value
+        y_val = self.y_axis_select.value
+        z_val = self.z_axis_select.value
+
+        # Enforce uniqueness, prioritizing X and Y over Z. 
+        if event.obj is self.x_axis_select:
+            if x_val == y_val:
+                fallback = next(p for p in self.y_axis_select.options if p not in [x_val, z_val])
                 self.y_axis_select.value = fallback
-            else:
+            elif x_val == z_val:
+                fallback = next(p for p in self.z_axis_select.options if p not in [x_val, y_val])
+                self.z_axis_select.value = fallback
+        elif event.obj is self.y_axis_select:
+            if y_val == x_val:
+                fallback = next(p for p in self.x_axis_select.options if p not in [y_val, z_val])
                 self.x_axis_select.value = fallback
-            return
+            elif y_val == z_val:
+                fallback = next(p for p in self.z_axis_select.options if p not in [x_val, y_val])
+                self.z_axis_select.value = fallback
+        elif event.obj is self.z_axis_select:
+            if z_val in [x_val, y_val]:
+                fallback = next(p for p in self.z_axis_select.options if p not in [x_val, y_val])
+                self.z_axis_select.value = fallback
+
         self.trigger_update()
 
     def _on_tap(self, *events):
@@ -312,6 +339,7 @@ class ShapeExplorer(pn.viewable.Viewer):
     def trigger_update(self):
         # Update Plotly
         self.update_plotly()
+        self.update_plotly_feasibility_3d()
         # Trigger Bokeh dynamic map update
         self.update_trigger.clicks += 1
 
@@ -348,6 +376,121 @@ class ShapeExplorer(pn.viewable.Viewer):
             template="plotly_white", margin=dict(l=20, r=20, t=40, b=20)
         )
         self.plotly_pane.object = fig 
+
+    def update_plotly_feasibility_3d(self):
+        d1 = int(self.x_axis_select.value.split('_')[1])
+        d2 = int(self.y_axis_select.value.split('_')[1])
+        d3 = int(self.z_axis_select.value.split('_')[1])
+        
+        fig = go.Figure()
+        
+        if self.show_3d_volume_toggle.value:
+            res_3d = 30
+            limit = 15.0
+            grid_vals = np.linspace(-limit, limit, res_3d)
+            X_grid, Y_grid, Z_grid = np.meshgrid(grid_vals, grid_vals, grid_vals, indexing='ij')
+
+            fixed_coeffs = self.current_coeffs.copy()
+            fixed_coeffs[d1] = 0.0
+            fixed_coeffs[d2] = 0.0
+            fixed_coeffs[d3] = 0.0
+
+            R_fixed = self.R_mean + self.M_mat @ fixed_coeffs
+            R_3d = (R_fixed[:, None, None, None] + 
+                    self.M_mat[:, d1, None, None, None] * X_grid + 
+                    self.M_mat[:, d2, None, None, None] * Y_grid + 
+                    self.M_mat[:, d3, None, None, None] * Z_grid)
+            
+            cos_ang_3d = self.cos_ang[:, :, None]
+            sin_ang_3d = self.sin_ang[:, :, None]
+
+            X_3d_geom = R_3d * cos_ang_3d
+            Y_3d_geom = R_3d * sin_ang_3d
+
+            # Continuous metrics mapping distance to invalidity (Feasible where > 0)
+            margin_radius = np.min(R_3d, axis=0)
+            margin_spill_x = 0.505 - np.max(np.abs(X_3d_geom), axis=0)
+            margin_spill_y = 0.505 - np.max(np.abs(Y_3d_geom), axis=0)
+            feasibility_metric = np.minimum.reduce([margin_radius, margin_spill_x, margin_spill_y])
+
+            fig.add_trace(go.Isosurface(
+                x=X_grid.flatten(),
+                y=Y_grid.flatten(),
+                z=Z_grid.flatten(),
+                value=feasibility_metric.flatten(),
+                isomin=-0.05,
+                isomax=0.05,
+                surface_count=2,
+                caps=dict(x_show=False, y_show=False, z_show=False),
+                colorscale=[[0, 'rgba(46, 204, 113, 0.4)'], [1, 'rgba(46, 204, 113, 0.4)']],
+                showscale=False,
+                opacity=0.6,
+                name='Feasible Boundary'
+            ))
+
+        if len(self.all_boat_coeffs) > 0:
+            if self.color_by_feasibility_toggle.value:
+                safe_mask = self.all_boat_status == 1
+                spill_mask = self.all_boat_status == -1
+                neg_mask = self.all_boat_status == -2
+                
+                if np.any(safe_mask):
+                    fig.add_trace(go.Scatter3d(
+                        x=self.all_boat_coeffs[safe_mask, d1],
+                        y=self.all_boat_coeffs[safe_mask, d2],
+                        z=self.all_boat_coeffs[safe_mask, d3],
+                        mode='markers',
+                        marker=dict(size=4, color='#2ecc71', line=dict(width=1, color='black')),
+                        name='Safe'
+                    ))
+                if np.any(spill_mask):
+                    fig.add_trace(go.Scatter3d(
+                        x=self.all_boat_coeffs[spill_mask, d1],
+                        y=self.all_boat_coeffs[spill_mask, d2],
+                        z=self.all_boat_coeffs[spill_mask, d3],
+                        mode='markers',
+                        marker=dict(size=4, color='#f39c12', line=dict(width=1, color='black')),
+                        name='Spill'
+                    ))
+                if np.any(neg_mask):
+                    fig.add_trace(go.Scatter3d(
+                        x=self.all_boat_coeffs[neg_mask, d1],
+                        y=self.all_boat_coeffs[neg_mask, d2],
+                        z=self.all_boat_coeffs[neg_mask, d3],
+                        mode='markers',
+                        marker=dict(size=4, color='#e74c3c', line=dict(width=1, color='black')),
+                        name='Neg Radius'
+                    ))
+            else:
+                fig.add_trace(go.Scatter3d(
+                    x=self.all_boat_coeffs[:, d1],
+                    y=self.all_boat_coeffs[:, d2],
+                    z=self.all_boat_coeffs[:, d3],
+                    mode='markers',
+                    marker=dict(size=3, color='black', opacity=0.3),
+                    name='Boats'
+                ))
+                
+        fig.add_trace(go.Scatter3d(
+            x=[self.current_coeffs[d1]],
+            y=[self.current_coeffs[d2]],
+            z=[self.current_coeffs[d3]],
+            mode='markers',
+            marker=dict(size=8, color='blue', symbol='x', line=dict(width=2, color='white')),
+            name='Current'
+        ))
+        
+        fig.update_layout(
+            title=f"3D Feasibility Space",
+            scene=dict(
+                xaxis_title=f"PC_{d1}",
+                yaxis_title=f"PC_{d2}",
+                zaxis_title=f"PC_{d3}"
+            ),
+            margin=dict(l=0, r=0, b=0, t=40)
+        )
+        
+        self.plotly_feasibility_3d.object = fig
 
     def get_feasibility_heatmap(self, _trigger, x=None, y=None):
         if self.x_axis_select.value == self.y_axis_select.value:
@@ -430,19 +573,34 @@ class ShapeExplorer(pn.viewable.Viewer):
         x_curr = np.append(x_curr, x_curr[0])
         y_curr = np.append(y_curr, y_curr[0])
 
-        geom = hv.Curve((y_curr, x_curr)).opts(
-            color='royalblue', line_width=2, width=400, height=500,
+        geom = hv.Curve((y_curr, x_curr), label="PCA Shape").opts(
+            color='royalblue', line_width=2, line_dash='solid', width=400, height=500,
             title="Normalized Geometry (r(θ))",
             xlabel="Normalized Width (Y)", ylabel="Normalized Length (X)",
-            xlim=(-0.7, 0.7), ylim=(-0.7, 0.7), data_aspect=1
+            xlim=(-0.7, 0.7), ylim=(-0.7, 0.7), data_aspect=1, show_legend=True
         )
+        
+        final_plot = geom
+
+        # Overlay GT shape faintly
+        if self.last_selected_gt_radii is not None:
+            r_gt = self.last_selected_gt_radii
+            ang_gt = np.linspace(-np.pi, np.pi, len(r_gt), endpoint=False)
+            x_gt = r_gt * np.cos(ang_gt)
+            y_gt = r_gt * np.sin(ang_gt)
+            
+            x_gt = np.append(x_gt, x_gt[0])
+            y_gt = np.append(y_gt, y_gt[0])
+            
+            gt_geom = hv.Curve((y_gt, x_gt), label="GT Shape").opts(color='black', alpha=0.3, line_width=2, line_dash='dotted')
+            final_plot = gt_geom * final_plot
         
         # 1x1 Box
         box_x =[-0.5, 0.5, 0.5, -0.5, -0.5]
         box_y =[-0.5, -0.5, 0.5, 0.5, -0.5]
-        box = hv.Curve((box_y, box_x)).opts(color='gray', line_dash='dashed')
+        box = hv.Curve((box_y, box_x), label="Bounds").opts(color='gray', line_dash='dashed')
 
-        return geom * box
+        return final_plot * box
 
     # --- View Layout ---
 
@@ -461,6 +619,8 @@ class ShapeExplorer(pn.viewable.Viewer):
             pn.pane.Markdown("### Feasibility Controls"),
             self.x_axis_select,
             self.y_axis_select,
+            self.z_axis_select,
+            self.show_3d_volume_toggle,
             self.color_by_feasibility_toggle,
             self.heatmap_res_slider,
             pn.layout.Divider(),
@@ -488,7 +648,8 @@ class ShapeExplorer(pn.viewable.Viewer):
         
         tabs = pn.Tabs(
             ("Interactive Feasibility Landscape", feasibility_layout),
-            ("3D Shape Viewer", self.plotly_pane)
+            ("3D Feasibility Space", self.plotly_feasibility_3d),
+            ("2D Shape Viewer", self.plotly_pane)
         )
         
         main_area = pn.Column(tabs, sizing_mode='stretch_both')
