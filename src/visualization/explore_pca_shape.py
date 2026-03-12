@@ -1,232 +1,497 @@
 import sys
+import os
+import json
 import numpy as np
 import panel as pn
+import holoviews as hv
 import plotly.graph_objects as go
 from pathlib import Path
+from matplotlib.colors import ListedColormap
 
+# Setup paths
 FILE_PATH = Path(__file__).resolve()
 SRC_ROOT = FILE_PATH.parent.parent
 PROJECT_ROOT = SRC_ROOT.parent
 sys.path.append(str(PROJECT_ROOT))
 
 from src.utils.geometry_utils import compute_estimated_shape_from_params
+from src.utils.tools import generate_fourier_function, fourier_transform
 
-pn.extension('plotly')
+pn.extension('plotly', 'mathjax')
+hv.extension('bokeh')
 
-class ShapeExplorer:
+class ShapeExplorer(pn.viewable.Viewer):
     def __init__(self, data_dir: str):
         self.data_dir = Path(data_dir)
         if not self.data_dir.exists():
              raise FileNotFoundError(f"Directory not found: {data_dir}")
         
-        # 1. Find .npz files
+        # Paths
         self.npz_files = list(self.data_dir.glob("*.npz"))
         if not self.npz_files:
              raise FileNotFoundError(f"No .npz files found in {data_dir}")
-        
         self.npz_options = {f.name: str(f) for f in self.npz_files}
-        
-        # 2. Define GUI Widgets
-        self.file_selector = pn.widgets.Select(
-            name='Select PCA Model', 
-            options=self.npz_options,
-            value=self.npz_options.get('ShipDatasetPCAParameters.npz', list(self.npz_options.values())[0]),
-            sizing_mode='stretch_width'
-        )
-        
-        self.slider_L = pn.widgets.FloatSlider(
-            name='Length (L)', start=5.0, end=150.0, step=1.0, value=50.0, 
-            sizing_mode='stretch_width'
-        )
-        self.slider_W = pn.widgets.FloatSlider(
-            name='Width (W)', start=2.0, end=50.0, step=0.5, value=20.0, 
-            sizing_mode='stretch_width'
-        )
-        self.rotate_toggle = pn.widgets.Checkbox(
-            name='Rotate 90°', value=False, 
-            sizing_mode='stretch_width'
-        )
-        self.reset_btn = pn.widgets.Button(
-            name='Reset Coefficients', button_type='primary', 
-            sizing_mode='stretch_width'
-        )
-        self.reset_btn.on_click(self.reset_coefficients)
+        self.json_path = PROJECT_ROOT / "data" / "processed_ships.json"
 
-        self.coeff_input = pn.widgets.TextInput(
-            name='Paste Coefficients (comma separated)',
-            placeholder='e.g. -1.17, 0.16, 0.06, 0.07',
-            sizing_mode='stretch_width'
-        )
-        self.set_coeff_btn = pn.widgets.Button(
-            name='Set Coefficients', button_type='success',
-            sizing_mode='stretch_width'
-        )
-        self.set_coeff_btn.on_click(self.set_coefficients_from_text)
+        # --- Internal State ---
+        self.N_pca = 4
+        self.current_coeffs = np.zeros(self.N_pca)
+        self.boat_db = {}
+        self.all_boat_coeffs = []
+        self.all_boat_status =[]
+        self._ignore_callbacks = False  # Prevents recursive jumping
         
-        self.plot_pane = pn.pane.Plotly(
-            sizing_mode='stretch_both', 
-            config={'responsive': True}
-        )
+        # --- Pre-compute Math Matrices ---
+        self.angles_180 = np.linspace(-np.pi, np.pi, 180, endpoint=False)
+        self.G_mat = generate_fourier_function(N_f=64)(self.angles_180).T # Shape: (180, 64)
+        self.cos_ang = np.cos(self.angles_180)[:, None, None]
+        self.sin_ang = np.sin(self.angles_180)[:, None, None]
 
-        # Dynamic container for PCA sliders
+        # --- GUI Widgets ---
+        default_key = next((k for k in self.npz_options.keys() if 'ShipDatasetPCAParameters' in k), list(self.npz_options.keys())[0] if self.npz_options else None)
+        self.file_selector = pn.widgets.Select(name='Select PCA Model', options=self.npz_options, value=self.npz_options[default_key], sizing_mode='stretch_width')
+        self.n_pca_input = pn.widgets.IntInput(name='Number of PCA Coeffs', value=self.N_pca, start=2, end=20, sizing_mode='stretch_width')
+        
+        self.boat_selector = pn.widgets.Select(name='Jump to Dataset Boat', options={"Custom": "Custom"}, sizing_mode='stretch_width')
+        
+        self.slider_L = pn.widgets.FloatSlider(name='Length (L)', start=1.0, end=150.0, step=0.5, value=20.0, sizing_mode='stretch_width')
+        self.slider_W = pn.widgets.FloatSlider(name='Width (W)', start=0.5, end=50.0, step=0.1, value=6.0, sizing_mode='stretch_width')
+        self.rotate_toggle = pn.widgets.Checkbox(name='Rotate 90° (Plotly view)', value=False, sizing_mode='stretch_width')
+        
+        self.reset_btn = pn.widgets.Button(name='Reset Coefficients', button_type='warning', sizing_mode='stretch_width')
+        
+        # Feasibility controls
+        self.x_axis_select = pn.widgets.Select(name='X Axis (Feasibility)', options=[], sizing_mode='stretch_width')
+        self.y_axis_select = pn.widgets.Select(name='Y Axis (Feasibility)', options=[], sizing_mode='stretch_width')
+        self.color_by_feasibility_toggle = pn.widgets.Checkbox(name='Color boats by True Feasibility', value=True, sizing_mode='stretch_width')
+        self.heatmap_res_slider = pn.widgets.IntSlider(name='Heatmap Resolution', start=100, end=1000, step=50, value=300, sizing_mode='stretch_width')
+
+        # Dynamic PCA Sliders Column
         self.pca_sliders_column = pn.Column(sizing_mode='stretch_width')
-        self.pca_sliders = []
+        self.pca_sliders =[]
         
-        # Load initial model
-        self.load_model(self.file_selector.value)
-        
-        # Watch file selector
-        self.file_selector.param.watch(self.on_file_change, 'value')
+        # Panes
+        self.plotly_pane = pn.pane.Plotly(sizing_mode='stretch_both', config={'responsive': True})
+        self.update_trigger = pn.widgets.Button(visible=False) # Hidden trigger for Bokeh updates
 
-        # Watch geometry widgets
-        self.slider_L.param.watch(lambda e: self.trigger_update(), 'value')
-        self.slider_W.param.watch(lambda e: self.trigger_update(), 'value')
+        # Bokeh Tap Stream
+        self.tap_stream = hv.streams.Tap(x=None, y=None)
+
+        # --- Initialization ---
+        self.load_model(self.file_selector.value)
+        self.load_boat_database()
+        
+        # --- Event Watchers ---
+        self.file_selector.param.watch(self.on_file_change, 'value')
+        self.n_pca_input.param.watch(self.on_npca_change, 'value')
+        self.boat_selector.param.watch(self.on_boat_select, 'value')
+        self.reset_btn.on_click(self.reset_coefficients)
+        
+        self.slider_L.param.watch(self._on_manual_change, 'value')
+        self.slider_W.param.watch(self._on_manual_change, 'value')
         self.rotate_toggle.param.watch(lambda e: self.trigger_update(), 'value')
         
-        # Initial Plot
+        # Axis Fallback Watchers
+        self.x_axis_select.param.watch(self._on_axis_change, 'value')
+        self.y_axis_select.param.watch(self._on_axis_change, 'value')
+        self.color_by_feasibility_toggle.param.watch(lambda e: self.trigger_update(), 'value')
+        self.heatmap_res_slider.param.watch(lambda e: self.trigger_update(), 'value')
+        
+        self.tap_stream.param.watch(self._on_tap,['x', 'y'])
+
         self.trigger_update()
 
-    def on_file_change(self, event):
-        self.load_model(event.new)
-        self.trigger_update()
-        
+    # --- Loading & Data Processing ---
+    
     def load_model(self, pca_path):
         data = np.load(pca_path)
-        self.eigenvectors = data['eigenvectors'].real 
-        self.mean_coeffs = data['mean']
-        self.num_pca_comps = self.eigenvectors.shape[1]
+        self.full_eigenvectors = data['eigenvectors'].real 
+        self.mean_coeffs = data['mean'].flatten()
         self.n_fourier_dim = self.mean_coeffs.shape[0]
         self.angles = np.linspace(0, 2*np.pi, 200)
+        self._build_pca_dependencies()
+
+    def _build_pca_dependencies(self):
+        # Truncate eigenvectors
+        self.eigenvectors = self.full_eigenvectors[:, :self.N_pca]
         
+        # Precompute projection matrices for fast heatmap
+        self.M_mat = self.G_mat @ self.eigenvectors # Shape: (180, N_pca)
+        self.R_mean = self.G_mat @ self.mean_coeffs # Shape: (180,)
+
+        # Re-create internal coeffs
+        old_coeffs = self.current_coeffs.copy()
+        self.current_coeffs = np.zeros(self.N_pca)
+        for i in range(min(len(old_coeffs), self.N_pca)):
+            self.current_coeffs[i] = old_coeffs[i]
+
         # Re-create sliders
-        self.pca_sliders = []
+        self.pca_sliders =[]
         self.pca_sliders_column.clear()
         
-        for i in range(self.num_pca_comps):
-            s = pn.widgets.FloatSlider(
-                name=f'PCA Coeff {i}', start=-100.0, end=100.0, step=0.1, value=0.0,
-                sizing_mode='stretch_width'
-            )
-            # Bind update to slider change
-            s.param.watch(lambda e: self.trigger_update(), 'value')
+        for i in range(self.N_pca):
+            s = pn.widgets.FloatSlider(name=f'PC_{i}', start=-15.0, end=15.0, step=0.05, value=self.current_coeffs[i], sizing_mode='stretch_width')
+            s.param.watch(self._on_slider_change, 'value')
             self.pca_sliders.append(s)
             self.pca_sliders_column.append(s)
             
-        # Re-bind geometric sliders
-        # We need to unbind old watchers if any? 
-        # Easier to just rely on explicit watchers or a single trigger method.
-        # Im using trigger_update which reads values.
+        # Re-create Axis selectors
+        opts =[f"PC_{i}" for i in range(self.N_pca)]
+        self.x_axis_select.options = opts
+        self.y_axis_select.options = opts
+        self.x_axis_select.value = opts[0]
+        self.y_axis_select.value = opts[1] if self.N_pca > 1 else opts[0]
+        
+        self.load_boat_database() # Re-project boats to new N_pca
 
-    def trigger_update(self):
-        # Gather all current values
-        L = self.slider_L.value
-        W = self.slider_W.value
-        rotate = self.rotate_toggle.value
-        coeffs = [s.value for s in self.pca_sliders]
-        self.update_plot(L, W, rotate, *coeffs)
+    def load_boat_database(self):
+        """Batch loads and projects all boats into PCA space, and calculates their 4D status."""
+        if not self.json_path.exists(): return
+        
+        with open(self.json_path, 'r') as f:
+            boats_data = json.load(f)
+            
+        self.boat_db = {}
+        self.all_boat_coeffs = []
+        self.all_boat_status =[]
+        
+        for boat in boats_data:
+            if not boat.get('is_boat') and not boat.get('is_kayak'): continue
+            if len(boat.get('radii',[])) == 0: continue
+            
+            radii = np.array(boat['radii'])
+            angs = np.linspace(-np.pi, np.pi, len(radii), endpoint=False)
+            
+            vec = fourier_transform(angs, radii, num_coeff=64, symmetry=True).flatten()
+            if vec.shape != self.mean_coeffs.shape:
+                vec = fourier_transform(angs, radii, num_coeff=64, symmetry=False).flatten()
+                
+            centered_vec = vec - self.mean_coeffs
+            s = np.linalg.norm(self.full_eigenvectors[:, 0])
+            scaling_factor_sq = s**2
+            
+            # Project to get coefficients up to N_pca
+            coeffs = (self.full_eigenvectors.T @ centered_vec) / scaling_factor_sq
+            coeffs = coeffs[:self.N_pca]
 
-    def reset_coefficients(self, event=None):
-        for slider in self.pca_sliders:
-            slider.value = 0.0
+            # Determine true N-dimensional feasibility for these specific coeffs
+            r_4d = self.R_mean + self.M_mat @ coeffs
+            x_4d = r_4d * np.cos(self.angles_180)
+            y_4d = r_4d * np.sin(self.angles_180)
+
+            if np.any(r_4d < 0):
+                status = -2  # Negative Radius
+            elif np.max(np.abs(x_4d)) > 0.505 or np.max(np.abs(y_4d)) > 0.505:
+                status = -1  # Spills outside 1x1
+            else:
+                status = 1   # Fully Feasible
+            
+            boat_id = str(boat['id'])
+            self.boat_db[boat_id] = {
+                'id': boat_id,
+                'name': boat.get('name', 'Unknown'),
+                'L': boat.get('original_length_m', 20.0),
+                'W': boat.get('original_width_m', 6.0),
+                'coeffs': coeffs,
+                'status': status
+            }
+            self.all_boat_coeffs.append(coeffs)
+            self.all_boat_status.append(status)
+            
+        self.all_boat_coeffs = np.array(self.all_boat_coeffs)
+        self.all_boat_status = np.array(self.all_boat_status)
+        
+        # Update dropdown
+        opts = {"Custom": "Custom"}
+        for k, v in self.boat_db.items():
+            opts[f"{k} - {v['name'][:15]}"] = k
+        self.boat_selector.options = opts
+
+    # --- Events ---
+    
+    def on_file_change(self, event):
+        self._ignore_callbacks = True
+        self.load_model(event.new)
+        self.boat_selector.value = "Custom"
+        self._ignore_callbacks = False
+        self.trigger_update()
+        
+    def on_npca_change(self, event):
+        if event.new < 2:
+            self.n_pca_input.value = 2
+            return
+        self.N_pca = event.new
+        
+        self._ignore_callbacks = True
+        self._build_pca_dependencies()
+        self.boat_selector.value = "Custom"
+        self._ignore_callbacks = False
+        
         self.trigger_update()
 
-    def set_coefficients_from_text(self, event=None):
-        """Parses the text input and updates sliders."""
-        text = self.coeff_input.value
-        if not text:
+    def on_boat_select(self, event):
+        boat_id = event.new
+        if boat_id == "Custom" or boat_id not in self.boat_db: return
+        
+        boat = self.boat_db[boat_id]
+        
+        self._ignore_callbacks = True
+        self.slider_L.value = boat['L']
+        self.slider_W.value = boat['W']
+        
+        for i, val in enumerate(boat['coeffs']):
+            self.pca_sliders[i].value = val
+            self.current_coeffs[i] = val
+        self._ignore_callbacks = False
+            
+        self.trigger_update()
+
+    def _on_slider_change(self, event):
+        if getattr(self, '_ignore_callbacks', False):
             return
         
-        try:
-            # Remove brackets if present and split by comma
-            clean_text = text.replace('[', '').replace(']', '').replace('np.array(', '').replace(')', '')
-            values = [float(x.strip()) for x in clean_text.split(',')]
+        for i, s in enumerate(self.pca_sliders):
+            self.current_coeffs[i] = s.value
             
-            for i, val in enumerate(values):
-                if i < len(self.pca_sliders):
-                    self.pca_sliders[i].value = val
-                    
-            self.trigger_update()
-                    
-        except ValueError:
-            print("Invalid input format. Please use comma-separated numbers.")
+        if self.boat_selector.value != "Custom":
+            self._ignore_callbacks = True
+            self.boat_selector.value = "Custom"
+            self._ignore_callbacks = False
+            
+        self.trigger_update()
 
-    def update_plot(self, L, W, rotate_90, *pca_coeffs):
-        """
-        Callback function that updates the EXISTING plot pane.
-        """
-        coeffs_array = np.array(pca_coeffs)
-        yaw = np.pi / 2 if rotate_90 else 0.0
+    def _on_manual_change(self, event):
+        """Called when L or W are manually adjusted"""
+        if getattr(self, '_ignore_callbacks', False):
+            return
+            
+        if self.boat_selector.value != "Custom":
+            self._ignore_callbacks = True
+            self.boat_selector.value = "Custom"
+            self._ignore_callbacks = False
+            
+        self.trigger_update()
+
+    def _on_axis_change(self, event):
+        """Prevents selecting the same PCA component for both X and Y axes."""
+        if self.x_axis_select.value == self.y_axis_select.value:
+            fallback = next(p for p in self.x_axis_select.options if p != event.new)
+            if event.obj is self.x_axis_select:
+                self.y_axis_select.value = fallback
+            else:
+                self.x_axis_select.value = fallback
+            return
+        self.trigger_update()
+
+    def _on_tap(self, *events):
+        x, y = self.tap_stream.x, self.tap_stream.y
+        if x is None or y is None: return
+        
+        d1 = int(self.x_axis_select.value.split('_')[1])
+        d2 = int(self.y_axis_select.value.split('_')[1])
+        
+        self._ignore_callbacks = True
+        self.pca_sliders[d1].value = x
+        self.pca_sliders[d2].value = y
+        self.current_coeffs[d1] = x
+        self.current_coeffs[d2] = y
+        self.boat_selector.value = "Custom"
+        self._ignore_callbacks = False
+        
+        self.trigger_update()
+
+    def reset_coefficients(self, event=None):
+        self._ignore_callbacks = True
+        for s in self.pca_sliders: 
+            s.value = 0.0
+        self.current_coeffs.fill(0.0)
+        self.boat_selector.value = "Custom"
+        self._ignore_callbacks = False
+        self.trigger_update()
+
+    def trigger_update(self):
+        # Update Plotly
+        self.update_plotly()
+        # Trigger Bokeh dynamic map update
+        self.update_trigger.clicks += 1
+
+    # --- Plotting ---
+
+    def update_plotly(self):
+        L = self.slider_L.value
+        W = self.slider_W.value
+        yaw = np.pi / 2 if self.rotate_toggle.value else 0.0
 
         est_shape_x, est_shape_y = compute_estimated_shape_from_params(
             0.0, 0.0, yaw, L, W, 
-            coeffs_array, self.mean_coeffs, self.eigenvectors, 
+            self.current_coeffs, self.mean_coeffs.reshape(-1, 1), self.eigenvectors, 
             self.angles, self.n_fourier_dim
         )
 
         fig = go.Figure()
+        fig.add_trace(go.Scatter(x=est_shape_y, y=est_shape_x, mode='lines', name='PCA Shape', line=dict(color='royalblue', width=3), fill='toself', fillcolor='rgba(65, 105, 225, 0.2)'))
 
-        # 1. GP-PCA Shape
-        fig.add_trace(go.Scatter(
-            x=est_shape_y, 
-            y=est_shape_x, 
-            mode='lines', 
-            name='PCA Shape',
-            line=dict(color='royalblue', width=3),
-            fill='toself',
-            fillcolor='rgba(65, 105, 225, 0.2)' 
-        ))
-
-        # 2. Reference Box
+        # L x W Reference Box
         box_local_x = np.array([L/2, L/2, -L/2, -L/2, L/2])
         box_local_y = np.array([-W/2, W/2, W/2, -W/2, -W/2])
-        
         c, s = np.cos(yaw), np.sin(yaw)
         box_rot_x = c * box_local_x - s * box_local_y
         box_rot_y = s * box_local_x + c * box_local_y
 
-        fig.add_trace(go.Scatter(
-            x=box_rot_y, 
-            y=box_rot_x, 
-            mode='lines',
-            name='Reference Box',
-            line=dict(color='gray', dash='dash')
-        ))
+        fig.add_trace(go.Scatter(x=box_rot_y, y=box_rot_x, mode='lines', name='L x W Ref Box', line=dict(color='gray', dash='dash')))
 
         fig.update_layout(
-            title=f"Real-time Shape Exploration ({Path(self.file_selector.value).name})",
+            title="Scaled Geometry (Real World Coordinates)",
             autosize=True,
-            xaxis=dict(range=[-60, 60], constrain='domain', title="Width / Local Y [m]"), 
-            yaxis=dict(range=[-80, 80], scaleanchor="x", scaleratio=1, title="Length / Local X [m]"), 
-            template="plotly_white",
-            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
-            margin=dict(l=20, r=20, t=40, b=20)
+            xaxis=dict(range=[-60, 60], constrain='domain', title="East / Y [m]"), 
+            yaxis=dict(range=[-80, 80], scaleanchor="x", scaleratio=1, title="North / X [m]"), 
+            template="plotly_white", margin=dict(l=20, r=20, t=40, b=20)
+        )
+        self.plotly_pane.object = fig 
+
+    def get_feasibility_heatmap(self, _trigger, x=None, y=None):
+        if self.x_axis_select.value == self.y_axis_select.value:
+            return hv.Curve([]).opts(title="Select different X and Y axes")
+
+        d1 = int(self.x_axis_select.value.split('_')[1])
+        d2 = int(self.y_axis_select.value.split('_')[1])
+
+        # 1. Evaluate Heatmap Grid
+        res = self.heatmap_res_slider.value 
+        limit = 15.0
+        grid_vals = np.linspace(-limit, limit, res)
+        X_grid, Y_grid = np.meshgrid(grid_vals, grid_vals)
+
+        fixed_coeffs = self.current_coeffs.copy()
+        fixed_coeffs[d1] = 0.0
+        fixed_coeffs[d2] = 0.0
+
+        # R_fixed: (180,)
+        R_fixed = self.R_mean + self.M_mat @ fixed_coeffs
+        
+        # Broadcast into (180, res, res)
+        R_3d = R_fixed[:, None, None] + self.M_mat[:, d1, None, None] * X_grid + self.M_mat[:, d2, None, None] * Y_grid
+        
+        X_3d = R_3d * self.cos_ang
+        Y_3d = R_3d * self.sin_ang
+
+        feasibility = np.ones((res, res))
+        feasibility[np.any(np.abs(X_3d) > 0.505, axis=0) | np.any(np.abs(Y_3d) > 0.505, axis=0)] = -1
+        feasibility[np.any(R_3d < 0, axis=0)] = -2
+
+        # 2. Build Heatmap Plot
+        cmap = ListedColormap(['#e74c3c', '#f39c12', '#2ecc71']) # Red (Neg), Orange (Spill), Green (Safe)
+        
+        heatmap = hv.Image((grid_vals, grid_vals, feasibility), kdims=[f'PC_{d1}', f'PC_{d2}']).opts(
+            cmap=cmap, clim=(-2, 1), width=500, height=500, 
+            tools=['hover', 'tap'], active_tools=['tap'],
+            title=f"Feasibility Space (PC_{d1} vs PC_{d2})",
+            xlabel=f"PC_{d1}", ylabel=f"PC_{d2}"
         )
 
-        self.plot_pane.object = fig 
+        # Plot actual boats
+        if len(self.all_boat_coeffs) > 0:
+            if self.color_by_feasibility_toggle.value:
+                # Color by true dimensionality status
+                safe_mask = self.all_boat_status == 1
+                spill_mask = self.all_boat_status == -1
+                neg_mask = self.all_boat_status == -2
+                
+                if np.any(safe_mask):
+                    heatmap *= hv.Scatter((self.all_boat_coeffs[safe_mask, d1], self.all_boat_coeffs[safe_mask, d2])).opts(
+                        color='#2ecc71', size=6, line_color='black', alpha=0.9, tools=[])
+                if np.any(spill_mask):
+                    heatmap *= hv.Scatter((self.all_boat_coeffs[spill_mask, d1], self.all_boat_coeffs[spill_mask, d2])).opts(
+                        color='#f39c12', size=6, line_color='black', alpha=0.9, tools=[])
+                if np.any(neg_mask):
+                    heatmap *= hv.Scatter((self.all_boat_coeffs[neg_mask, d1], self.all_boat_coeffs[neg_mask, d2])).opts(
+                        color='#e74c3c', size=6, line_color='black', alpha=0.9, tools=[])
+            else:
+                # Flat transparent color
+                scatter = hv.Scatter((self.all_boat_coeffs[:, d1], self.all_boat_coeffs[:, d2])).opts(
+                    color='black', size=3, alpha=0.3, tools=[]
+                )
+                heatmap = heatmap * scatter
+
+        # Plot Current Cursor
+        cursor = hv.Points([(self.current_coeffs[d1], self.current_coeffs[d2])]).opts(
+            color='blue', marker='star', size=15, line_color='white'
+        )
+        
+        return heatmap * cursor
+
+    def get_normalized_geometry(self, _trigger):
+        # 3. Build Normalized Geometry Plot
+        r_curr = self.R_mean + self.M_mat @ self.current_coeffs
+        x_curr = r_curr * np.cos(self.angles_180)
+        y_curr = r_curr * np.sin(self.angles_180)
+        
+        # Close loop
+        x_curr = np.append(x_curr, x_curr[0])
+        y_curr = np.append(y_curr, y_curr[0])
+
+        geom = hv.Curve((y_curr, x_curr)).opts(
+            color='royalblue', line_width=2, width=400, height=500,
+            title="Normalized Geometry (r(θ))",
+            xlabel="Normalized Width (Y)", ylabel="Normalized Length (X)",
+            xlim=(-0.7, 0.7), ylim=(-0.7, 0.7), data_aspect=1
+        )
+        
+        # 1x1 Box
+        box_x =[-0.5, 0.5, 0.5, -0.5, -0.5]
+        box_y =[-0.5, -0.5, 0.5, 0.5, -0.5]
+        box = hv.Curve((box_y, box_x)).opts(color='gray', line_dash='dashed')
+
+        return geom * box
+
+    # --- View Layout ---
 
     def view(self):
         sidebar = pn.Column(
-            pn.pane.Markdown("### PCA Model Selection"),
+            pn.pane.Markdown("### Data & Extent Settings"),
             self.file_selector,
+            self.n_pca_input,
+            self.boat_selector,
             pn.layout.Divider(),
-            pn.pane.Markdown("### Geometry Parameters"),
+            pn.pane.Markdown("### Size & Rotation"),
             self.slider_L,
             self.slider_W,
             self.rotate_toggle,
             pn.layout.Divider(),
+            pn.pane.Markdown("### Feasibility Controls"),
+            self.x_axis_select,
+            self.y_axis_select,
+            self.color_by_feasibility_toggle,
+            self.heatmap_res_slider,
+            pn.layout.Divider(),
             pn.pane.Markdown("### PCA Coefficients"),
-            self.coeff_input,
-            self.set_coeff_btn,
             self.reset_btn,
             pn.Spacer(height=10),
             self.pca_sliders_column,
             sizing_mode='stretch_width' 
         )
         
-        main_area = pn.Column(
-            self.plot_pane,
-            sizing_mode='stretch_both'
+        # Split into two DynamicMaps to resolve the Layout/Tap conflict
+        dmap_heatmap = hv.DynamicMap(
+            pn.bind(self.get_feasibility_heatmap, _trigger=self.update_trigger.param.clicks), 
+            streams=[self.tap_stream]
         )
+        dmap_geom = hv.DynamicMap(
+            pn.bind(self.get_normalized_geometry, _trigger=self.update_trigger.param.clicks)
+        )
+        
+        # Combine using Panel Row instead of HoloViews Layout (+)
+        feasibility_layout = pn.Row(
+            pn.pane.HoloViews(dmap_heatmap, backend='bokeh'),
+            pn.pane.HoloViews(dmap_geom, backend='bokeh')
+        )
+        
+        tabs = pn.Tabs(
+            ("Interactive Feasibility Landscape", feasibility_layout),
+            ("3D Shape Viewer", self.plotly_pane)
+        )
+        
+        main_area = pn.Column(tabs, sizing_mode='stretch_both')
         
         return pn.template.FastListTemplate(
             title="PCA Shape Explorer",
