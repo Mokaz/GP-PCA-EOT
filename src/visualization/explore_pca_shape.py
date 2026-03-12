@@ -39,6 +39,7 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.boat_db = {}
         self.all_boat_coeffs = []
         self.all_boat_status =[]
+        self.all_boat_names = []
         self._ignore_callbacks = False  # Prevents recursive jumping
         self.last_selected_gt_radii = None
         
@@ -56,8 +57,15 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.boat_selector = pn.widgets.Select(name='Jump to Dataset Boat', options={"Custom": "Custom"}, sizing_mode='stretch_width')
         
         self.slider_L = pn.widgets.FloatSlider(name='Length (L)', start=1.0, end=150.0, step=0.5, value=20.0, sizing_mode='stretch_width')
+        self.input_L = pn.widgets.FloatInput(name='Length Input', value=20.0, start=1.0, end=150.0, step=0.5, sizing_mode='stretch_width')
+        self.slider_L.link(self.input_L, value='value', bidirectional=True)
+        
         self.slider_W = pn.widgets.FloatSlider(name='Width (W)', start=0.5, end=50.0, step=0.1, value=6.0, sizing_mode='stretch_width')
-        self.rotate_toggle = pn.widgets.Checkbox(name='Rotate 90° (Plotly view)', value=False, sizing_mode='stretch_width')
+        self.input_W = pn.widgets.FloatInput(name='Width Input', value=6.0, start=0.5, end=50.0, step=0.1, sizing_mode='stretch_width')
+        self.slider_W.link(self.input_W, value='value', bidirectional=True)
+        
+        self.reset_lw_btn = pn.widgets.Button(name='Reset L & W', button_type='warning', sizing_mode='stretch_width')
+        self.rotate_toggle = pn.widgets.Checkbox(name='Rotate 90°', value=False, sizing_mode='stretch_width')
         
         self.reset_btn = pn.widgets.Button(name='Reset Coefficients', button_type='warning', sizing_mode='stretch_width')
         
@@ -67,6 +75,7 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.z_axis_select = pn.widgets.Select(name='Z Axis (3D Feasibility)', options=[], sizing_mode='stretch_width')
         self.show_3d_volume_toggle = pn.widgets.Checkbox(name='Show 3D Volume (Slower)', value=False, sizing_mode='stretch_width')
         self.color_by_feasibility_toggle = pn.widgets.Checkbox(name='Color boats by True Feasibility', value=True, sizing_mode='stretch_width')
+        self.include_kayaks_toggle = pn.widgets.Checkbox(name='Include Kayaks', value=False, sizing_mode='stretch_width')
         self.heatmap_res_slider = pn.widgets.IntSlider(name='Heatmap Resolution', start=100, end=1000, step=50, value=300, sizing_mode='stretch_width')
 
         # Dynamic PCA Sliders Column
@@ -90,6 +99,7 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.n_pca_input.param.watch(self.on_npca_change, 'value')
         self.boat_selector.param.watch(self.on_boat_select, 'value')
         self.reset_btn.on_click(self.reset_coefficients)
+        self.reset_lw_btn.on_click(self.reset_lw)
         
         self.slider_L.param.watch(self._on_manual_change, 'value')
         self.slider_W.param.watch(self._on_manual_change, 'value')
@@ -100,6 +110,7 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.y_axis_select.param.watch(self._on_axis_change, 'value')
         self.z_axis_select.param.watch(self._on_axis_change, 'value')
         self.color_by_feasibility_toggle.param.watch(lambda e: self.trigger_update(), 'value')
+        self.include_kayaks_toggle.param.watch(self.on_kayak_toggle, 'value')
         self.heatmap_res_slider.param.watch(lambda e: self.trigger_update(), 'value')
         self.show_3d_volume_toggle.param.watch(lambda e: self.trigger_update(), 'value')
         
@@ -162,9 +173,14 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.boat_db = {}
         self.all_boat_coeffs = []
         self.all_boat_status =[]
+        self.all_boat_names = []
         
         for boat in boats_data:
-            if not boat.get('is_boat') and not boat.get('is_kayak'): continue
+            is_boat = boat.get('is_boat', False)
+            is_kayak = boat.get('is_kayak', False) or 'kayak' in str(boat.get('name', '')).lower()
+            
+            if not is_boat and not is_kayak: continue
+            if is_kayak and not self.include_kayaks_toggle.value: continue
             if len(boat.get('radii',[])) == 0: continue
             
             radii = np.array(boat['radii'])
@@ -206,9 +222,11 @@ class ShapeExplorer(pn.viewable.Viewer):
             }
             self.all_boat_coeffs.append(coeffs)
             self.all_boat_status.append(status)
+            self.all_boat_names.append(f"ID: {boat_id} - {boat.get('name', 'Unknown')} | Boat: {is_boat} | Kayak: {is_kayak}")
             
         self.all_boat_coeffs = np.array(self.all_boat_coeffs)
         self.all_boat_status = np.array(self.all_boat_status)
+        self.all_boat_names = np.array(self.all_boat_names)
         
         # Update dropdown
         opts = {"Custom": "Custom"}
@@ -236,6 +254,13 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.boat_selector.value = "Custom"
         self._ignore_callbacks = False
         
+        self.trigger_update()
+
+    def on_kayak_toggle(self, event):
+        self._ignore_callbacks = True
+        self.load_boat_database()
+        self.boat_selector.value = "Custom"
+        self._ignore_callbacks = False
         self.trigger_update()
 
     def on_boat_select(self, event):
@@ -336,6 +361,13 @@ class ShapeExplorer(pn.viewable.Viewer):
         self._ignore_callbacks = False
         self.trigger_update()
 
+    def reset_lw(self, event=None):
+        self._ignore_callbacks = True
+        self.slider_L.value = 20.0
+        self.slider_W.value = 6.0
+        self._ignore_callbacks = False
+        self.trigger_update()
+
     def trigger_update(self):
         # Update Plotly
         self.update_plotly()
@@ -371,8 +403,8 @@ class ShapeExplorer(pn.viewable.Viewer):
         fig.update_layout(
             title="Scaled Geometry (Real World Coordinates)",
             autosize=True,
-            xaxis=dict(range=[-60, 60], constrain='domain', title="East / Y [m]"), 
-            yaxis=dict(range=[-80, 80], scaleanchor="x", scaleratio=1, title="North / X [m]"), 
+            xaxis=dict(range=[-40, 40], constrain='domain', title="East / Y [m]"), 
+            yaxis=dict(range=[-50, 50], scaleanchor="x", scaleratio=1, title="North / X [m]"), 
             template="plotly_white", margin=dict(l=20, r=20, t=40, b=20)
         )
         self.plotly_pane.object = fig 
@@ -439,6 +471,8 @@ class ShapeExplorer(pn.viewable.Viewer):
                         x=self.all_boat_coeffs[safe_mask, d1],
                         y=self.all_boat_coeffs[safe_mask, d2],
                         z=self.all_boat_coeffs[safe_mask, d3],
+                        text=self.all_boat_names[safe_mask],
+                        hoverinfo='text',
                         mode='markers',
                         marker=dict(size=4, color='#2ecc71', line=dict(width=1, color='black')),
                         name='Safe'
@@ -448,6 +482,8 @@ class ShapeExplorer(pn.viewable.Viewer):
                         x=self.all_boat_coeffs[spill_mask, d1],
                         y=self.all_boat_coeffs[spill_mask, d2],
                         z=self.all_boat_coeffs[spill_mask, d3],
+                        text=self.all_boat_names[spill_mask],
+                        hoverinfo='text',
                         mode='markers',
                         marker=dict(size=4, color='#f39c12', line=dict(width=1, color='black')),
                         name='Spill'
@@ -457,6 +493,8 @@ class ShapeExplorer(pn.viewable.Viewer):
                         x=self.all_boat_coeffs[neg_mask, d1],
                         y=self.all_boat_coeffs[neg_mask, d2],
                         z=self.all_boat_coeffs[neg_mask, d3],
+                        text=self.all_boat_names[neg_mask],
+                        hoverinfo='text',
                         mode='markers',
                         marker=dict(size=4, color='#e74c3c', line=dict(width=1, color='black')),
                         name='Neg Radius'
@@ -466,6 +504,8 @@ class ShapeExplorer(pn.viewable.Viewer):
                     x=self.all_boat_coeffs[:, d1],
                     y=self.all_boat_coeffs[:, d2],
                     z=self.all_boat_coeffs[:, d3],
+                    text=self.all_boat_names,
+                    hoverinfo='text',
                     mode='markers',
                     marker=dict(size=3, color='black', opacity=0.3),
                     name='Boats'
@@ -534,6 +574,8 @@ class ShapeExplorer(pn.viewable.Viewer):
 
         # Plot actual boats
         if len(self.all_boat_coeffs) > 0:
+            scatter_kdims = [f'PC_{d1}']
+            scatter_vdims = [f'PC_{d2}', 'Name']
             if self.color_by_feasibility_toggle.value:
                 # Color by true dimensionality status
                 safe_mask = self.all_boat_status == 1
@@ -541,18 +583,18 @@ class ShapeExplorer(pn.viewable.Viewer):
                 neg_mask = self.all_boat_status == -2
                 
                 if np.any(safe_mask):
-                    heatmap *= hv.Scatter((self.all_boat_coeffs[safe_mask, d1], self.all_boat_coeffs[safe_mask, d2])).opts(
-                        color='#2ecc71', size=6, line_color='black', alpha=0.9, tools=[])
+                    heatmap *= hv.Scatter((self.all_boat_coeffs[safe_mask, d1], self.all_boat_coeffs[safe_mask, d2], self.all_boat_names[safe_mask]), kdims=scatter_kdims, vdims=scatter_vdims).opts(
+                        color='#2ecc71', size=6, line_color='black', alpha=0.9, tools=['hover'])
                 if np.any(spill_mask):
-                    heatmap *= hv.Scatter((self.all_boat_coeffs[spill_mask, d1], self.all_boat_coeffs[spill_mask, d2])).opts(
-                        color='#f39c12', size=6, line_color='black', alpha=0.9, tools=[])
+                    heatmap *= hv.Scatter((self.all_boat_coeffs[spill_mask, d1], self.all_boat_coeffs[spill_mask, d2], self.all_boat_names[spill_mask]), kdims=scatter_kdims, vdims=scatter_vdims).opts(
+                        color='#f39c12', size=6, line_color='black', alpha=0.9, tools=['hover'])
                 if np.any(neg_mask):
-                    heatmap *= hv.Scatter((self.all_boat_coeffs[neg_mask, d1], self.all_boat_coeffs[neg_mask, d2])).opts(
-                        color='#e74c3c', size=6, line_color='black', alpha=0.9, tools=[])
+                    heatmap *= hv.Scatter((self.all_boat_coeffs[neg_mask, d1], self.all_boat_coeffs[neg_mask, d2], self.all_boat_names[neg_mask]), kdims=scatter_kdims, vdims=scatter_vdims).opts(
+                        color='#e74c3c', size=6, line_color='black', alpha=0.9, tools=['hover'])
             else:
                 # Flat transparent color
-                scatter = hv.Scatter((self.all_boat_coeffs[:, d1], self.all_boat_coeffs[:, d2])).opts(
-                    color='black', size=3, alpha=0.3, tools=[]
+                scatter = hv.Scatter((self.all_boat_coeffs[:, d1], self.all_boat_coeffs[:, d2], self.all_boat_names), kdims=scatter_kdims, vdims=scatter_vdims).opts(
+                    color='black', size=3, alpha=0.3, tools=['hover']
                 )
                 heatmap = heatmap * scatter
 
@@ -572,6 +614,12 @@ class ShapeExplorer(pn.viewable.Viewer):
         # Close loop
         x_curr = np.append(x_curr, x_curr[0])
         y_curr = np.append(y_curr, y_curr[0])
+        
+        # Apply rotation if toggled
+        if self.rotate_toggle.value:
+            x_curr_rot = -y_curr
+            y_curr_rot = x_curr
+            x_curr, y_curr = x_curr_rot, y_curr_rot
 
         geom = hv.Curve((y_curr, x_curr), label="PCA Shape").opts(
             color='royalblue', line_width=2, line_dash='solid', width=400, height=500,
@@ -592,12 +640,22 @@ class ShapeExplorer(pn.viewable.Viewer):
             x_gt = np.append(x_gt, x_gt[0])
             y_gt = np.append(y_gt, y_gt[0])
             
+            if self.rotate_toggle.value:
+                x_gt_rot = -y_gt
+                y_gt_rot = x_gt
+                x_gt, y_gt = x_gt_rot, y_gt
+            
             gt_geom = hv.Curve((y_gt, x_gt), label="GT Shape").opts(color='black', alpha=0.3, line_width=2, line_dash='dotted')
             final_plot = gt_geom * final_plot
         
         # 1x1 Box
-        box_x =[-0.5, 0.5, 0.5, -0.5, -0.5]
-        box_y =[-0.5, -0.5, 0.5, 0.5, -0.5]
+        box_x = np.array([-0.5, 0.5, 0.5, -0.5, -0.5])
+        box_y = np.array([-0.5, -0.5, 0.5, 0.5, -0.5])
+        if self.rotate_toggle.value:
+            box_x_rot = -box_y
+            box_y_rot = box_x
+            box_x, box_y = box_x_rot, box_y_rot
+            
         box = hv.Curve((box_y, box_x), label="Bounds").opts(color='gray', line_dash='dashed')
 
         return final_plot * box
@@ -612,8 +670,9 @@ class ShapeExplorer(pn.viewable.Viewer):
             self.boat_selector,
             pn.layout.Divider(),
             pn.pane.Markdown("### Size & Rotation"),
-            self.slider_L,
-            self.slider_W,
+            pn.Row(self.slider_L, self.input_L, sizing_mode='stretch_width'),
+            pn.Row(self.slider_W, self.input_W, sizing_mode='stretch_width'),
+            self.reset_lw_btn,
             self.rotate_toggle,
             pn.layout.Divider(),
             pn.pane.Markdown("### Feasibility Controls"),
@@ -622,6 +681,7 @@ class ShapeExplorer(pn.viewable.Viewer):
             self.z_axis_select,
             self.show_3d_volume_toggle,
             self.color_by_feasibility_toggle,
+            self.include_kayaks_toggle,
             self.heatmap_res_slider,
             pn.layout.Divider(),
             pn.pane.Markdown("### PCA Coefficients"),
