@@ -152,6 +152,50 @@ cost_breakdown_toggle = pn.widgets.Toggle(
 plotting_divider = pn.layout.Divider(visible=False)
 plotting_header = pn.pane.Markdown("### Plotting & Saving", visible=False)
 
+x_min_input = pn.widgets.FloatInput(
+    name='X min (East)',
+    value=-60.0,
+    step=1.0,
+    sizing_mode='stretch_width'
+)
+
+x_max_input = pn.widgets.FloatInput(
+    name='X max (East)',
+    value=60.0,
+    step=1.0,
+    sizing_mode='stretch_width'
+)
+
+y_min_input = pn.widgets.FloatInput(
+    name='Y min (North)',
+    value=-10.0,
+    step=1.0,
+    sizing_mode='stretch_width'
+)
+
+y_max_input = pn.widgets.FloatInput(
+    name='Y max (North)',
+    value=70.0,
+    step=1.0,
+    sizing_mode='stretch_width'
+)
+
+axis_controls = pn.Accordion(
+    (
+        'Plot Axis Ranges',
+        pn.Column(
+            x_min_input,
+            x_max_input,
+            y_min_input,
+            y_max_input,
+            sizing_mode='stretch_width'
+        )
+    ),
+    active=[],
+    visible=False,
+    sizing_mode='stretch_width'
+)
+
 plot_backend_selector = pn.widgets.Select(
     name='Plotting Backend', 
     options=['Bokeh', 'Matplotlib'], 
@@ -201,6 +245,7 @@ def update_widgets(filename):
     if not loaded_data:
         frame_player.visible = False
         frame_input.visible = False
+        axis_controls.visible = False
         nees_group_selector.visible = False
         error_group_selector.visible = False
         cov_matrix_selector.visible = False
@@ -292,6 +337,7 @@ def update_widgets(filename):
     frame_input.end = sim_result.config.sim.num_frames
     frame_input.value = 1
     frame_input.visible = True
+    axis_controls.visible = True
     
     # Update NEES Group Selector
     nees_group_selector.options = dynamic_nees_mapping
@@ -563,7 +609,7 @@ persistent_plotly_pane = pn.pane.Plotly(
     config={'responsive': True}
 )
 
-def update_plotly_view(frame_idx, filename, iterate_sel):
+def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_max):
     loaded_data = load_data(filename)
 
     if not loaded_data:
@@ -692,14 +738,18 @@ def update_plotly_view(frame_idx, filename, iterate_sel):
                 marker=dict(color='purple', size=3, symbol='diamond')
             ))
 
+    # Ensure valid ranges even if user enters reversed bounds
+    x_range = [float(min(x_min, x_max)), float(max(x_min, x_max))]
+    y_range = [float(min(y_min, y_max)), float(max(y_min, y_max))]
+
     fig.update_layout(
         autosize=True,
         margin=dict(l=40, r=40, b=40, t=40, pad=4),
         title=f"Frame: {frame_idx}", plot_bgcolor='white', paper_bgcolor='white',
-        xaxis=dict(range=[-60, 60], constrain='domain',
+        xaxis=dict(range=x_range, constrain='domain',
                    gridcolor='rgb(200, 200, 200)', zerolinecolor='rgb(200, 200, 200)',
                    title='East [m]'),
-        yaxis=dict(range=[-15, 35], scaleanchor="x", scaleratio=1,
+        yaxis=dict(range=y_range, scaleanchor="x", scaleratio=1,
                    gridcolor='rgb(200, 200, 200)', zerolinecolor='rgb(200, 200, 200)',
                    title='North [m]'),
         legend=dict(x=1.05, y=1)
@@ -707,7 +757,17 @@ def update_plotly_view(frame_idx, filename, iterate_sel):
     
     persistent_plotly_pane.object = fig
 
-pn.bind(update_plotly_view, frame_player, file_selector, iterate_selector, watch=True)
+pn.bind(
+    update_plotly_view,
+    frame_player,
+    file_selector,
+    iterate_selector,
+    x_min_input,
+    x_max_input,
+    y_min_input,
+    y_max_input,
+    watch=True
+)
 
 @pn.depends(nees_group_selector.param.value, custom_states_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
 def get_nees_view(selected_groups, custom_states, filename, backend):
@@ -1059,14 +1119,15 @@ controls = pn.Column(
     frame_player,
     frame_input,
     iterate_selector,
+    axis_controls,
     data_browser_mode,
     nees_group_selector,
     error_group_selector,
     custom_states_selector,
     cov_matrix_selector,
     nis_field_selector,
-    pn.layout.Divider(),
-    pn.pane.Markdown("### Plotting & Saving"),
+    plotting_divider,
+    plotting_header,
     plot_backend_selector,
     save_filename_input,
     save_button,
@@ -1110,4 +1171,4 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=5007, help='Port to run the dashboard on')
     args = parser.parse_args()
     
-    pn.serve(tmpl, port=args.port, show=True, static_dirs={'assets': str(ASSETS_DIR)})
+    pn.serve(tmpl, port=args.port, show=True, static_dirs={'assets': str(ASSETS_DIR)}, title="GP-PCA-EOT Simulation Analysis Dashboard")
