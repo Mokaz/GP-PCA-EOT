@@ -19,7 +19,7 @@ logging.basicConfig(
 from src.global_project_paths import SIMDATA_PATH
 from src.utils.config_classes import Config
 from src.experiment_runner import run_single_simulation
-from src.main import get_common_configs, get_pca_tracker_config, get_gp_tracker_config
+from src.main_database import get_common_configs, get_pca_tracker_config
 
 
 def set_nested_value(obj, path, value):
@@ -36,10 +36,12 @@ if __name__ == "__main__":
     # Keys: dot-notation path to attribute (or "method" for the tracker type)
     # Values: List of options to sweep over
     param_grid = {
-        "method": ["ekf", "iekf"],
+        "method": ["implicit_ekf"],
+        "selected_boat_id": ["1"],
+        "selected_trajectory": ["linear"],
         "tracker.process_model": ["cv", "inflation", "temporal"],
-        "tracker.inflation_lambda": [0.99, 0.95],
-        "tracker.temporal_eta": [0.1, 0.5],
+        "tracker.use_state_clamping": [True, False],
+        "tracker.use_mahalanobis_projection": [True, False],
     }
 
     # --- 2. Generate Combinations ---
@@ -51,20 +53,58 @@ if __name__ == "__main__":
     
     # Constants
     N_pca = 4
-    N_gp = 20
+
+    seen_signatures = set()
 
     # --- 3. Run Loop ---
     for i, combination in enumerate(combinations):
         current_params = dict(zip(keys, combination))
         method_name = current_params.pop("method")
+        selected_boat_id = current_params.pop("selected_boat_id")
+        selected_trajectory = current_params.pop("selected_trajectory")
+
+        # Create a dictionary of only the *effective* parameters
+        effective_params = {}
+        for path, val in current_params.items():
+            # Skip parameters that are not relevant to the current process model
+            if "inflation_lambda" in path and current_params.get("tracker.process_model") != "inflation":
+                continue
+            if "temporal_eta" in path and current_params.get("tracker.process_model") != "temporal":
+                continue
+            effective_params[path] = val
+
+        # Skip redundant parameter combinations
+        config_signature = (method_name, selected_boat_id, selected_trajectory, tuple(sorted(effective_params.items())))
+        if config_signature in seen_signatures:
+            continue
+        seen_signatures.add(config_signature)
         
         # --- A. Reset Base Config ---
-        sim_base, lidar_base, extent_base = get_common_configs(N_pca)
+        sim_base, lidar_base, extent_base = get_common_configs(
+            traj_type=selected_trajectory,
+            N_pca=N_pca,
+            selected_boat_id=selected_boat_id
+        )
 
         if "gp" in method_name:
-            tracker_cfg = get_gp_tracker_config(lidar_base.lidar_position, N_gp)
+            raise NotImplementedError("GP batch runs are not supported via main_database configuration helpers.")
+
+        tracker_cfg = get_pca_tracker_config(
+            lidar_base.lidar_position,
+            sim_base.initial_state_gt,
+            N_pca,
+        )
+
+        # If using Implicit EKF, set max_iterations to 1 for EKF behavior
+        if method_name == "implicit_ekf":
+            tracker_cfg.max_iterations = 1
         else:
-            tracker_cfg = get_pca_tracker_config(lidar_base.lidar_position, N_pca)
+            tracker_cfg.max_iterations = 50
+
+        if selected_trajectory == "waypoints":
+            sim_base.num_frames = 500
+        else:
+            sim_base.num_frames = 300
 
         config = Config(sim=sim_base, lidar=lidar_base, tracker=tracker_cfg, extent=extent_base)
 
@@ -72,26 +112,29 @@ if __name__ == "__main__":
         param_desc_parts = []
         for path, val in current_params.items():
             set_nested_value(config, path, val)
-            
+        
+        # Only add effective parameters to the file name to keep names clean
+        for path, val in effective_params.items():
             short_key = path.split('.')[-1].replace("use_", "")
-            param_desc_parts.append(f"{short_key}_{val}")
+            
+            # Format numbers to look cleaner in filenames (e.g. 0.99 -> 0p99)
+            if isinstance(val, float):
+                val_str = str(val).replace('.', 'p')
+            else:
+                val_str = str(val)
+                
+            param_desc_parts.append(f"{short_key}_{val_str}")
 
         # --- C. Naming & Execution ---
         param_suffix = ("_" + "_".join(param_desc_parts)) if param_desc_parts else ""
         
-        # Standardize naming: method + params + seed
-        config.sim.name = f"{method_name}{param_suffix}_seed_{config.sim.seed}"
+        # Standardize naming: method + boat + params + traj + seed
+        config.sim.name = f"{method_name}_boat{selected_boat_id}{param_suffix}_{config.sim.trajectory.type}_seed_{config.sim.seed}"
         
         print(f"\n[{i+1}/{len(combinations)}] Running: {config.sim.name}")
-        print(f"   > Params: {current_params}")
+        print(f"   > Effective Params: {effective_params}")
         
         filename = f"{config.sim.name}.pkl"
-        pickle_path = Path(SIMDATA_PATH) / filename
-
-        # Check if already exists? (Optional)
-        # if pickle_path.exists():
-        #     print(f"   > Skipping, file exists: {filename}")
-        #     continue
 
         try:
             run_single_simulation(config=config, method=method_name)

@@ -25,12 +25,8 @@ from src.extent_model.boat_pca_utils import get_gt_pca_coeffs_for_boat, get_boat
 
 PCA_parameters_path = "data/input_parameters/ShipDatasetPCAParameters.npz" # NOTE Global variable for PCA parameters path
 
-def get_common_configs(traj_type="circle", N_pca=4):
+def get_common_configs(traj_type="circle", N_pca=4, selected_boat_id="1"):
     """Returns configs shared by all methods (Sim, Lidar, Extent)."""
-    
-    # --- BOAT SELECTION ---
-    # Select a boat from processed_ships.json
-    selected_boat_id = "1" # Example: "1" = Sailing Yacht, "112" = Multihull
     
     # Get GT Dimensions and PCA Coeffs
     try:
@@ -134,6 +130,9 @@ def get_common_configs(traj_type="circle", N_pca=4):
 
 def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
     """Returns TrackerConfig for PCA methods."""
+
+    pca_data = np.load(PCA_parameters_path)
+    eigenvalues = pca_data['eigenvalues'][:N_pca].real
     
     # Initialize Tracker closer to GT for stability in this test
     # (Or add noise if testing robustness)
@@ -154,7 +153,8 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
         x=2.0, y=2.0, yaw=0.2, 
         vel_x=2.0, vel_y=2.0, yaw_rate=0.1,
         length=2.0, width=2.0,
-        pca_coeffs=np.ones(N_pca) * 0.5 
+        # pca_coeffs=np.ones(N_pca) * 0.5 # Original arbitrary std devs
+        pca_coeffs=np.sqrt(eigenvalues) 
     )
 
     tracker_config = TrackerConfig(
@@ -168,13 +168,27 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
         lidar_std_dev=0.15,
         initial_state=initial_state_tracker,
         initial_std_devs=initial_std_devs_tracker,
-        lidar_position=np.array(lidar_pos)
+        lidar_position=np.array(lidar_pos),
+        pca_eigenvalues = eigenvalues,
+        # Iterative solver params
+        max_iterations=20,
+        convergence_threshold=1e-6,
+        # Implicit EKF specific
+        use_state_clamping=True,
+        use_mahalanobis_projection=True
     )
     return tracker_config
 
 
 if __name__ == "__main__":
-    for method in ["ekf", "iekf"]:
+    # method_list = ["ekf", "iekf", "implicit_iekf", "implicit_ekf"]
+
+    # --- BOAT SELECTION ---
+    # Select a boat from processed_ships.json
+    selected_boat_id = "1" # Example: "1" = Sailing Yacht, "112" = Multihull
+
+    method_list = ["implicit_iekf"]
+    for method in method_list:
         N_pca = 4
         
         # Switch Scenario Here
@@ -183,23 +197,25 @@ if __name__ == "__main__":
         selected_trajectory = "waypoints"
 
         # Load Configs
-        sim_base, lidar_base, extent_base = get_common_configs(traj_type=selected_trajectory, N_pca=N_pca)
+        sim_base, lidar_base, extent_base = get_common_configs(traj_type=selected_trajectory, N_pca=N_pca, selected_boat_id=selected_boat_id)
         
         print(f"Simulating boat from database (ID: {extent_base.shape_params_true.get('id', 'Unknown')})")
         print(f"L={sim_base.initial_state_gt.length:.2f}, W={sim_base.initial_state_gt.width:.2f}")
-
-        # method = "ekf"
-        # method = "bfgs"
-        method = "iekf"
         
         tracker_cfg = get_pca_tracker_config(lidar_base.lidar_position, sim_base.initial_state_gt, N_pca)
-        tracker_cfg.process_model = 'cv' 
+        # tracker_cfg.process_model = 'cv'
+        tracker_cfg.process_model = 'inflation'
+        # tracker_cfg.process_model = 'temporal' 
+
+        # If using Implicit EKF, set max_iterations to 1 for EKF behavior
+        if method == "implicit_ekf":
+            tracker_cfg.max_iterations = 1
 
         config = Config(sim=sim_base, lidar=lidar_base, tracker=tracker_cfg, extent=extent_base)
 
         # Unique Name
         boat_id = extent_base.shape_params_true.get('id', 'custom')
-        config.sim.name = f"ShipDataset_{boat_id}_{config.sim.trajectory.type}_{method}"
+        config.sim.name = f"Implicit_EKF_test_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
 
         # Run
         sim_result = run_single_simulation(config=config, method=method)

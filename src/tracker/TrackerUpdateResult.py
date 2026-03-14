@@ -32,3 +32,8 @@ class TrackerUpdateResult:
     predicted_measurements_iterates: Optional[list] = None
     cost: Optional[float] = None
     raw_optimizer_result: Any = None
+
+    # Constraints Logging
+    clamped_length: Optional[tuple[float, float]] = None # (old, new)
+    clamped_width: Optional[tuple[float, float]] = None # (old, new)
+    mahalanobis_projection: Optional[tuple[np.ndarray, np.ndarray, float]] = None # (old_coeffs, new_coeffs, initial_chi2_dist)

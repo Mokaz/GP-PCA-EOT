@@ -70,17 +70,32 @@ def load_data(filename):
 # --- Widgets ---
 pickle_files = sorted([f.name for f in Path(SIMDATA_PATH).glob("*.pkl")], reverse=True)
 
+file_selector = pn.widgets.Select(
+    name='Select Simulation File', 
+    options=[None] + pickle_files, 
+    sizing_mode='stretch_width'
+)
+
+refresh_files_button = pn.widgets.Button(
+    name='Refresh Files',
+    button_type='primary',
+    sizing_mode='stretch_width'
+)
+
+def update_file_list(event):
+    new_files = sorted([f.name for f in Path(SIMDATA_PATH).glob("*.pkl")], reverse=True)
+    current_val = file_selector.value
+    file_selector.options = [None] + new_files
+    if current_val in new_files:
+        file_selector.value = current_val
+
+refresh_files_button.on_click(update_file_list)
+
 iterate_selector = pn.widgets.Select(
     name='Filter Iterate',
     options=['Final'],
     value='Final',
     visible=False,
-    sizing_mode='stretch_width'
-)
-
-file_selector = pn.widgets.Select(
-    name='Select Simulation File', 
-    options=[None] + pickle_files, 
     sizing_mode='stretch_width'
 )
 
@@ -1046,6 +1061,61 @@ def get_cost_landscape_view(filename):
     
     return explorer
 
+@pn.depends(file_selector.param.value)
+def get_constraints_view(filename):
+    loaded_data = load_data(filename)
+    if not loaded_data:
+        return pn.pane.Markdown("### Select a file to view Constraints History")
+        
+    sim_result = loaded_data["sim_result"]
+    tracker_results = sim_result.tracker_results_ts.values
+    
+    frames = []
+    constraints = []
+    details = []
+    
+    for i, res in enumerate(tracker_results):
+        if hasattr(res, 'clamped_length') and res.clamped_length is not None:
+            frames.append(i)
+            constraints.append("Length Clamped")
+            details.append(f"{res.clamped_length[0]:.3f} -> {res.clamped_length[1]:.3f}")
+            
+        if hasattr(res, 'clamped_width') and res.clamped_width is not None:
+            frames.append(i)
+            constraints.append("Width Clamped")
+            details.append(f"{res.clamped_width[0]:.3f} -> {res.clamped_width[1]:.3f}")
+            
+        if hasattr(res, 'mahalanobis_projection') and res.mahalanobis_projection is not None:
+            frames.append(i)
+            constraints.append("Mahalanobis Projection")
+            details.append(f"dist: {res.mahalanobis_projection[2]:.2f}")
+
+    if not frames:
+        return pn.pane.Markdown("### No constraints were triggered during this simulation.")
+        
+    df = pd.DataFrame({
+        'Frame': frames,
+        'Constraint Type': constraints,
+        'Details': details
+    })
+    
+    plot = df.hvplot.scatter(
+        x='Frame', 
+        y='Constraint Type', 
+        by='Constraint Type',
+        hover_cols=['Details'],
+        size=150,
+        title="Tracker Constraints Trigger History",
+        height=400,
+        responsive=True,
+    ).opts(
+        xlim=(0, len(tracker_results)),
+        show_grid=True,
+        framewise=True
+    )
+    
+    return pn.pane.HoloViews(plot, sizing_mode="stretch_both")
+
 
 def save_plots(event):
     filename = save_filename_input.value
@@ -1115,6 +1185,7 @@ save_button.on_click(save_plots)
 # --- Build Panel objects ---
 controls = pn.Column(
     pn.pane.Markdown("## Controls"),
+    refresh_files_button,
     file_selector,
     frame_player,
     frame_input,
@@ -1144,6 +1215,7 @@ data_browser_view = pn.Column(get_data_browser_view, sizing_mode="stretch_both")
 cost_landscape_view = pn.Column(get_cost_landscape_view, sizing_mode="stretch_both")
 
 cost_breakdown_view = pn.Column(cost_breakdown_toggle, get_cost_breakdown_view, sizing_mode="stretch_both")
+constraints_view = pn.Column(get_constraints_view, sizing_mode="stretch_both")
 
 # --- Custom GoldenLayout Template ---
 template_file = ASSETS_DIR / 'golden_template.html'
@@ -1164,6 +1236,7 @@ tmpl.add_panel('nis_view', nis_view)
 tmpl.add_panel('data_browser_view', data_browser_view)
 tmpl.add_panel('cost_breakdown', cost_breakdown_view)
 tmpl.add_panel('cost_landscape', cost_landscape_view)
+tmpl.add_panel('constraints_view', constraints_view)
 tmpl.servable(title="GP-PCA-EOT Simulation Analysis Dashboard")
 
 if __name__ == "__main__":

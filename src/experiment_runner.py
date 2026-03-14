@@ -145,7 +145,7 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
             filter_dyn_model = Model_PCA_Temporal(
                 **common_kwargs,
                 eta_f=tracker_cfg.temporal_eta,
-                pca_process_var=tracker_cfg.temporal_pca_var
+                pca_process_var=config.tracker.pca_eigenvalues
             )
 
         elif tracker_cfg.process_model == "inflation":
@@ -172,7 +172,7 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
             tracker = EKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
         elif method == "iekf":
             tracker = IterativeEKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
-        elif method == "implicit_iekf":
+        elif method == "implicit_iekf" or method == "implicit_ekf":
             tracker = ImplicitIEKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
         else:
             raise ValueError(f"Unknown method {method}")
@@ -201,9 +201,7 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
     print(f"Generating simulation data for {sim_cfg.num_frames} frames...")
     ground_truth_ts = simulator.get_gt()
     
-    DEBUG = True
-    # DEBUG: Plot GT Trajectory
-    if DEBUG:
+    if config.sim.show_gt_plot:
         ts_values = list(ground_truth_ts.values)
         # NED Frame: x is North, y is East.
         # We want North on Y-axis (vertical) and East on X-axis (horizontal).

@@ -37,6 +37,9 @@ class SimulationConfig:
 
     use_cache: bool = False
 
+    # Visualization
+    show_gt_plot: bool = False
+
 @dataclass
 class ExtentConfig:
     N_fourier: int = 64
@@ -213,6 +216,15 @@ class TrackerConfig:
     initial_std_devs: Optional[Any] = None
     
     lidar_position: Optional[np.ndarray] = None
+    pca_eigenvalues: Optional[np.ndarray] = None
+
+    # Iterative solver params
+    max_iterations: int = 10
+    convergence_threshold: float = 1e-6
+
+    # Implicit EKF specific
+    use_state_clamping: bool = True
+    use_mahalanobis_projection: bool = True
 
     def __post_init__(self):
         if self.initial_state is None:

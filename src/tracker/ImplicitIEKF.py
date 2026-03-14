@@ -18,14 +18,18 @@ class ImplicitIEKF(Tracker):
                  dynamic_model: Model_PCA_CV, 
                  lidar_model: LidarMeasurementModel,
                  config: Config,
-                 max_iterations=10, 
-                 convergence_threshold=1e-6):
+                 max_iterations: int | None = None, 
+                 convergence_threshold : float | None = None):
         super().__init__(dynamic_model=dynamic_model, sensor_model=lidar_model, config=config)
         
-        self.max_iterations = max_iterations
-        self.convergence_threshold = convergence_threshold
+        self.max_iterations = max_iterations if max_iterations is not None else config.tracker.max_iterations
+        self.convergence_threshold = convergence_threshold if convergence_threshold is not None else config.tracker.convergence_threshold
         self.use_initialize_centroid = config.tracker.use_initialize_centroid
-        self.time_counter = 0
+
+        self.use_state_clamping = config.tracker.use_state_clamping
+        self.use_mahalanobis_projection = config.tracker.use_mahalanobis_projection
+        # TODO: DEBUG
+        self.debug_time_counter = 0
 
     def predict(self):
         self.state_estimate = self.dynamic_model.pred_from_est(self.state_estimate, self.T)
@@ -56,42 +60,48 @@ class ImplicitIEKF(Tracker):
         iterates = [state_iter_mean.copy()]
         predicted_measurements_iterates = []
 
+        # Tracking variables for applied constraints across iterations
+        final_clamped_length = None
+        final_clamped_width = None
+        final_mahalanobis_projection = None
+
         for i in range(self.max_iterations):
             H_imp, D_imp, theta_implicit = self.sensor_model.get_implicit_matrices(state_iter_mean, measurements_global_coords)
             # print("H_implicit shape:", H_imp.shape)
             # print("rank(H_implicit):", np.linalg.matrix_rank(H_imp))
 
-            if i == 0 and self.time_counter < 5:  # Only analyze the Jacobian in the first few iterations to avoid clutter
-                print(f"\nIteration {i+1} - Analyzing Implicit Jacobian at time step {self.time_counter}:")
-                # 1. Check Condition Number (High = Ill-conditioned/Explosive)
-                cond_num = np.linalg.cond(H_imp)
-                print(f"\nCondition Number of H_imp: {cond_num:.2e}")
-                if cond_num > 1e4:
-                    print("WARNING: Jacobian is ill-conditioned. Optimizer will likely explode.")
+            # --- DEBUGGING: Analyze the Jacobian to understand observability and convergence behavior ---
+            # if i == 0 and self.time_counter < 5:  # Only analyze the Jacobian in the first few iterations to avoid clutter
+            #     print(f"\nIteration {i+1} - Analyzing Implicit Jacobian at time step {self.time_counter}:")
+            #     # 1. Check Condition Number (High = Ill-conditioned/Explosive)
+            #     cond_num = np.linalg.cond(H_imp)
+            #     print(f"\nCondition Number of H_imp: {cond_num:.2e}")
+            #     if cond_num > 1e4:
+            #         print("WARNING: Jacobian is ill-conditioned. Optimizer will likely explode.")
 
-                # 2. Singular Value Decomposition
-                U, S_vals, V_t = np.linalg.svd(H_imp, full_matrices=False)
+            #     # 2. Singular Value Decomposition
+            #     U, S_vals, V_t = np.linalg.svd(H_imp, full_matrices=False)
                 
-                print("\nSingular Values (Small values indicate unobservable directions):")
-                print(np.round(S_vals, 4))
+            #     print("\nSingular Values (Small values indicate unobservable directions):")
+            #     print(np.round(S_vals, 4))
 
-                # 3. Analyze the Null-Space Vector (The smallest singular value's direction)
-                # Find the smallest NON-ZERO singular value (Assuming 3 velocity states are always 0)
-                # The observable states are the first 9 singular values.
-                null_vector = V_t[-4, :]  # -1, -2, -3 are velocities. -4 is the weakest shape parameter
+            #     # 3. Analyze the Null-Space Vector (The smallest singular value's direction)
+            #     # Find the smallest NON-ZERO singular value (Assuming 3 velocity states are always 0)
+            #     # The observable states are the first 9 singular values.
+            #     null_vector = V_t[-4, :]  # -1, -2, -3 are velocities. -4 is the weakest shape parameter
                 
-                print("\nNull-Space Direction (How the filter can move state without changing measurements):")
-                print(f"Δ Pos_x:      {null_vector[0]:.4f}")
-                print(f"Δ Pos_y:      {null_vector[1]:.4f}")
-                print(f"Δ Heading:    {null_vector[2]:.4f}")
-                print(f"Δ Length (L): {null_vector[6]:.4f}")
-                print(f"Δ Width (W):  {null_vector[7]:.4f}")
-                print(f"Δ PCA_0:      {null_vector[8]:.4f}")
-                print(f"Δ PCA_1:      {null_vector[9]:.4f}")
-                print(f"Δ PCA_2:      {null_vector[10]:.4f}")
-                print(f"Δ PCA_3:      {null_vector[11]:.4f}")
+            #     print("\nNull-Space Direction (How the filter can move state without changing measurements):")
+            #     print(f"Δ Pos_x:      {null_vector[0]:.4f}")
+            #     print(f"Δ Pos_y:      {null_vector[1]:.4f}")
+            #     print(f"Δ Heading:    {null_vector[2]:.4f}")
+            #     print(f"Δ Length (L): {null_vector[6]:.4f}")
+            #     print(f"Δ Width (W):  {null_vector[7]:.4f}")
+            #     print(f"Δ PCA_0:      {null_vector[8]:.4f}")
+            #     print(f"Δ PCA_1:      {null_vector[9]:.4f}")
+            #     print(f"Δ PCA_2:      {null_vector[10]:.4f}")
+            #     print(f"Δ PCA_3:      {null_vector[11]:.4f}")
 
-                self.time_counter += 1
+            #     self.time_counter += 1
             
             z_pred_iter = self.sensor_model.h_from_theta(state_iter_mean, theta_implicit)
             predicted_measurements_iterates.append(z_pred_iter.copy())
@@ -121,17 +131,39 @@ class ImplicitIEKF(Tracker):
             state_next = state_prior_mean + K @ (innovation_iter + H_imp @ diff_state)
             state_next[2] = ssa(state_next[2])
 
-            # ==========================================
-            # SAFETY CLAMPS: Prevent Mathematical Collapse
-            # ==========================================
-            # 1. Do not allow Length or Width to become negative or zero
-            state_next.length = max(2.0, state_next.length)
-            state_next.width = max(1.0, state_next.width)
-            
-            # 2. Prevent PCA coefficients from warping the shape to infinity
-            # (Assuming PCA coeffs should mostly stay within +/- 2.0 based on your dataset)
-            state_next.pca_coeffs = np.clip(state_next.pca_coeffs, -3.0, 3.0)
-            # ==========================================
+            # =================================================================
+            # ENFORCE OPTIONAL STABILITY CONSTRAINTS
+            if self.use_state_clamping:
+                # Prevent completely impossible sizes (divergence safety net)
+                orig_length = state_next.length
+                orig_width = state_next.width
+                if orig_length < 1.0:
+                    state_next.length = 1.0
+                    print(f"Clamped length: {orig_length:.3f} -> {state_next.length:.3f}")
+                    final_clamped_length = (float(orig_length), 1.0)
+                if orig_width < 0.5:
+                    state_next.width = 0.5
+                    print(f"Clamped width:  {orig_width:.3f} -> {state_next.width:.3f}")
+                    final_clamped_width = (float(orig_width), 0.5)
+
+            if self.use_mahalanobis_projection:
+                # Constrain PCA coefficients to the 99% probability ellipsoid
+                eigenvalues = self.config.tracker.pca_eigenvalues
+                e = state_next.pca_coeffs
+
+                # Calculate squared Mahalanobis distance D_M^2
+                mahalanobis_sq = np.sum((e ** 2) / eigenvalues)
+
+                # Chi-Square threshold for N=4 degrees of freedom at 99% confidence
+                chi2_thresh = 13.28
+
+                if mahalanobis_sq > chi2_thresh:
+                    orig_coeffs = e.copy()
+                    # Project the vector back onto the surface of the 99% ellipsoid
+                    scale_factor = np.sqrt(chi2_thresh / mahalanobis_sq)
+                    state_next.pca_coeffs = e * scale_factor
+                    final_mahalanobis_projection = (orig_coeffs, state_next.pca_coeffs.copy(), mahalanobis_sq)
+            # =================================================================
             
             state_iter_mean = state_next
             iterates.append(state_iter_mean.copy())
@@ -163,4 +195,7 @@ class ImplicitIEKF(Tracker):
             iterations=i + 1,
             H_jacobian=H_imp,
             R_covariance=R_eff,
+            clamped_length=final_clamped_length,
+            clamped_width=final_clamped_width,
+            mahalanobis_projection=final_mahalanobis_projection
         )

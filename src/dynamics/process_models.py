@@ -72,7 +72,7 @@ class Model_PCA_Temporal(DynamicModel):
 
     # Temporal parameters
     eta_f: float = 0.1
-    pca_process_var: float = 1.0  # Scalar variance for K (assuming diagonal)
+    pca_process_var: np.ndarray = None
 
     def F_d(self, x: State_PCA, dt: float) -> np.ndarray:
         # Kinematics (CV)
@@ -107,8 +107,10 @@ class Model_PCA_Temporal(DynamicModel):
 
         # PCA Process Noise (Balances the decay to maintain variance)
         scaling = (1 - np.exp(-2 * self.eta_f * dt))
-        q_val = scaling * self.pca_process_var
-        Q_pca = np.eye(self.N_pca) * q_val
+        if self.pca_process_var is not None:
+            Q_pca = np.diag(scaling * self.pca_process_var)
+        else:
+            Q_pca = np.eye(self.N_pca) * scaling
         
         Q = block_diag(Qk, Q_lw, Q_pca)
         return Q
