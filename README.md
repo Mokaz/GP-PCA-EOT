@@ -10,9 +10,9 @@ conda activate gp_pca_eot
 ```
 
 ## Main entry file
-Configure and run the simulations using the main file:
+Configure and run the simulations using the (temporary) main file:
 ```bash
-python src/main.py
+python src/main_database.py
 ```
 
 ## Visualization
@@ -20,11 +20,7 @@ The visualization dashboard may be launched by running the Python file:
 ```bash
 python src/visualization/holoviz_dashboard.py
 ```
-To explore possible shapes expressed by PCA coefficients, run:
+To explore possible shapes expressed by PCA coefficients and analyze feasible combinations, run:
 ```bash
 python src/visualization/explore_pca_shape.py
-```
-Inspect the cost function landscape using
-```bash
-python src/visualization/explore_cost_landscape.py
 ```
