@@ -515,13 +515,6 @@ def get_cost_breakdown_view(filename, log_scale):
     )
 
     return pn.pane.HoloViews(plot, sizing_mode="stretch_both")
-    
-    n_items = len(custom_state_options)
-    custom_states_selector.size = min(n_items, 15)
-    custom_states_selector.height = min(n_items * 18, 400) 
-
-    cov_matrix_selector.visible = True
-    nis_field_selector.visible = True
 
 def serialize_state_object(state_obj):
     """Helper to convert State_PCA/State_GP objects into a labeled dictionary."""
