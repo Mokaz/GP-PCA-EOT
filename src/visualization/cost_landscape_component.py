@@ -834,5 +834,6 @@ class CostLandscapeComponent(pn.viewable.Viewer):
         return pn.Row(
             sidebar,
             pn.Column(tabs_dynamic, pn.pane.HoloViews(dmap_geometry, backend='bokeh')),
-            view_controls
+            view_controls,
+            scroll=True
         )

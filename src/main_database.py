@@ -31,8 +31,8 @@ def get_common_configs(traj_type="circle", N_pca=4, selected_boat_id="1"):
     # Get GT Dimensions and PCA Coeffs
     try:
         # L_gt, W_gt = get_boat_dimensions(selected_boat_id) # NOTE We can get L and W from the database but in practice we set them manually
-        L_gt = 20.0
-        W_gt = 6.0
+        L_gt = 25.0
+        W_gt = 7.0
         gt_pca_coeffs = get_gt_pca_coeffs_for_boat(selected_boat_id, N_pca=N_pca, pca_path=PCA_parameters_path)
     except Exception as e:
         logging.error(f"Could not load boat {selected_boat_id}: {e}")
@@ -67,6 +67,14 @@ def get_common_configs(traj_type="circle", N_pca=4, selected_boat_id="1"):
         )
         start_x, start_y, start_yaw = 0.0, -40.0, np.pi/2
         
+    elif traj_type == "waypoints2":
+        trajectory = TrajectoryConfig(
+            type="waypoints",
+            speed=5.0,
+            waypoints=[(0, -40), (10, 20), (-40, 40), (-60, 0), (-40, -40), (20, 40), (60, 10), (20, -30)]
+        )
+        start_x, start_y, start_yaw = 0.0, -40.0, np.pi/2
+
     else:
         raise ValueError(f"Unknown trajectory type: {traj_type}")
 
@@ -137,16 +145,25 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
     # Initialize Tracker closer to GT for stability in this test
     # (Or add noise if testing robustness)
     initial_state_tracker = State_PCA(
+        # x=initial_state_gt.x + 5.0,
+        # y=initial_state_gt.y + 5.0,
+        # x=initial_state_gt.x + 1.0,
+        # y=initial_state_gt.y - 1.0,
         x=initial_state_gt.x,
         y=initial_state_gt.y,
+        # yaw=initial_state_gt.yaw + np.deg2rad(10.0),
         yaw=initial_state_gt.yaw,
         vel_x=initial_state_gt.vel_x, 
         vel_y=initial_state_gt.vel_y, 
         yaw_rate=0.0,
-        length=initial_state_gt.length,    
-        width=initial_state_gt.width,      
-        # pca_coeffs=np.zeros(N_pca) # Start with mean shape of dataset
-        pca_coeffs=initial_state_gt.pca_coeffs.copy() # Start with perfect shape
+        length=initial_state_gt.length,
+        width=initial_state_gt.width,
+        # length=initial_state_gt.length * 2.5, # Start with wrong size to test convergence
+        # width=initial_state_gt.width * 0.5,
+        # length=110.0, 
+        # width=9,    
+        pca_coeffs=np.zeros(N_pca) # Start with mean shape of dataset
+        # pca_coeffs=initial_state_gt.pca_coeffs.copy() # Start with perfect shape
     )
 
     initial_std_devs_tracker = State_PCA(
@@ -185,16 +202,16 @@ if __name__ == "__main__":
 
     # --- BOAT SELECTION ---
     # Select a boat from processed_ships.json
-    selected_boat_id = "1" # Example: "1" = Sailing Yacht, "112" = Multihull
+    selected_boat_id = "154" # Example: "1" = Sailing Yacht, "112" = Multihull
 
-    method_list = ["implicit_iekf"]
+    method_list = ["implicit_ekf"]
     for method in method_list:
         N_pca = 4
         
         # Switch Scenario Here
         # selected_trajectory = "circle" 
         # selected_trajectory = "linear"
-        selected_trajectory = "waypoints"
+        selected_trajectory = "waypoints2"
 
         # Load Configs
         sim_base, lidar_base, extent_base = get_common_configs(traj_type=selected_trajectory, N_pca=N_pca, selected_boat_id=selected_boat_id)
@@ -215,7 +232,9 @@ if __name__ == "__main__":
 
         # Unique Name
         boat_id = extent_base.shape_params_true.get('id', 'custom')
-        config.sim.name = f"Implicit_EKF_test_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
+        config.sim.name = f"newWP_meanGT_boat{boat_id}_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
+        config.sim.use_cache = False # Disable cache for new trajectories to ensure they are generated
+        config.sim.num_frames = 800
 
         # Run
         sim_result = run_single_simulation(config=config, method=method)
