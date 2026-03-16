@@ -37,9 +37,9 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.N_pca = 4
         self.current_coeffs = np.zeros(self.N_pca)
         self.boat_db = {}
-        self.all_boat_coeffs = []
+        self.all_boat_coeffs =[]
         self.all_boat_status =[]
-        self.all_boat_names = []
+        self.all_boat_names =[]
         self._ignore_callbacks = False  # Prevents recursive jumping
         self.last_selected_gt_radii = None
         
@@ -78,6 +78,10 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.include_kayaks_toggle = pn.widgets.Checkbox(name='Include Kayaks', value=False, sizing_mode='stretch_width')
         self.heatmap_res_slider = pn.widgets.IntSlider(name='Heatmap Resolution', start=100, end=1000, step=50, value=300, sizing_mode='stretch_width')
 
+        # Mahalanobis Controls
+        self.show_mahalanobis_toggle = pn.widgets.Checkbox(name='Show Mahalanobis Bound', value=True, sizing_mode='stretch_width')
+        self.chi2_input = pn.widgets.FloatInput(name='Mahalanobis Chi² Threshold (99% = 13.28)', value=13.28, start=0.1, end=100.0, step=0.1, sizing_mode='stretch_width')
+
         # Dynamic PCA Sliders Column
         self.pca_sliders_column = pn.Column(sizing_mode='stretch_width')
         self.pca_sliders =[]
@@ -114,6 +118,10 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.heatmap_res_slider.param.watch(lambda e: self.trigger_update(), 'value')
         self.show_3d_volume_toggle.param.watch(lambda e: self.trigger_update(), 'value')
         
+        # Mahalanobis Watchers
+        self.show_mahalanobis_toggle.param.watch(lambda e: self.trigger_update(), 'value')
+        self.chi2_input.param.watch(lambda e: self.trigger_update(), 'value')
+
         self.tap_stream.param.watch(self._on_tap,['x', 'y'])
 
         self.trigger_update()
@@ -124,13 +132,21 @@ class ShapeExplorer(pn.viewable.Viewer):
         data = np.load(pca_path)
         self.full_eigenvectors = data['eigenvectors'].real 
         self.mean_coeffs = data['mean'].flatten()
+        
+        if 'eigenvalues' in data:
+            self.full_eigenvalues = data['eigenvalues'].real
+        else:
+            print("Warning: 'eigenvalues' not found in PCA .npz file. Defaulting to 1.0.")
+            self.full_eigenvalues = np.ones(self.full_eigenvectors.shape[1])
+            
         self.n_fourier_dim = self.mean_coeffs.shape[0]
         self.angles = np.linspace(0, 2*np.pi, 200)
         self._build_pca_dependencies()
 
     def _build_pca_dependencies(self):
-        # Truncate eigenvectors
+        # Truncate to N_pca
         self.eigenvectors = self.full_eigenvectors[:, :self.N_pca]
+        self.eigenvalues = self.full_eigenvalues[:self.N_pca]
         
         # Precompute projection matrices for fast heatmap
         self.M_mat = self.G_mat @ self.eigenvectors # Shape: (180, N_pca)
@@ -173,7 +189,7 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.boat_db = {}
         self.all_boat_coeffs = []
         self.all_boat_status =[]
-        self.all_boat_names = []
+        self.all_boat_names =[]
         
         for boat in boats_data:
             is_boat = boat.get('is_boat', False)
@@ -296,7 +312,6 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.trigger_update()
 
     def _on_manual_change(self, event):
-        """Called when L or W are manually adjusted"""
         if getattr(self, '_ignore_callbacks', False):
             return
             
@@ -323,7 +338,7 @@ class ShapeExplorer(pn.viewable.Viewer):
                 self.z_axis_select.value = fallback
         elif event.obj is self.y_axis_select:
             if y_val == x_val:
-                fallback = next(p for p in self.x_axis_select.options if p not in [y_val, z_val])
+                fallback = next(p for p in self.x_axis_select.options if p not in[y_val, z_val])
                 self.x_axis_select.value = fallback
             elif y_val == z_val:
                 fallback = next(p for p in self.z_axis_select.options if p not in [x_val, y_val])
@@ -404,7 +419,7 @@ class ShapeExplorer(pn.viewable.Viewer):
             title="Scaled Geometry (Real World Coordinates)",
             autosize=True,
             xaxis=dict(range=[-40, 40], constrain='domain', title="East / Y [m]"), 
-            yaxis=dict(range=[-50, 50], scaleanchor="x", scaleratio=1, title="North / X [m]"), 
+            yaxis=dict(range=[-50, 50], scaleanchor="x", scaleratio=1, title="North / X[m]"), 
             template="plotly_white", margin=dict(l=20, r=20, t=40, b=20)
         )
         self.plotly_pane.object = fig 
@@ -416,12 +431,14 @@ class ShapeExplorer(pn.viewable.Viewer):
         
         fig = go.Figure()
         
-        if self.show_3d_volume_toggle.value:
-            res_3d = 30
-            limit = 15.0
-            grid_vals = np.linspace(-limit, limit, res_3d)
+        res_3d = 30
+        limit = 15.0
+        grid_vals = np.linspace(-limit, limit, res_3d)
+        
+        if self.show_3d_volume_toggle.value or self.show_mahalanobis_toggle.value:
             X_grid, Y_grid, Z_grid = np.meshgrid(grid_vals, grid_vals, grid_vals, indexing='ij')
 
+        if self.show_3d_volume_toggle.value:
             fixed_coeffs = self.current_coeffs.copy()
             fixed_coeffs[d1] = 0.0
             fixed_coeffs[d2] = 0.0
@@ -446,19 +463,47 @@ class ShapeExplorer(pn.viewable.Viewer):
             feasibility_metric = np.minimum.reduce([margin_radius, margin_spill_x, margin_spill_y])
 
             fig.add_trace(go.Isosurface(
-                x=X_grid.flatten(),
-                y=Y_grid.flatten(),
-                z=Z_grid.flatten(),
+                x=X_grid.flatten(), y=Y_grid.flatten(), z=Z_grid.flatten(),
                 value=feasibility_metric.flatten(),
-                isomin=-0.05,
-                isomax=0.05,
+                isomin=-0.05, isomax=0.05,
                 surface_count=2,
                 caps=dict(x_show=False, y_show=False, z_show=False),
-                colorscale=[[0, 'rgba(46, 204, 113, 0.4)'], [1, 'rgba(46, 204, 113, 0.4)']],
-                showscale=False,
-                opacity=0.6,
+                colorscale=[[0, 'rgba(46, 204, 113, 0.4)'],[1, 'rgba(46, 204, 113, 0.4)']],
+                showscale=False, opacity=0.6,
                 name='Feasible Boundary'
             ))
+
+        if self.show_mahalanobis_toggle.value:
+            # Accumulate Mahalanobis penalty from dimensions NOT in this 3D plot
+            fixed_mahal_sq = sum(
+                (self.current_coeffs[i]**2) / self.eigenvalues[i] 
+                for i in range(self.N_pca) if i not in (d1, d2, d3)
+            )
+            
+            # The remaining budget available for d1, d2, and d3
+            budget = self.chi2_input.value - fixed_mahal_sq
+            
+            if budget > 0:
+                # --- Analytical Parametric Ellipsoid ---
+                # This guarantees it renders perfectly even if the ellipsoid is tiny!
+                u = np.linspace(0, 2 * np.pi, 40)
+                v = np.linspace(0, np.pi, 40)
+                U, V = np.meshgrid(u, v)
+                
+                # Parametric equation of an ellipsoid
+                x_ell = np.sqrt(budget * self.eigenvalues[d1]) * np.cos(U) * np.sin(V)
+                y_ell = np.sqrt(budget * self.eigenvalues[d2]) * np.sin(U) * np.sin(V)
+                z_ell = np.sqrt(budget * self.eigenvalues[d3]) * np.cos(V)
+                
+                fig.add_trace(go.Surface(
+                    x=x_ell, y=y_ell, z=z_ell,
+                    surfacecolor=np.zeros_like(z_ell),  # Forces solid color mapping
+                    colorscale=[[0, 'mediumorchid'],[1, 'mediumorchid']],
+                    showscale=False,
+                    opacity=0.3,
+                    name='Mahalanobis Bound',
+                    showlegend=True
+                ))
 
         if len(self.all_boat_coeffs) > 0:
             if self.color_by_feasibility_toggle.value:
@@ -468,65 +513,37 @@ class ShapeExplorer(pn.viewable.Viewer):
                 
                 if np.any(safe_mask):
                     fig.add_trace(go.Scatter3d(
-                        x=self.all_boat_coeffs[safe_mask, d1],
-                        y=self.all_boat_coeffs[safe_mask, d2],
-                        z=self.all_boat_coeffs[safe_mask, d3],
-                        text=self.all_boat_names[safe_mask],
-                        hoverinfo='text',
-                        mode='markers',
-                        marker=dict(size=4, color='#2ecc71', line=dict(width=1, color='black')),
-                        name='Safe'
+                        x=self.all_boat_coeffs[safe_mask, d1], y=self.all_boat_coeffs[safe_mask, d2], z=self.all_boat_coeffs[safe_mask, d3],
+                        text=self.all_boat_names[safe_mask], hoverinfo='text', mode='markers',
+                        marker=dict(size=4, color='#2ecc71', line=dict(width=1, color='black')), name='Safe'
                     ))
                 if np.any(spill_mask):
                     fig.add_trace(go.Scatter3d(
-                        x=self.all_boat_coeffs[spill_mask, d1],
-                        y=self.all_boat_coeffs[spill_mask, d2],
-                        z=self.all_boat_coeffs[spill_mask, d3],
-                        text=self.all_boat_names[spill_mask],
-                        hoverinfo='text',
-                        mode='markers',
-                        marker=dict(size=4, color='#f39c12', line=dict(width=1, color='black')),
-                        name='Spill'
+                        x=self.all_boat_coeffs[spill_mask, d1], y=self.all_boat_coeffs[spill_mask, d2], z=self.all_boat_coeffs[spill_mask, d3],
+                        text=self.all_boat_names[spill_mask], hoverinfo='text', mode='markers',
+                        marker=dict(size=4, color='#f39c12', line=dict(width=1, color='black')), name='Spill'
                     ))
                 if np.any(neg_mask):
                     fig.add_trace(go.Scatter3d(
-                        x=self.all_boat_coeffs[neg_mask, d1],
-                        y=self.all_boat_coeffs[neg_mask, d2],
-                        z=self.all_boat_coeffs[neg_mask, d3],
-                        text=self.all_boat_names[neg_mask],
-                        hoverinfo='text',
-                        mode='markers',
-                        marker=dict(size=4, color='#e74c3c', line=dict(width=1, color='black')),
-                        name='Neg Radius'
+                        x=self.all_boat_coeffs[neg_mask, d1], y=self.all_boat_coeffs[neg_mask, d2], z=self.all_boat_coeffs[neg_mask, d3],
+                        text=self.all_boat_names[neg_mask], hoverinfo='text', mode='markers',
+                        marker=dict(size=4, color='#e74c3c', line=dict(width=1, color='black')), name='Neg Radius'
                     ))
             else:
                 fig.add_trace(go.Scatter3d(
-                    x=self.all_boat_coeffs[:, d1],
-                    y=self.all_boat_coeffs[:, d2],
-                    z=self.all_boat_coeffs[:, d3],
-                    text=self.all_boat_names,
-                    hoverinfo='text',
-                    mode='markers',
-                    marker=dict(size=3, color='black', opacity=0.3),
-                    name='Boats'
+                    x=self.all_boat_coeffs[:, d1], y=self.all_boat_coeffs[:, d2], z=self.all_boat_coeffs[:, d3],
+                    text=self.all_boat_names, hoverinfo='text', mode='markers',
+                    marker=dict(size=3, color='black', opacity=0.3), name='Boats'
                 ))
                 
         fig.add_trace(go.Scatter3d(
-            x=[self.current_coeffs[d1]],
-            y=[self.current_coeffs[d2]],
-            z=[self.current_coeffs[d3]],
-            mode='markers',
-            marker=dict(size=8, color='blue', symbol='x', line=dict(width=2, color='white')),
-            name='Current'
+            x=[self.current_coeffs[d1]], y=[self.current_coeffs[d2]], z=[self.current_coeffs[d3]],
+            mode='markers', marker=dict(size=8, color='blue', symbol='x', line=dict(width=2, color='white')), name='Current'
         ))
         
         fig.update_layout(
             title=f"3D Feasibility Space",
-            scene=dict(
-                xaxis_title=f"PC_{d1}",
-                yaxis_title=f"PC_{d2}",
-                zaxis_title=f"PC_{d3}"
-            ),
+            scene=dict(xaxis_title=f"PC_{d1}", yaxis_title=f"PC_{d2}", zaxis_title=f"PC_{d3}"),
             margin=dict(l=0, r=0, b=0, t=40)
         )
         
@@ -572,10 +589,38 @@ class ShapeExplorer(pn.viewable.Viewer):
             xlabel=f"PC_{d1}", ylabel=f"PC_{d2}"
         )
 
-        # Plot actual boats
+        final_plot = heatmap
+
+        # 3. Add Mahalanobis Bound
+        if self.show_mahalanobis_toggle.value:
+            # Calculate distance consumed by the dimensions NOT on the X/Y axes
+            fixed_mahal_sq = sum(
+                (self.current_coeffs[i]**2) / self.eigenvalues[i] 
+                for i in range(self.N_pca) if i not in [d1, d2]
+            )
+            
+            # The remaining budget available for d1 and d2
+            budget = self.chi2_input.value - fixed_mahal_sq
+            
+            if budget > 0:
+                # Calculate ellipse boundary
+                alpha = np.linspace(0, 2*np.pi, 100)
+                el_x = np.sqrt(budget * self.eigenvalues[d1]) * np.cos(alpha)
+                el_y = np.sqrt(budget * self.eigenvalues[d2]) * np.sin(alpha)
+                
+                # Close the curve
+                el_x = np.append(el_x, el_x[0])
+                el_y = np.append(el_y, el_y[0])
+                
+                ellipse = hv.Curve((el_x, el_y), label='Mahalanobis Bound').opts(
+                    color='mediumorchid', line_width=3, line_dash='dashed'
+                )
+                final_plot = final_plot * ellipse
+
+        # 4. Plot actual boats
         if len(self.all_boat_coeffs) > 0:
             scatter_kdims = [f'PC_{d1}']
-            scatter_vdims = [f'PC_{d2}', 'Name']
+            scatter_vdims =[f'PC_{d2}', 'Name']
             if self.color_by_feasibility_toggle.value:
                 # Color by true dimensionality status
                 safe_mask = self.all_boat_status == 1
@@ -583,27 +628,26 @@ class ShapeExplorer(pn.viewable.Viewer):
                 neg_mask = self.all_boat_status == -2
                 
                 if np.any(safe_mask):
-                    heatmap *= hv.Scatter((self.all_boat_coeffs[safe_mask, d1], self.all_boat_coeffs[safe_mask, d2], self.all_boat_names[safe_mask]), kdims=scatter_kdims, vdims=scatter_vdims).opts(
+                    final_plot *= hv.Scatter((self.all_boat_coeffs[safe_mask, d1], self.all_boat_coeffs[safe_mask, d2], self.all_boat_names[safe_mask]), kdims=scatter_kdims, vdims=scatter_vdims).opts(
                         color='#2ecc71', size=6, line_color='black', alpha=0.9, tools=['hover'])
                 if np.any(spill_mask):
-                    heatmap *= hv.Scatter((self.all_boat_coeffs[spill_mask, d1], self.all_boat_coeffs[spill_mask, d2], self.all_boat_names[spill_mask]), kdims=scatter_kdims, vdims=scatter_vdims).opts(
+                    final_plot *= hv.Scatter((self.all_boat_coeffs[spill_mask, d1], self.all_boat_coeffs[spill_mask, d2], self.all_boat_names[spill_mask]), kdims=scatter_kdims, vdims=scatter_vdims).opts(
                         color='#f39c12', size=6, line_color='black', alpha=0.9, tools=['hover'])
                 if np.any(neg_mask):
-                    heatmap *= hv.Scatter((self.all_boat_coeffs[neg_mask, d1], self.all_boat_coeffs[neg_mask, d2], self.all_boat_names[neg_mask]), kdims=scatter_kdims, vdims=scatter_vdims).opts(
+                    final_plot *= hv.Scatter((self.all_boat_coeffs[neg_mask, d1], self.all_boat_coeffs[neg_mask, d2], self.all_boat_names[neg_mask]), kdims=scatter_kdims, vdims=scatter_vdims).opts(
                         color='#e74c3c', size=6, line_color='black', alpha=0.9, tools=['hover'])
             else:
                 # Flat transparent color
-                scatter = hv.Scatter((self.all_boat_coeffs[:, d1], self.all_boat_coeffs[:, d2], self.all_boat_names), kdims=scatter_kdims, vdims=scatter_vdims).opts(
+                final_plot *= hv.Scatter((self.all_boat_coeffs[:, d1], self.all_boat_coeffs[:, d2], self.all_boat_names), kdims=scatter_kdims, vdims=scatter_vdims).opts(
                     color='black', size=3, alpha=0.3, tools=['hover']
                 )
-                heatmap = heatmap * scatter
 
-        # Plot Current Cursor
+        # Plot Current Cursor ON TOP
         cursor = hv.Points([(self.current_coeffs[d1], self.current_coeffs[d2])]).opts(
             color='blue', marker='star', size=15, line_color='white'
         )
         
-        return heatmap * cursor
+        return final_plot * cursor
 
     def get_normalized_geometry(self, _trigger):
         # 3. Build Normalized Geometry Plot
@@ -683,6 +727,10 @@ class ShapeExplorer(pn.viewable.Viewer):
             self.color_by_feasibility_toggle,
             self.include_kayaks_toggle,
             self.heatmap_res_slider,
+            pn.layout.Divider(),
+            pn.pane.Markdown("### Mahalanobis Projection"),
+            self.show_mahalanobis_toggle,
+            self.chi2_input,
             pn.layout.Divider(),
             pn.pane.Markdown("### PCA Coefficients"),
             self.reset_btn,
