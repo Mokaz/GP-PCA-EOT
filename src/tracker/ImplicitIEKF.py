@@ -3,7 +3,7 @@ import numpy as np
 from src.senfuslib import MultiVarGauss
 from src.tracker.tracker import Tracker
 from src.tracker.TrackerUpdateResult import TrackerUpdateResult
-from src.utils.tools import rot2D, ssa, initialize_centroid
+from src.utils.tools import rot2D, ssa, initialize_centroid, cart2pol
 from src.states.states import State_PCA, LidarScan
 from src.dynamics.process_models import Model_PCA_CV
 from src.sensors.LidarModel import LidarMeasurementModel
@@ -14,6 +14,8 @@ class ImplicitIEKF(Tracker):
     Implicit Iterated Extended Kalman Filter (I-IEKF).
     Uses the Implicit Measurement Model constraint g(x, z) = 0.
     """
+    sensor_model: LidarMeasurementModel
+
     def __init__(self, 
                  dynamic_model: Model_PCA_CV, 
                  lidar_model: LidarMeasurementModel,
@@ -28,6 +30,7 @@ class ImplicitIEKF(Tracker):
 
         self.use_state_clamping = config.tracker.use_state_clamping
         self.use_mahalanobis_projection = config.tracker.use_mahalanobis_projection
+        self.use_negative_info = getattr(config.tracker, 'use_negative_info', False)
         # TODO: DEBUG
         self.debug_time_counter = 0
 
@@ -35,14 +38,21 @@ class ImplicitIEKF(Tracker):
         self.state_estimate = self.dynamic_model.pred_from_est(self.state_estimate, self.T)
 
     def update(self, measurements_local: LidarScan, ground_truth: State_PCA = None) -> TrackerUpdateResult:
-        polar_measurements = list(zip(measurements_local.angle, measurements_local.range))
-
         state_prior_mean = self.state_estimate.mean.copy()        
         P_pred = self.state_estimate.cov.copy()
         state_pred = MultiVarGauss(mean=state_prior_mean, cov=P_pred)
 
+        if self.use_negative_info and len(measurements_local.x) > 2:
+            measurements_augmented = self._augment_with_negative_info(
+                measurements_local, state_prior_mean
+            )
+        else:
+            measurements_augmented = measurements_local
+
+        polar_measurements = list(zip(measurements_augmented.angle, measurements_augmented.range))
+
         lidar_pos = self.sensor_model.lidar_position.reshape(2, 1)
-        measurements_global_coords = measurements_local + lidar_pos
+        measurements_global_coords = measurements_augmented + lidar_pos
         z_flat = measurements_global_coords.flatten('F') # Stacked [x1, y1, x2, y2...]
         
         state_iter_mean = state_prior_mean.copy()
@@ -199,3 +209,60 @@ class ImplicitIEKF(Tracker):
             clamped_width=final_clamped_width,
             mahalanobis_projection=final_mahalanobis_projection
         )
+
+    def _augment_with_negative_info(self, measurements: LidarScan, state_pred: np.ndarray) -> LidarScan:
+        """
+        Generates virtual measurements if the predicted extent exceeds the measured extent.
+        """
+        # 1. Analyze Measurements
+        meas_angles, meas_ranges = cart2pol(measurements.x, measurements.y)
+        
+        if len(meas_angles) == 0:
+            return measurements
+
+        # Mean-centered unwrapping
+        mean_angle = np.arctan2(np.mean(np.sin(meas_angles)), np.mean(np.cos(meas_angles)))
+        diff_angles = ssa(meas_angles - mean_angle)
+        
+        min_idx = np.argmin(diff_angles)
+        max_idx = np.argmax(diff_angles)
+        
+        min_meas_angle = meas_angles[min_idx] # Global frame
+        max_meas_angle = meas_angles[max_idx] # Global frame
+
+        # 2. Analyze Predicted Shape Extent
+        body_angles = np.linspace(-np.pi, np.pi, 360).tolist()
+        
+        global_points = self.sensor_model.h_lidar(state_pred, body_angles).T # shape: (2, 360)
+        
+        # Transform to Sensor Frame (relative to lidar)
+        sensor_points = global_points - self.sensor_model.lidar_position.reshape(2,1)
+        pred_angles, _ = cart2pol(sensor_points[0,:], sensor_points[1,:])
+        
+        pred_diff_angles = ssa(pred_angles - mean_angle)
+        min_pred_angle = pred_angles[np.argmin(pred_diff_angles)]
+        max_pred_angle = pred_angles[np.argmax(pred_diff_angles)]
+
+        # 3. Logic: Check for "Overhang"
+        virtual_x = []
+        virtual_y = []
+        
+        threshold = np.deg2rad(5.0) 
+        
+        # Left Side
+        if ssa(min_meas_angle - min_pred_angle) > threshold:
+            virtual_x.append(measurements.x[min_idx])
+            virtual_y.append(measurements.y[min_idx])
+            
+        # Right Side
+        if ssa(max_pred_angle - max_meas_angle) > threshold:
+            virtual_x.append(measurements.x[max_idx])
+            virtual_y.append(measurements.y[max_idx])
+
+        # 4. Concatenate
+        if len(virtual_x) > 0:
+            new_x = np.concatenate([measurements.x, np.array(virtual_x)])
+            new_y = np.concatenate([measurements.y, np.array(virtual_y)])
+            return LidarScan(x=new_x, y=new_y)
+            
+        return measurements
