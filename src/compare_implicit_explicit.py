@@ -163,8 +163,11 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
         x=2.0, y=2.0, yaw=0.2, 
         vel_x=2.0, vel_y=2.0, yaw_rate=0.1,
         length=2.0, width=2.0,
-        pca_coeffs=np.ones(N_pca) * 0.0000001
+        pca_coeffs=np.ones(N_pca) * 1
     )
+
+    pca_data = np.load(PCA_parameters_path)
+    eigenvalues = pca_data['eigenvalues'][:N_pca].real
 
     tracker_config = TrackerConfig(
         use_gt_state_for_bodyangles_calc = False,
@@ -177,7 +180,8 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
         lidar_std_dev=0.15,
         initial_state=initial_state_tracker,
         initial_std_devs=initial_std_devs_tracker,
-        lidar_position=np.array(lidar_pos)
+        lidar_position=np.array(lidar_pos),
+        pca_eigenvalues=eigenvalues
     )
     return tracker_config
 
@@ -282,12 +286,17 @@ def run_comparison():
     tracker_imp.state_estimate = prior_gauss
     res_imp = tracker_imp.update(meas_local)
 
+    tracker_imp_ekf = ImplicitIEKF(dynamic_model=dyn_model, lidar_model=sensor_model, config=config, max_iterations=1)
+    tracker_imp_ekf.state_estimate = prior_gauss
+    res_imp_ekf = tracker_imp_ekf.update(meas_local)
+
     # 7. INTERACTIVE VISUALIZATION (Plotly)
     # Shape coordinations
     gt_x, gt_y = compute_exact_vessel_shape_global(gt_state, extent_base.shape_coords_body)
     pr_x, pr_y = compute_estimated_shape_global(prior_state, config, pca_params)
     exp_x, exp_y = compute_estimated_shape_global(res_exp.state_posterior.mean, config, pca_params)
     imp_x, imp_y = compute_estimated_shape_global(res_imp.state_posterior.mean, config, pca_params)
+    imp_ekf_x, imp_ekf_y = compute_estimated_shape_global(res_imp_ekf.state_posterior.mean, config, pca_params)
 
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -332,6 +341,13 @@ def run_comparison():
     fig.add_trace(go.Scatter(
         x=[s.y for s in res_imp.iterates], y=[s.x for s in res_imp.iterates], 
         mode='lines+markers', marker=dict(color='green', size=8, symbol='x'), name='Imp Centroid Path'
+    ), row=1, col=2)
+
+    # Implicit EKF Trace
+    fig.add_trace(go.Scatter(x=imp_ekf_y, y=imp_ekf_x, mode='lines', line=dict(color='purple', width=2), name='Implicit EKF (Updated)'), row=1, col=2)
+    fig.add_trace(go.Scatter(
+        x=[s.y for s in res_imp_ekf.iterates], y=[s.x for s in res_imp_ekf.iterates], 
+        mode='lines+markers', marker=dict(color='purple', size=8, symbol='triangle-up'), name='Imp EKF Centroid Path'
     ), row=1, col=2)
 
     fig.update_layout(

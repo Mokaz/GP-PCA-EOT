@@ -191,8 +191,9 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
             sensor_model=lidar_simulator,
             sensor_setter=None,
             init_state=sim_cfg.initial_state_gt,
-            dt=sim_cfg.dt,
             end_time=sim_cfg.num_frames * sim_cfg.dt,
+            dt=sim_cfg.dt,
+            config=config,
             seed=str(sim_cfg.seed),
             use_cache=sim_cfg.use_cache
         )
