@@ -65,4 +65,7 @@ class EKF(Tracker):
             predicted_measurement=z_pred_gauss,
             predicted_measurements_iterates=[z_pred.copy()],
             innovation_gauss=innovation_gauss,
+            H_jacobian=H_lidar,
+            R_covariance=R_lidar,
+            K_gain=K_lidar,
         )

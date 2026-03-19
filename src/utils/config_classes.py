@@ -225,6 +225,7 @@ class TrackerConfig:
     # Implicit EKF specific
     use_state_clamping: bool = True
     use_mahalanobis_projection: bool = True
+    mahalanobis_projection_prob: float = 0.99
     use_negative_info: bool = False
 
     def __post_init__(self):

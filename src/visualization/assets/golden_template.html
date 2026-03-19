@@ -101,10 +101,20 @@ var config = {
                                 componentState: { model: '{{ embed(roots.covariance_view) }}', title: 'Covariance Matrix'},
                             },
                             {
-                                type: 'component',
-                                componentName: 'view',
-                                componentState: { model: '{{ embed(roots.nis_view) }}', title: 'NIS Consistency'},
+                                type: 'stack',
+                                content: [
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: { model: '{{ embed(roots.nis_view) }}', title: 'NIS Consistency'},
+                                    },
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: { model: '{{ embed(roots.condition_number_view) }}', title: 'Condition Number'},
                                     }
+                                ]
+                            }
                         ]
                     }
                 ]

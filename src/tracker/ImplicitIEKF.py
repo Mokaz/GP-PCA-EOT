@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import chi2
 
 from src.senfuslib import MultiVarGauss
 from src.tracker.tracker import Tracker
@@ -30,6 +31,9 @@ class ImplicitIEKF(Tracker):
 
         self.use_state_clamping = config.tracker.use_state_clamping
         self.use_mahalanobis_projection = config.tracker.use_mahalanobis_projection
+        if self.use_mahalanobis_projection:
+            prob = getattr(config.tracker, 'mahalanobis_projection_prob', 0.99)
+            self.chi2_thresh = chi2.ppf(prob, df=config.tracker.N_pca)
         self.use_negative_info = getattr(config.tracker, 'use_negative_info', False)
         # TODO: DEBUG
         self.debug_time_counter = 0
@@ -158,20 +162,17 @@ class ImplicitIEKF(Tracker):
                     final_clamped_width = (float(orig_width), 0.5)
 
             if self.use_mahalanobis_projection:
-                # Constrain PCA coefficients to the 99% probability ellipsoid
+                # Constrain PCA coefficients to the requested probability ellipsoid
                 eigenvalues = self.config.tracker.pca_eigenvalues
                 e = state_next.pca_coeffs
 
                 # Calculate squared Mahalanobis distance D_M^2
                 mahalanobis_sq = np.sum((e ** 2) / eigenvalues)
 
-                # Chi-Square threshold for N=4 degrees of freedom at 99% confidence
-                chi2_thresh = 13.28
-
-                if mahalanobis_sq > chi2_thresh:
+                if mahalanobis_sq > self.chi2_thresh:
                     orig_coeffs = e.copy()
-                    # Project the vector back onto the surface of the 99% ellipsoid
-                    scale_factor = np.sqrt(chi2_thresh / mahalanobis_sq)
+                    # Project the vector back onto the surface of the ellipsoid
+                    scale_factor = np.sqrt(self.chi2_thresh / mahalanobis_sq)
                     state_next.pca_coeffs = e * scale_factor
                     final_mahalanobis_projection = (orig_coeffs, state_next.pca_coeffs.copy(), mahalanobis_sq)
             # =================================================================
@@ -206,6 +207,7 @@ class ImplicitIEKF(Tracker):
             iterations=i + 1,
             H_jacobian=H_imp,
             R_covariance=R_eff,
+            K_gain=K,
             clamped_length=final_clamped_length,
             clamped_width=final_clamped_width,
             mahalanobis_projection=final_mahalanobis_projection

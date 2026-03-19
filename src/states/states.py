@@ -35,14 +35,31 @@ class State_PCA(NamedArray):
     # --- Replace the custom __init__ with a custom __new__ method ---
     def __new__(cls, x, y, yaw, vel_x, vel_y, yaw_rate, length, width, pca_coeffs):
         # Assemble the full state array from the input arguments
-        kinematics = np.array([x, y, yaw, vel_x, vel_y, yaw_rate])
-        extent = np.array([length, width])
-        pca_coeffs = np.atleast_1d(pca_coeffs)
+        kinematics = np.array([x, y, yaw, vel_x, vel_y, yaw_rate], dtype=float)
+        extent = np.array([length, width], dtype=float)
+        pca_coeffs = np.atleast_1d(pca_coeffs).astype(float)
         full_state = np.concatenate([kinematics, extent, pca_coeffs])
 
         obj = np.asarray(full_state).view(cls)
         return obj
 
+    def __sub__(self, other):
+        from src.utils.tools import ssa
+        diff = super().__sub__(other)
+        if hasattr(self, 'shape') and getattr(diff, 'shape', None) == self.shape:
+            d = np.asarray(diff).astype(float).copy()
+            d[2] = ssa(d[2])
+            return self.with_new_data(d)
+        return diff
+
+    def __rsub__(self, other):
+        from src.utils.tools import ssa
+        diff = super().__rsub__(other)
+        if hasattr(self, 'shape') and getattr(diff, 'shape', None) == self.shape:
+            d = np.asarray(diff).astype(float).copy()
+            d[2] = ssa(d[2])
+            return self.with_new_data(d)
+        return diff
 
     # --- Convenient group accessors ---
     pos: AtIndex[slice(0, 2)] = field(init=False)
@@ -138,3 +155,21 @@ class State_GP(NamedArray):
         radii = np.atleast_1d(radii).astype(float)
         full_state = np.concatenate([kinematics, radii])
         return np.asarray(full_state).view(cls)
+
+    def __sub__(self, other):
+        from src.utils.tools import ssa
+        diff = super().__sub__(other)
+        if hasattr(self, 'shape') and getattr(diff, 'shape', None) == self.shape:
+            d = np.asarray(diff).astype(float).copy()
+            d[2] = ssa(d[2])
+            return self.with_new_data(d)
+        return diff
+
+    def __rsub__(self, other):
+        from src.utils.tools import ssa
+        diff = super().__rsub__(other)
+        if hasattr(self, 'shape') and getattr(diff, 'shape', None) == self.shape:
+            d = np.asarray(diff).astype(float).copy()
+            d[2] = ssa(d[2])
+            return self.with_new_data(d)
+        return diff
