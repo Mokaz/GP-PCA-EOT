@@ -145,10 +145,10 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
     # Initialize Tracker closer to GT for stability in this test
     # (Or add noise if testing robustness)
     initial_state_tracker = State_PCA(
-        x=initial_state_gt.x + 5.0,
-        y=initial_state_gt.y + 5.0,
-        # x=initial_state_gt.x + 1.0,
-        # y=initial_state_gt.y - 1.0,
+        # x=initial_state_gt.x + 5.0,
+        # y=initial_state_gt.y + 5.0,
+        x=initial_state_gt.x + 1.0,
+        y=initial_state_gt.y - 1.0,
         # x=initial_state_gt.x,
         # y=initial_state_gt.y,
         yaw=initial_state_gt.yaw + np.deg2rad(10.0),
