@@ -298,8 +298,6 @@ def update_widgets(filename):
         }
         
         # Individual State Labels (for Custom Selector)
-        # We map display names to actual lookup keys (Strings for named fields, Ints for array indices)
-        # State_GP structure: 0:x, 1:y, 2:yaw, 3:vx, 4:vy, 5:rate, 6+:radii
         custom_state_options = {
             'x': 'x', 'y': 'y', 'yaw': 'yaw', 
             'vel_x': 'vel_x', 'vel_y': 'vel_y', 'yaw_rate': 'yaw_rate'
@@ -396,14 +394,8 @@ def calculate_detailed_cost_breakdown(sim_result, consistency_analyzer):
     total_costs = []
     frames = []
 
-    # If we can instantiate a tracker or at least reuse the one from CostLandscapeComponent logic...
-    # However, holoviz_dashboard doesn't inherently have a full Tracker instance ready.
-    # We need to minimally reconstruct the cost function logic or reuse the existing components.
-    # To keep it simple and robust, we will instantiate a minimal tracker helper similar to CostLandscapeComponent.
-    
-    # 1. Reconstruct Models (similar to CostLandscapeComponent)
     config = sim_result.config
-    project_root = PROJECT_ROOT # Using global
+    project_root = PROJECT_ROOT
     
     # Load PCA params if needed
     pca_params = None
@@ -412,7 +404,7 @@ def calculate_detailed_cost_breakdown(sim_result, consistency_analyzer):
 
     from src.dynamics.process_models import Model_PCA_CV
     from src.sensors.LidarModel import LidarMeasurementModel
-    from src.tracker.BFGS import BFGS # Or just Tracker base if objective_function is there
+    from src.tracker.BFGS import BFGS
 
     filter_dyn_model = Model_PCA_CV(
         x_pos_std_dev=config.tracker.pos_north_std_dev,
@@ -432,32 +424,17 @@ def calculate_detailed_cost_breakdown(sim_result, consistency_analyzer):
         extent_cfg=config.extent
     )
     
-    # Use BFGS essentially just for the objective_function method
     tracker = BFGS(dynamic_model=filter_dyn_model, lidar_model=sensor_model, config=config)
 
-    # 2. Iterate
     for i, res in enumerate(sim_result.tracker_results_ts.values):
         try:
-            # We need: state, state_pred, P_pred, z
             state = res.state_posterior.mean
             state_pred = res.state_prior.mean
             P_pred = res.state_prior.cov
             
-            # Measurements
-            # sim_result stores raw measurements usually in measurements_global_ts or local
-            # res.measurements is typically (2, N) or (N, 2) array of Cartesian points in local frame?
-            # TrackerUpdateResult often has 'measurements' as the raw z used.
-            # But the objective function expects flat z and needs body_angles.
-            
-            # Re-fetch global measurements to match CostLandscape logic if possible, 
-            # OR rely on what's in TrackerUpdateResult if it's sufficient.
-            # LidarMeasurementModel.h_lidar needs body_angles to be pre-calculated or passed.
-            
-            # Let's get global measurements for this frame
             meas_global = sim_result.measurements_global_ts.values[i]
-            z_flat = meas_global.flatten('F') # Standard flattening used in tracker
+            z_flat = meas_global.flatten('F')
             
-            # Calculate body angles
             body_angles = calculate_body_angles(meas_global, state)
             tracker.body_angles = body_angles
 
@@ -486,8 +463,6 @@ def get_cost_breakdown_view(filename, log_scale):
     if not loaded_data:
         return pn.pane.Markdown("### Select a file to view Cost Breakdown")
 
-    # We cache the cost calculation as well to avoid re-running on toggle
-    # A simple way is to attach it to loaded_data if not present
     if "cost_df" not in loaded_data:
         df = calculate_detailed_cost_breakdown(loaded_data["sim_result"], loaded_data["consistency_analyzer"])
         loaded_data["cost_df"] = df
@@ -520,7 +495,6 @@ def serialize_state_object(state_obj):
     """Helper to convert State_PCA/State_GP objects into a labeled dictionary."""
     cls_name = state_obj.__class__.__name__
     
-    # Prioritize attribute detection over class name to handle potential mismatches
     # Check for GP characteristics (radii)
     if hasattr(state_obj, 'radii'):
         return {
@@ -576,7 +550,17 @@ def safe_serialize(obj, max_depth=3, current_depth=0):
         return float(obj)
         
     if isinstance(obj, np.ndarray):
-        if obj.size <= 100:
+        if obj.size <= 2500:
+            if obj.ndim > 1:
+                matrix_str = np.array2string(
+                    obj, 
+                    separator=', ', 
+                    precision=8, 
+                    suppress_small=True, 
+                    max_line_width=10000,
+                    threshold=np.inf
+                )
+                return {"_matrix_data": matrix_str}
             return obj.tolist()
         return f"ndarray(shape={obj.shape}, dtype={obj.dtype})"
     
@@ -876,6 +860,46 @@ def get_covariance_view(matrix_name, frame_idx, filename):
     
     return pn.pane.HoloViews(heatmap, sizing_mode="stretch_both")
 
+@pn.depends(cov_matrix_selector.param.value, file_selector.param.value)
+def get_condition_number_view(matrix_name, filename):
+    loaded_data = load_data(filename)
+    if not loaded_data:
+        return pn.pane.Markdown("### Select a file to begin.")
+
+    sim_result = loaded_data["sim_result"]
+    attr_name = COV_MATRIX_MAPPING[matrix_name]
+    
+    cond_numbers = []
+    frames = []
+    
+    for i, res in enumerate(sim_result.tracker_results_ts.values):
+        gauss_obj = getattr(res, attr_name)
+        if gauss_obj is None or getattr(gauss_obj, 'cov', None) is None:
+            continue
+            
+        try:
+            cond_number = np.linalg.cond(gauss_obj.cov)
+            cond_numbers.append(cond_number)
+            frames.append(i)
+        except np.linalg.LinAlgError:
+            pass
+            
+    if not frames:
+        return pn.pane.Markdown(f"### No valid covariance data to compute condition numbers for {matrix_name}.")
+        
+    df = pd.DataFrame({'Frame': frames, 'Condition Number': cond_numbers}).set_index('Frame')
+    
+    plot = df.hvplot.line(
+        title=f"Condition Number over Time: {matrix_name}",
+        ylabel="Condition Number",
+        logy=True,
+        responsive=True,
+        height=400,
+        grid=True,
+        line_width=2
+    )
+
+    return pn.pane.HoloViews(plot, sizing_mode="stretch_both")
 
 @pn.depends(nis_field_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
 def get_nis_view(selected_field, filename, backend):
@@ -1029,7 +1053,8 @@ def get_data_browser_view(mode, frame_idx, filename):
             "ground_truth_ts": f"TimeSequence with {len(sim_result.ground_truth_ts.values)} items",
         }
 
-    return pn.pane.JSON(data_to_show, sizing_mode='stretch_both', depth=5, theme='light')
+    json_pane = pn.pane.JSON(data_to_show, sizing_mode='stretch_width', depth=1, theme='light')
+    return pn.Column(json_pane, sizing_mode='stretch_both', styles={'overflow-x': 'auto', 'overflow-y': 'auto'})
 
 @pn.depends(file_selector.param.value)
 def get_cost_landscape_view(filename):
@@ -1038,7 +1063,6 @@ def get_cost_landscape_view(filename):
         return pn.pane.Markdown("### Select a file to view Cost Landscape")
     
     # 1. Instantiate the Component
-    # We pass the project root so it can find the PCA files relative to the project
     explorer = CostLandscapeComponent(
         sim_result=loaded_data["sim_result"],
         tracker_config_path=None, # Config is extracted from sim_result inside the component
@@ -1046,7 +1070,6 @@ def get_cost_landscape_view(filename):
     )
     
     # 2. Link Global Frame Player to Component
-    # When the main dashboard slider moves, update the component's internal state
     pn.bind(explorer.update_frame, frame_player, watch=True)
     
     # 3. Initial update to match current slider
@@ -1203,6 +1226,7 @@ plotly_view = pn.Column(persistent_plotly_pane, sizing_mode="stretch_both")
 nees_view = pn.Column(get_nees_view, sizing_mode="stretch_both")
 error_view = pn.Column(get_error_view, sizing_mode="stretch_both")
 covariance_view = pn.Column(get_covariance_view, sizing_mode="stretch_both")
+condition_number_view = pn.Column(get_condition_number_view, sizing_mode="stretch_both")
 nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
 data_browser_view = pn.Column(get_data_browser_view, sizing_mode="stretch_both")
 cost_landscape_view = pn.Column(get_cost_landscape_view, sizing_mode="stretch_both")
@@ -1225,6 +1249,7 @@ tmpl.add_panel('plotly_view', plotly_view)
 tmpl.add_panel('nees_view', nees_view)
 tmpl.add_panel('error_view', error_view)
 tmpl.add_panel('covariance_view', covariance_view)
+tmpl.add_panel('condition_number_view', condition_number_view)
 tmpl.add_panel('nis_view', nis_view)
 tmpl.add_panel('data_browser_view', data_browser_view)
 tmpl.add_panel('cost_breakdown', cost_breakdown_view)

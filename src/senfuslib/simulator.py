@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, fields
-from typing import Callable, Optional, Sequence, Tuple
+from typing import Callable, Optional, Sequence, Tuple, Any
 import numpy as np
 from zlib import crc32
 from pathlib import Path
@@ -29,6 +29,7 @@ class Simulator:
     end_time: float
     dt: float
 
+    config: Optional[Any] = field(default=None)
     seed: Optional[str] = field(default=None)
     use_cache: bool = field(default=True)
     sensor_setter: Optional[Callable[[SensorModel[M], TimeSequence[S]],
@@ -39,12 +40,44 @@ class Simulator:
 
     datapath: Optional[Path] = field(init=False, default=None, repr=False)
 
+    def _generate_config_hash(self) -> int:
+        from dataclasses import asdict
+        import json
+        
+        if self.config is None:
+            return crc32(repr(self).encode())
+            
+        lidar_dict = asdict(self.config.lidar)
+        sim_dict = asdict(self.config.sim)
+        
+        # Remove fields that don't affect generation
+        sim_dict.pop("name", None)
+        sim_dict.pop("show_gt_plot", None)
+        sim_dict.pop("use_cache", None)
+        
+        # Initial state is handled inside sim_dict
+        def default_serializer(obj):
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            if hasattr(obj, '__dict__'):
+                return obj.__dict__
+            return str(obj)
+
+        hash_payload = {
+            "lidar": lidar_dict,
+            "sim": sim_dict,
+        }
+        
+        payload_str = json.dumps(hash_payload, default=default_serializer, sort_keys=True)
+        return crc32(payload_str.encode())
+
     def __post_init__(self):
         if out_dir is None:
             raise ImportError('Please create a config.py file in the root ')
-        if self.seed is not None:
-            id_number = crc32(repr(self).encode())
-            self.datapath = out_dir / f'gt_{self.seed}_{id_number:010d}.pkl'
+        if self.seed is not None or self.config is not None:
+            id_number = self._generate_config_hash()
+            seed_part = self.seed if self.seed else "config"
+            self.datapath = out_dir / f'gt_{seed_part}_{id_number:010d}.pkl'
 
     def set_random_state(self):
         self._rand_state = np.random.get_state()

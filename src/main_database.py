@@ -108,7 +108,7 @@ def get_common_configs(traj_type="circle", N_pca=4, selected_boat_id="1"):
         lidar_position=(30.0, 0.0),
         num_rays=360,
         max_distance=140.0,
-        lidar_gt_std_dev=0.0, # Perfect measurements for testing
+        lidar_gt_std_dev=0.15,
     )
 
     # Extent config
@@ -147,19 +147,19 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
     initial_state_tracker = State_PCA(
         # x=initial_state_gt.x + 5.0,
         # y=initial_state_gt.y + 5.0,
-        # x=initial_state_gt.x + 1.0,
-        # y=initial_state_gt.y - 1.0,
-        x=initial_state_gt.x,
-        y=initial_state_gt.y,
-        # yaw=initial_state_gt.yaw + np.deg2rad(10.0),
-        yaw=initial_state_gt.yaw,
+        x=initial_state_gt.x + 1.0,
+        y=initial_state_gt.y - 1.0,
+        # x=initial_state_gt.x,
+        # y=initial_state_gt.y,
+        yaw=initial_state_gt.yaw + np.deg2rad(10.0),
+        # yaw=initial_state_gt.yaw,
         vel_x=initial_state_gt.vel_x, 
         vel_y=initial_state_gt.vel_y, 
         yaw_rate=0.0,
-        length=initial_state_gt.length,
-        width=initial_state_gt.width,
-        # length=initial_state_gt.length * 2.5, # Start with wrong size to test convergence
-        # width=initial_state_gt.width * 0.5,
+        # length=initial_state_gt.length,
+        # width=initial_state_gt.width,
+        length=initial_state_gt.length * 2.5, # Start with wrong size to test convergence
+        width=initial_state_gt.width * 0.5,
         # length=110.0, 
         # width=9,    
         pca_coeffs=np.zeros(N_pca) # Start with mean shape of dataset
@@ -188,7 +188,7 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
         lidar_position=np.array(lidar_pos),
         pca_eigenvalues = eigenvalues,
         # Iterative solver params
-        max_iterations=20,
+        max_iterations=50,
         convergence_threshold=1e-6,
         # Implicit EKF specific
         use_state_clamping=True,
@@ -203,8 +203,9 @@ if __name__ == "__main__":
     # --- BOAT SELECTION ---
     # Select a boat from processed_ships.json
     selected_boat_id = "154" # Example: "1" = Sailing Yacht, "112" = Multihull
+    # selected_boat_id = None # Example: "1" = Sailing Yacht, "112" = Multihull
 
-    method_list = ["implicit_ekf"]
+    method_list = ["implicit_ekf", "implicit_iekf"]
     for method in method_list:
         N_pca = 4
         
@@ -230,11 +231,16 @@ if __name__ == "__main__":
 
         config = Config(sim=sim_base, lidar=lidar_base, tracker=tracker_cfg, extent=extent_base)
 
-        # Unique Name
+        # Custom user settings
         boat_id = extent_base.shape_params_true.get('id', 'custom')
-        config.sim.name = f"newWP_meanGT_boat{boat_id}_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
-        config.sim.use_cache = False # Disable cache for new trajectories to ensure they are generated
+        config.sim.use_cache = True # Disable cache for new trajectories to ensure they are generated
         config.sim.num_frames = 800
+        config.lidar.lidar_gt_std_dev = 0.0
+        config.tracker.use_initialize_centroid = False
+        config.tracker.use_negative_info = False
+
+        # Unique Name
+        config.sim.name = f"bad_init_boat{boat_id}_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
 
         # Run
         sim_result = run_single_simulation(config=config, method=method)

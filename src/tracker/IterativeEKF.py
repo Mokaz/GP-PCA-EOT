@@ -125,5 +125,6 @@ class IterativeEKF(Tracker):
             iterations=i + 1,
             H_jacobian=H_lidar,
             R_covariance=R_lidar,
+            K_gain=K_lidar,
         )
 

@@ -25,6 +25,7 @@ class TrackerUpdateResult:
     cost_penalty: Optional[float] = None
     H_jacobian: Optional[np.ndarray] = None
     R_covariance: Optional[np.ndarray] = None
+    K_gain: Optional[np.ndarray] = None
     
     # Optional Debugging / Analysis Info
     iterations: Optional[int] = None
