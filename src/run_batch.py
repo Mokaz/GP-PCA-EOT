@@ -36,12 +36,13 @@ if __name__ == "__main__":
     # Keys: dot-notation path to attribute (or "method" for the tracker type)
     # Values: List of options to sweep over
     param_grid = {
-        "method": ["implicit_ekf"],
-        "selected_boat_id": ["1"],
-        "selected_trajectory": ["linear"],
-        "tracker.process_model": ["cv", "inflation", "temporal"],
-        "tracker.use_state_clamping": [True, False],
-        "tracker.use_mahalanobis_projection": [True, False],
+        "method": ["implicit_iekf"],
+        "selected_boat_id": ["154"],
+        "selected_trajectory": ["waypoints2"],
+        "tracker.process_model": ["inflation"],
+        "tracker.use_state_clamping": [True],
+        "tracker.use_mahalanobis_projection": [True],
+        "tracker.use_D_imp_for_R": [True, False],
     }
 
     # --- 2. Generate Combinations ---
@@ -127,6 +128,13 @@ if __name__ == "__main__":
 
         # --- C. Naming & Execution ---
         param_suffix = ("_" + "_".join(param_desc_parts)) if param_desc_parts else ""
+
+        # # Custom user settings
+        # config.sim.use_cache = True
+        # config.sim.num_frames = 800
+        # config.lidar.lidar_gt_std_dev = 0.0
+        # config.tracker.use_initialize_centroid = False
+        # config.tracker.use_negative_info = False
         
         # Standardize naming: method + boat + params + traj + seed
         config.sim.name = f"{method_name}_boat{selected_boat_id}{param_suffix}_{config.sim.trajectory.type}_seed_{config.sim.seed}"

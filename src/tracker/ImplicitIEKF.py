@@ -147,13 +147,11 @@ class ImplicitIEKF(Tracker):
             # The residual y = z - h(x, theta(x,z))
             innovation_iter = z_flat - z_pred_iter
 
-            # Effective Measurement Noise
-            # R_eff = D * R * D.T
             num_meas = measurements_global_coords.shape[1]
             R_std = self.sensor_model.R(num_meas)
 
             if self.use_D_imp_for_R:
-                # R_eff = D_imp @ R_std @ D_imp.T
+                # Effective Measurement Noise
                 R_eff = D_imp @ R_std @ D_imp.T
             else:
                 R_eff = R_std
