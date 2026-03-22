@@ -19,7 +19,7 @@ logging.basicConfig(
 from src.global_project_paths import SIMDATA_PATH
 from src.utils.config_classes import Config
 from src.experiment_runner import run_single_simulation
-from src.main_database import get_common_configs, get_pca_tracker_config
+from main import get_common_configs, get_pca_tracker_config
 
 
 def set_nested_value(obj, path, value):
@@ -137,7 +137,8 @@ if __name__ == "__main__":
         filename = f"{config.sim.name}.pkl"
 
         try:
-            run_single_simulation(config=config, method=method_name)
+            config.tracker.method = method_name
+            run_single_simulation(config=config)
             print(f"   > Success. Saved to {filename}")
         except Exception as e:
             logging.error(f"Simulation {config.sim.name} failed!", exc_info=True)

@@ -188,6 +188,8 @@ class TrackerConfig:
     use_gt_state_for_bodyangles_calc: bool = False
     use_initialize_centroid: bool = False
     
+    method: str = 'implicit_iekf'
+
     N_pca: int = 4
     PCA_parameters_path : str = 'data/input_parameters/FourierPCAParameters_scaled.npz'
 
@@ -227,6 +229,7 @@ class TrackerConfig:
     use_mahalanobis_projection: bool = True
     mahalanobis_projection_prob: float = 0.99
     use_negative_info: bool = False
+    use_D_imp_for_R: bool = True
 
     def __post_init__(self):
         if self.initial_state is None:

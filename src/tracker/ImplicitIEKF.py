@@ -35,6 +35,7 @@ class ImplicitIEKF(Tracker):
             prob = getattr(config.tracker, 'mahalanobis_projection_prob', 0.99)
             self.chi2_thresh = chi2.ppf(prob, df=config.tracker.N_pca)
         self.use_negative_info = getattr(config.tracker, 'use_negative_info', False)
+        self.use_D_imp_for_R = getattr(config.tracker, 'use_D_imp_for_R', True)
         # TODO: DEBUG
         self.debug_time_counter = 0
 
@@ -117,7 +118,29 @@ class ImplicitIEKF(Tracker):
             #     print(f"Δ PCA_3:      {null_vector[11]:.4f}")
 
             #     self.time_counter += 1
-            
+
+            # if i == 0:
+            #     # Save the angles from the first iteration
+            #     first_iter_thetas = theta_implicit.copy()
+                
+            #     # Calculate rho (assuming you can access zloc_x, zloc_y, L, W here)
+            #     # rho = sqrt( (zloc_x / L)**2 + (zloc_y / W)**2 )
+            #     # Alternatively, just look at the raw H_imp matrix:
+            #     max_heading_derivative = np.max(np.abs(H_imp[:, 2]))  # Column 2 is Heading
+                
+            #     if max_heading_derivative > 10.0:
+            #         print(f"\n[PROOF] EXPLOSION DETECTED! Max Heading Jacobian: {max_heading_derivative:.2f}")
+            #         # Find the index of the measurement causing the explosion
+            #         bad_idx = np.argmax(np.abs(H_imp[:, 2])) // 2  # Integer divide by 2 because of x/y rows
+            #         print(f"-> This is caused by Measurement Index {bad_idx}.")
+                    
+            # elif i == 1:
+            #     # See how much the angle SLID between iter 0 and iter 1
+            #     bad_idx = np.argmax(np.abs(H_imp[:, 2])) // 2
+            #     angle_shift_rads = theta_implicit[bad_idx] - first_iter_thetas[bad_idx]
+            #     angle_shift_deg = np.degrees(angle_shift_rads)
+            #     print(f"-> Between iteration 0 and 1, the point on the boundary SLID by {angle_shift_deg:.2f} degrees!")
+                        
             z_pred_iter = self.sensor_model.h_from_theta(state_iter_mean, theta_implicit)
             predicted_measurements_iterates.append(z_pred_iter.copy())
             
@@ -128,8 +151,13 @@ class ImplicitIEKF(Tracker):
             # R_eff = D * R * D.T
             num_meas = measurements_global_coords.shape[1]
             R_std = self.sensor_model.R(num_meas)
-            R_eff = D_imp @ R_std @ D_imp.T
-            
+
+            if self.use_D_imp_for_R:
+                # R_eff = D_imp @ R_std @ D_imp.T
+                R_eff = D_imp @ R_std @ D_imp.T
+            else:
+                R_eff = R_std
+
             S = H_imp @ P_pred @ H_imp.T + R_eff
             
             # Numerical stability: use solve instead of inv
