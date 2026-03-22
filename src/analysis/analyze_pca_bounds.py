@@ -215,9 +215,9 @@ def visualize_feasible_pca_space(N_pca=4):
     plt.show()
 
 if __name__ == "__main__":
-    N_pca = 40
+    N_pca = 4
     print("1. Checking PCA Truncation Spillage...")
     check_pca_spillage(N_pca=N_pca, plot_top_violators=3)
     
     print("\n2. Generating All 2D Convex Space Slices...")
-    # visualize_feasible_pca_space(N_pca=N_pca)
+    visualize_feasible_pca_space(N_pca=N_pca)

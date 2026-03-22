@@ -43,7 +43,7 @@ from src.utils.GaussianProcess import GaussianProcess
 from src.sensors.LidarModelGP import LidarModelGP 
 from src.tracker.GP_IEKF import GP_IEKF
 
-def run_single_simulation(config: Config, method: str) -> SimulationResult:
+def run_single_simulation(config: Config) -> SimulationResult:
     """
     Runs a single simulation using the senfuslib.Simulator and new architecture.
     """
@@ -51,6 +51,8 @@ def run_single_simulation(config: Config, method: str) -> SimulationResult:
     tracker_cfg = config.tracker
     lidar_cfg = config.lidar
     extent_cfg = config.extent
+    
+    method = tracker_cfg.method
 
     rng = np.random.default_rng(seed=sim_cfg.seed)
 
