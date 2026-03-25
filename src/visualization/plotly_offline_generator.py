@@ -243,7 +243,7 @@ def generate_initial_plotly_fig(gt_state, est_state, config, pca_params):
     
     return fig
 
-def generate_plotly_fig_for_frame(frame_idx, gt_state, est_state, z_lidar_cart, ground_truth_history, config, pca_params):
+def generate_plotly_fig_for_frame(frame_idx, gt_state, est_state, z_lidar_cart, ground_truth_history, config, pca_params, virtual_constraints=None):
     """Generates the Plotly figure for a given frame's data."""
     fig = go.Figure()
 
@@ -282,6 +282,36 @@ def generate_plotly_fig_for_frame(frame_idx, gt_state, est_state, z_lidar_cart, 
     fig.add_trace(go.Scatter(x=[est_pos[1], arrow_end[1]], y=[est_pos[0], arrow_end[0]], mode='lines', name='Estimated Heading', line=dict(color='purple', width=2)))
     fig.add_trace(go.Scatter(x=[arrow_end[1], arrowhead_left[1]], y=[arrow_end[0], arrowhead_left[0]], mode='lines', showlegend=False, line=dict(color='purple', width=2)))
     fig.add_trace(go.Scatter(x=[arrow_end[1], arrowhead_right[1]], y=[arrow_end[0], arrowhead_right[0]], mode='lines', showlegend=False, line=dict(color='purple', width=2)))
+
+    # Virtual Constraints (Negative Info)
+    if virtual_constraints:
+        virt_pts_x = []
+        virt_pts_y = []
+        virt_rays_x = []
+        virt_rays_y = []
+        virt_pred_rays_x = []
+        virt_pred_rays_y = []
+        for vc in virtual_constraints:
+            pt_global = vc['predicted_point']
+            virt_pts_x.append(pt_global[0])
+            virt_pts_y.append(pt_global[1])
+            
+            # Draw a line from lidar through the predicted extreme point to max range
+            p_angle = np.arctan2(pt_global[1] - lidar_pos[1], pt_global[0] - lidar_pos[0])
+            p_ray_end = np.array(lidar_pos) + config.lidar.max_distance * np.array([np.cos(p_angle), np.sin(p_angle)])
+            virt_pred_rays_x.extend([lidar_pos[0], p_ray_end[0], None])
+            virt_pred_rays_y.extend([lidar_pos[1], p_ray_end[1], None])
+            
+            # Draw a dashed ray from lidar at the bounding measured angle
+            angle = vc['measured_angle']
+            ray_end = np.array(lidar_pos) + config.lidar.max_distance * np.array([np.cos(angle), np.sin(angle)])
+            virt_rays_x.extend([lidar_pos[0], ray_end[0], None])
+            virt_rays_y.extend([lidar_pos[1], ray_end[1], None])
+            
+        if virt_pts_x:
+            fig.add_trace(go.Scatter(x=virt_pts_y, y=virt_pts_x, mode='markers', name='Pred. Const. Pts (Offline Final)', marker=dict(color='saddlebrown', size=8, symbol='diamond')))
+            fig.add_trace(go.Scatter(x=virt_pred_rays_y, y=virt_pred_rays_x, mode='lines', name='Pred. Const. Rays (Offline Final)', line=dict(color='saddlebrown', width=1)))
+            fig.add_trace(go.Scatter(x=virt_rays_y, y=virt_rays_x, mode='lines', name='Meas. Bounds (Offline Final)', line=dict(color='saddlebrown', width=1, dash='dash')))
 
     return fig
 

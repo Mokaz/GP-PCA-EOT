@@ -167,42 +167,78 @@ cost_breakdown_toggle = pn.widgets.Toggle(
 plotting_divider = pn.layout.Divider(visible=False)
 plotting_header = pn.pane.Markdown("### Plotting & Saving", visible=False)
 
-x_min_input = pn.widgets.FloatInput(
-    name='X min (East)',
-    value=-60.0,
-    step=1.0,
+x_min_slider = pn.widgets.FloatSlider(name='X min (East)', value=-60.0, start=-200.0, end=200.0, step=1.0, sizing_mode='stretch_width')
+x_min_input = pn.widgets.FloatInput(value=-60.0, step=1.0, width=80)
+x_min_slider.link(x_min_input, value='value')
+x_min_input.link(x_min_slider, value='value')
+
+x_max_slider = pn.widgets.FloatSlider(name='X max (East)', value=60.0, start=-200.0, end=200.0, step=1.0, sizing_mode='stretch_width')
+x_max_input = pn.widgets.FloatInput(value=60.0, step=1.0, width=80)
+x_max_slider.link(x_max_input, value='value')
+x_max_input.link(x_max_slider, value='value')
+
+y_min_slider = pn.widgets.FloatSlider(name='Y min (North)', value=-70.0, start=-200.0, end=200.0, step=1.0, sizing_mode='stretch_width')
+y_min_input = pn.widgets.FloatInput(value=-70.0, step=1.0, width=80)
+y_min_slider.link(y_min_input, value='value')
+y_min_input.link(y_min_slider, value='value')
+
+y_max_slider = pn.widgets.FloatSlider(name='Y max (North)', value=70.0, start=-200.0, end=200.0, step=1.0, sizing_mode='stretch_width')
+y_max_input = pn.widgets.FloatInput(value=70.0, step=1.0, width=80)
+y_max_slider.link(y_max_input, value='value')
+y_max_input.link(y_max_slider, value='value')
+
+keep_zoom_checkbox = pn.widgets.Checkbox(
+    name='Keep zoom across frames/settings', 
+    value=True, 
     sizing_mode='stretch_width'
 )
 
-x_max_input = pn.widgets.FloatInput(
-    name='X max (East)',
-    value=60.0,
-    step=1.0,
+preset_radio = pn.widgets.RadioButtonGroup(
+    name='Presets', options=['linear', 'waypoints', 'waypoints2'], value='waypoints2', button_type='default', sizing_mode='stretch_width'
+)
+
+def set_preset_from_radio(event):
+    # This function handles the standard change event.
+    val = event.new if hasattr(event, 'new') else event
+    if val in ('linear', 'waypoints'):
+        x_min_input.value = -60.0
+        x_max_input.value = 60.0
+        y_min_input.value = -10.0
+        y_max_input.value = 70.0
+    elif val == 'waypoints2':
+        x_min_input.value = -60.0
+        x_max_input.value = 60.0
+        y_min_input.value = -70.0
+        y_max_input.value = 70.0
+
+preset_radio.param.watch(set_preset_from_radio, 'value')
+
+reset_preset_button = pn.widgets.Button(
+    name='Reset to Current Preset', 
+    button_type='default', 
     sizing_mode='stretch_width'
 )
 
-y_min_input = pn.widgets.FloatInput(
-    name='Y min (North)',
-    value=-10.0,
-    step=1.0,
-    sizing_mode='stretch_width'
-)
+reset_counter = pn.widgets.IntInput(value=0, visible=False)
 
-y_max_input = pn.widgets.FloatInput(
-    name='Y max (North)',
-    value=70.0,
-    step=1.0,
-    sizing_mode='stretch_width'
-)
+def reset_to_current_preset(event):
+    set_preset_from_radio(preset_radio.value)
+    # Increment counter to force a new uirevision hash and trigger an update
+    reset_counter.value += 1
+
+reset_preset_button.on_click(reset_to_current_preset)
 
 axis_controls = pn.Accordion(
     (
         'Plot Axis Ranges',
         pn.Column(
-            x_min_input,
-            x_max_input,
-            y_min_input,
-            y_max_input,
+            preset_radio,
+            reset_preset_button,
+            keep_zoom_checkbox,
+            pn.Row(x_min_slider, x_min_input, sizing_mode='stretch_width'),
+            pn.Row(x_max_slider, x_max_input, sizing_mode='stretch_width'),
+            pn.Row(y_min_slider, y_min_input, sizing_mode='stretch_width'),
+            pn.Row(y_max_slider, y_max_input, sizing_mode='stretch_width'),
             sizing_mode='stretch_width'
         )
     ),
@@ -601,7 +637,7 @@ persistent_plotly_pane = pn.pane.Plotly(
     config={'responsive': True}
 )
 
-def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_max):
+def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_max, keep_zoom, reset_count):
     loaded_data = load_data(filename)
 
     if not loaded_data:
@@ -632,8 +668,60 @@ def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_
             z_lidar_cart=tracker_result.measurements.reshape((-1, 2)),
             ground_truth_history=ground_truth_states[:frame_idx],
             config=config,
-            pca_params=pca_params
+            pca_params=pca_params,
+            virtual_constraints=None
         )
+
+    # Function to draw virtual constraints (Negative Info)
+    def draw_vci(vci_list, label_suffix, draw_measured_bounds=True):
+        if not vci_list:
+            return
+        lidar_pos = config.lidar.lidar_position
+        virt_pts_x, virt_pts_y = [], []
+        virt_rays_x, virt_rays_y = [], []
+        virt_pred_rays_x, virt_pred_rays_y = [], []
+        for vc in vci_list:
+            pt_global = vc['predicted_point']
+            virt_pts_x.append(pt_global[0])
+            virt_pts_y.append(pt_global[1])
+            
+            p_angle = np.arctan2(pt_global[1] - lidar_pos[1], pt_global[0] - lidar_pos[0])
+            p_ray_end = np.array(lidar_pos) + config.lidar.max_distance * np.array([np.cos(p_angle), np.sin(p_angle)])
+            virt_pred_rays_x.extend([lidar_pos[0], p_ray_end[0], None])
+            virt_pred_rays_y.extend([lidar_pos[1], p_ray_end[1], None])
+            
+            if draw_measured_bounds:
+                angle = vc['measured_angle']
+                ray_end = np.array(lidar_pos) + config.lidar.max_distance * np.array([np.cos(angle), np.sin(angle)])
+                virt_rays_x.extend([lidar_pos[0], ray_end[0], None])
+                virt_rays_y.extend([lidar_pos[1], ray_end[1], None])
+            
+        if virt_pts_x:
+            fig.add_trace(go.Scatter(x=virt_pts_y, y=virt_pts_x, mode='markers', name=f'Pred. Const. Pts {label_suffix}', marker=dict(color='saddlebrown', size=8, symbol='diamond')))
+            fig.add_trace(go.Scatter(x=virt_pred_rays_y, y=virt_pred_rays_x, mode='lines', name=f'Pred. Const. Rays {label_suffix}', line=dict(color='saddlebrown', width=1)))
+            if draw_measured_bounds and virt_rays_x:
+                fig.add_trace(go.Scatter(x=virt_rays_y, y=virt_rays_x, mode='lines', name=f'Meas. Bounds {label_suffix}', line=dict(color='saddlebrown', width=1, dash='dash')))
+
+    try:
+        if hasattr(tracker_result, 'virtual_constraints_info') and tracker_result.virtual_constraints_info:
+            vci = tracker_result.virtual_constraints_info
+            
+            # Check if it's the new list of lists format
+            if isinstance(vci, list) and len(vci) > 0 and isinstance(vci[0], list):
+                if iterate_sel == 'Final':
+                    draw_vci(vci[-1], '(Final)')
+                elif iterate_sel.startswith('Iterate'):
+                    idx = int(iterate_sel.split(' ')[1])
+                    if idx < len(vci):
+                        draw_vci(vci[idx], f'({iterate_sel})')
+                elif iterate_sel == 'All':
+                    # Only draw the true unmoving measured bounds ray once 
+                    for i, cycle_vci in enumerate(vci):
+                        draw_vci(cycle_vci, f'(It {i})', draw_measured_bounds=(i == 0))
+            else:
+                draw_vci(vci, '(Final)')  # Fallback for old saved results
+    except Exception as e:
+        print(f"Error drawing virtual constraints: {e}")
 
     has_iterates = hasattr(tracker_result, 'predicted_measurements_iterates') and tracker_result.predicted_measurements_iterates is not None and len(tracker_result.predicted_measurements_iterates) > 0
     if has_iterates:
@@ -730,9 +818,13 @@ def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_
                 marker=dict(color='purple', size=3, symbol='diamond')
             ))
 
-    # Ensure valid ranges even if user enters reversed bounds
     x_range = [float(min(x_min, x_max)), float(max(x_min, x_max))]
     y_range = [float(min(y_min, y_max)), float(max(y_min, y_max))]
+
+    if keep_zoom:
+        ui_rev = f"{x_min}_{x_max}_{y_min}_{y_max}_{reset_count}"
+    else:
+        ui_rev = str(make_globally_unique_id())
 
     fig.update_layout(
         autosize=True,
@@ -744,7 +836,8 @@ def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_
         yaxis=dict(range=y_range, scaleanchor="x", scaleratio=1,
                    gridcolor='rgb(200, 200, 200)', zerolinecolor='rgb(200, 200, 200)',
                    title='North [m]'),
-        legend=dict(x=1.05, y=1)
+        legend=dict(x=1.05, y=1),
+        uirevision=ui_rev
     )
     
     persistent_plotly_pane.object = fig
@@ -758,6 +851,8 @@ pn.bind(
     x_max_input,
     y_min_input,
     y_max_input,
+    keep_zoom_checkbox,
+    reset_counter,
     watch=True
 )
 
@@ -973,11 +1068,19 @@ def get_error_view(selected_groups, custom_states, filename, backend):
         return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
 
 
-@pn.depends(data_browser_mode.param.value, frame_player.param.value, file_selector.param.value)
-def get_data_browser_view(mode, frame_idx, filename):
+data_browser_depth_slider = pn.widgets.IntSlider(
+    name='Auto-Expand Depth (-1 for all)', start=-1, end=5, value=2, sizing_mode='stretch_width'
+)
+
+data_browser_json_pane = pn.pane.JSON({}, sizing_mode='stretch_width', depth=2, theme='light')
+
+@pn.depends(data_browser_mode.param.value, frame_player.param.value, file_selector.param.value, data_browser_depth_slider.param.value, watch=True)
+def update_data_browser_view(mode, frame_idx, filename, depth):
+    data_browser_json_pane.depth = depth
     loaded_data = load_data(filename)
     if not loaded_data:
-        return pn.pane.Markdown("### Select a file to begin.")
+        data_browser_json_pane.object = {"info": "Select a file to begin."}
+        return
     
     sim_result = loaded_data["sim_result"]
     consistency_analyzer = loaded_data["consistency_analyzer"]
@@ -1053,8 +1156,7 @@ def get_data_browser_view(mode, frame_idx, filename):
             "ground_truth_ts": f"TimeSequence with {len(sim_result.ground_truth_ts.values)} items",
         }
 
-    json_pane = pn.pane.JSON(data_to_show, sizing_mode='stretch_width', depth=1, theme='light')
-    return pn.Column(json_pane, sizing_mode='stretch_both', styles={'overflow-x': 'auto', 'overflow-y': 'auto'})
+    data_browser_json_pane.object = data_to_show
 
 @pn.depends(file_selector.param.value)
 def get_cost_landscape_view(filename):
@@ -1105,6 +1207,11 @@ def get_constraints_view(filename):
             frames.append(i)
             constraints.append("Mahalanobis Projection")
             details.append(f"dist: {res.mahalanobis_projection[2]:.2f}")
+            
+        if hasattr(res, 'negative_info_used') and res.negative_info_used is not None and res.negative_info_used > 0:
+            frames.append(i)
+            constraints.append("Negative Information Used")
+            details.append(f"count: {res.negative_info_used}")
 
     if not frames:
         return pn.pane.Markdown("### No constraints were triggered during this simulation.")
@@ -1228,7 +1335,12 @@ error_view = pn.Column(get_error_view, sizing_mode="stretch_both")
 covariance_view = pn.Column(get_covariance_view, sizing_mode="stretch_both")
 condition_number_view = pn.Column(get_condition_number_view, sizing_mode="stretch_both")
 nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
-data_browser_view = pn.Column(get_data_browser_view, sizing_mode="stretch_both")
+data_browser_view = pn.Column(
+    data_browser_depth_slider, 
+    data_browser_json_pane, 
+    sizing_mode="stretch_both", 
+    styles={'overflow-x': 'auto', 'overflow-y': 'auto'}
+)
 cost_landscape_view = pn.Column(get_cost_landscape_view, sizing_mode="stretch_both")
 
 cost_breakdown_view = pn.Column(cost_breakdown_toggle, get_cost_breakdown_view, sizing_mode="stretch_both")

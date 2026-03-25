@@ -108,7 +108,7 @@ def get_common_configs(traj_type="circle", N_pca=4, selected_boat_id="1"):
         lidar_position=(30.0, 0.0),
         num_rays=360,
         max_distance=140.0,
-        lidar_gt_std_dev=0.15,
+        lidar_gt_std_dev=0.0,
     )
 
     # Extent config
@@ -136,7 +136,10 @@ def get_common_configs(traj_type="circle", N_pca=4, selected_boat_id="1"):
     return sim_config, lidar_config, extent_config
 
 
-def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
+def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4, 
+                           init_pos_offset=(0.0, 0.0),
+                           init_yaw_offset=0.0,
+                           init_size_scale=(1.0, 1.0)):
     """Returns TrackerConfig for PCA methods."""
 
     pca_data = np.load(PCA_parameters_path)
@@ -145,23 +148,14 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4):
     # Initialize Tracker closer to GT for stability in this test
     # (Or add noise if testing robustness)
     initial_state_tracker = State_PCA(
-        # x=initial_state_gt.x + 5.0,
-        # y=initial_state_gt.y + 5.0,
-        # x=initial_state_gt.x + 1.0,
-        # y=initial_state_gt.y - 1.0,
-        x=initial_state_gt.x,
-        y=initial_state_gt.y,
-        # yaw=initial_state_gt.yaw + np.deg2rad(10.0),
-        yaw=initial_state_gt.yaw,
+        x=initial_state_gt.x + init_pos_offset[0],
+        y=initial_state_gt.y + init_pos_offset[1],
+        yaw=initial_state_gt.yaw + init_yaw_offset,
         vel_x=initial_state_gt.vel_x, 
         vel_y=initial_state_gt.vel_y, 
         yaw_rate=0.0,
-        length=initial_state_gt.length,
-        width=initial_state_gt.width,
-        # length=initial_state_gt.length * 2.5, # Start with wrong size to test convergence
-        # width=initial_state_gt.width * 0.5,
-        # length=110.0, 
-        # width=9,    
+        length=initial_state_gt.length * init_size_scale[0],
+        width=initial_state_gt.width * init_size_scale[1],
         pca_coeffs=np.zeros(N_pca) # Start with mean shape of dataset
         # pca_coeffs=initial_state_gt.pca_coeffs.copy() # Start with perfect shape
     )
@@ -202,7 +196,7 @@ if __name__ == "__main__":
 
     # --- BOAT SELECTION ---
     # Select a boat from processed_ships.json
-    selected_boat_id = "21" # Example: "1" = Sailing Yacht, "112" = Multihull
+    selected_boat_id = "154" # Example: "1" = Sailing Yacht, "112" = Multihull
     # selected_boat_id = None # Example: "1" = Sailing Yacht, "112" = Multihull
 
     # method_list = ["implicit_ekf", "implicit_iekf"]
@@ -229,7 +223,7 @@ if __name__ == "__main__":
         tracker_cfg.method = method
 
         # If using Implicit EKF, set max_iterations to 1 for EKF behavior
-        if method == "implicit_ekf":
+        if method == "implicit_iekf":
             tracker_cfg.max_iterations = 1
 
         config = Config(sim=sim_base, lidar=lidar_base, tracker=tracker_cfg, extent=extent_base)
@@ -240,11 +234,13 @@ if __name__ == "__main__":
         config.sim.num_frames = 800
         config.lidar.lidar_gt_std_dev = 0.0
         config.tracker.use_initialize_centroid = False
+        config.tracker.use_D_imp_for_R = True
+
         config.tracker.use_negative_info = False
-        config.tracker.use_D_imp_for_R = False
+        config.tracker.use_exact_extreme_angle = False
 
         # Unique Name
-        config.sim.name = f"D_imp_for_Rmeas_boat{boat_id}_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
+        config.sim.name = f"Neg_info_test_boat{boat_id}_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
 
         # Run
         sim_result = run_single_simulation(config=config)

@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import logging
 from zlib import crc32
+import numpy as np
 
 # Setup paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -30,19 +31,41 @@ def set_nested_value(obj, path, value):
         obj = getattr(obj, part)
     setattr(obj, last, value)
 
+# --- SCENARIO REGISTRY ---
+SCENARIOS = {
+    "baseline": {
+        "init_pos_offset": (0.0, 0.0),
+        "init_size_scale": (1.0, 1.0),
+    },
+    "offset_5m": {
+        "init_pos_offset": (5.0, 5.0),
+        "init_size_scale": (1.0, 1.0),
+    },
+    "wrong_shape": {
+        "init_pos_offset": (0.0, 0.0),
+        "init_size_scale": (2.0, 0.5), # Starts way too long and narrow
+    },
+    "wrong_pos_wrong_shape": {
+        "init_pos_offset": (1.0, -1.0),
+        "init_yaw_offset": np.deg2rad(10.0),
+        "init_size_scale": (2.5, 0.5), # Starts way too long and narrow
+    }
+}
+
 if __name__ == "__main__":
     
     # --- 1. Define the Parameter Grid ---
     # Keys: dot-notation path to attribute (or "method" for the tracker type)
     # Values: List of options to sweep over
     param_grid = {
-        "method": ["implicit_iekf"],
+        "scenario": ["baseline", "wrong_pos_wrong_shape"],
+        "method": ["implicit_ekf", "implicit_iekf"],
         "selected_boat_id": ["154"],
         "selected_trajectory": ["waypoints2"],
-        "tracker.process_model": ["inflation"],
-        "tracker.use_state_clamping": [True],
-        "tracker.use_mahalanobis_projection": [True],
-        "tracker.use_D_imp_for_R": [True, False],
+        # "tracker.use_D_imp_for_R": [True, False],
+        # "tracker.use_scaled_R": [True, False],
+        "tracker.use_negative_info": [True, False],
+        # "tracker.use_exact_extreme_angle": [False]
     }
 
     # --- 2. Generate Combinations ---
@@ -60,9 +83,12 @@ if __name__ == "__main__":
     # --- 3. Run Loop ---
     for i, combination in enumerate(combinations):
         current_params = dict(zip(keys, combination))
+        scenario_name = current_params.pop("scenario")
         method_name = current_params.pop("method")
         selected_boat_id = current_params.pop("selected_boat_id")
         selected_trajectory = current_params.pop("selected_trajectory")
+
+        scenario_params = SCENARIOS.get(scenario_name, {})
 
         # Create a dictionary of only the *effective* parameters
         effective_params = {}
@@ -75,7 +101,7 @@ if __name__ == "__main__":
             effective_params[path] = val
 
         # Skip redundant parameter combinations
-        config_signature = (method_name, selected_boat_id, selected_trajectory, tuple(sorted(effective_params.items())))
+        config_signature = (scenario_name, method_name, selected_boat_id, selected_trajectory, tuple(sorted(effective_params.items())))
         if config_signature in seen_signatures:
             continue
         seen_signatures.add(config_signature)
@@ -94,6 +120,9 @@ if __name__ == "__main__":
             lidar_base.lidar_position,
             sim_base.initial_state_gt,
             N_pca,
+            init_pos_offset=scenario_params.get("init_pos_offset", (0.0, 0.0)),
+            init_yaw_offset=scenario_params.get("init_yaw_offset", 0.0),
+            init_size_scale=scenario_params.get("init_size_scale", (1.0, 1.0))
         )
 
         # If using Implicit EKF, set max_iterations to 1 for EKF behavior
@@ -104,6 +133,8 @@ if __name__ == "__main__":
 
         if selected_trajectory == "waypoints":
             sim_base.num_frames = 500
+        elif selected_trajectory == "waypoints2":
+            sim_base.num_frames = 800
         else:
             sim_base.num_frames = 300
 
@@ -129,15 +160,17 @@ if __name__ == "__main__":
         # --- C. Naming & Execution ---
         param_suffix = ("_" + "_".join(param_desc_parts)) if param_desc_parts else ""
 
-        # # Custom user settings
-        # config.sim.use_cache = True
-        # config.sim.num_frames = 800
-        # config.lidar.lidar_gt_std_dev = 0.0
-        # config.tracker.use_initialize_centroid = False
-        # config.tracker.use_negative_info = False
+        # Custom user settings
+        config.sim.use_cache = True
+        config.lidar.lidar_gt_std_dev = 0.0
+        config.tracker.use_initialize_centroid = False
+        config.tracker.process_model = "inflation"
+
+        config.tracker.use_D_imp_for_R = True
+        config.tracker.use_scaled_R = False
         
-        # Standardize naming: method + boat + params + traj + seed
-        config.sim.name = f"{method_name}_boat{selected_boat_id}{param_suffix}_{config.sim.trajectory.type}_seed_{config.sim.seed}"
+        # Standardize naming: method + scenario + boat + params + traj + seed
+        config.sim.name = f"{method_name}_{scenario_name}_boat{selected_boat_id}{param_suffix}_{config.sim.trajectory.type}_seed_{config.sim.seed}"
         
         print(f"\n[{i+1}/{len(combinations)}] Running: {config.sim.name}")
         print(f"   > Effective Params: {effective_params}")

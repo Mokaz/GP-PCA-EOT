@@ -112,4 +112,8 @@ def compute_exact_vessel_shape_global(state: State_PCA, shape_coords_body: np.nd
     shape_x_world = shape_coords_oriented[0] + state.x
     shape_y_world = shape_coords_oriented[1] + state.y
 
+    # Close the loop
+    shape_x_world = np.append(shape_x_world, shape_x_world[0])
+    shape_y_world = np.append(shape_y_world, shape_y_world[0])
+
     return shape_x_world, shape_y_world

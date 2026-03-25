@@ -1,12 +1,14 @@
 import numpy as np
 from scipy.stats import chi2
+from scipy.optimize import minimize_scalar
+from scipy.linalg import block_diag
 
 from src.senfuslib import MultiVarGauss
 from src.tracker.tracker import Tracker
 from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 from src.utils.tools import rot2D, ssa, initialize_centroid, cart2pol
 from src.states.states import State_PCA, LidarScan
-from src.dynamics.process_models import Model_PCA_CV
+from src.dynamics.process_models import Model_PCA_CV, DynamicModel
 from src.sensors.LidarModel import LidarMeasurementModel
 from src.utils.config_classes import Config
 
@@ -14,8 +16,10 @@ class ImplicitIEKF(Tracker):
     """
     Implicit Iterated Extended Kalman Filter (I-IEKF).
     Uses the Implicit Measurement Model constraint g(x, z) = 0.
+    Fuses explicit Negative Information angular bounds if enabled.
     """
     sensor_model: LidarMeasurementModel
+    dynamic_model: DynamicModel
 
     def __init__(self, 
                  dynamic_model: Model_PCA_CV, 
@@ -34,11 +38,11 @@ class ImplicitIEKF(Tracker):
         if self.use_mahalanobis_projection:
             prob = getattr(config.tracker, 'mahalanobis_projection_prob', 0.99)
             self.chi2_thresh = chi2.ppf(prob, df=config.tracker.N_pca)
+            
         self.use_negative_info = getattr(config.tracker, 'use_negative_info', False)
+        self.use_exact_extreme_angle = getattr(config.tracker, 'use_exact_extreme_angle', False)
         self.use_D_imp_for_R = getattr(config.tracker, 'use_D_imp_for_R', True)
         self.use_scaled_R = getattr(config.tracker, 'use_scaled_R', False)
-        # TODO: DEBUG
-        self.debug_time_counter = 0
 
     def predict(self):
         self.state_estimate = self.dynamic_model.pred_from_est(self.state_estimate, self.T)
@@ -48,19 +52,11 @@ class ImplicitIEKF(Tracker):
         P_pred = self.state_estimate.cov.copy()
         state_pred = MultiVarGauss(mean=state_prior_mean, cov=P_pred)
 
-        if self.use_negative_info and len(measurements_local.x) > 2:
-            measurements_augmented = measurements_local
-            # measurements_augmented = self._augment_with_negative_info(
-            #     measurements_local, state_prior_mean
-            # )
-        else:
-            measurements_augmented = measurements_local
-
-        polar_measurements = list(zip(measurements_augmented.angle, measurements_augmented.range))
+        polar_measurements = list(zip(measurements_local.angle, measurements_local.range))
 
         lidar_pos = self.sensor_model.lidar_position.reshape(2, 1)
-        measurements_global_coords = measurements_augmented + lidar_pos
-        z_flat = measurements_global_coords.flatten('F') # Stacked [x1, y1, x2, y2...]
+        measurements_global_coords = measurements_local + lidar_pos
+        z_flat = measurements_global_coords.flatten('F') # Stacked[x1, y1, x2, y2...]
         
         state_iter_mean = state_prior_mean.copy()
         
@@ -81,8 +77,15 @@ class ImplicitIEKF(Tracker):
         final_clamped_length = None
         final_clamped_width = None
         final_mahalanobis_projection = None
+        final_negative_info_count = 0
+        virtual_constraints_iterates = []
+
+        # Determine angular margin based on sensor resolution
+        num_rays = getattr(self.config.lidar, 'num_rays', 360)
+        self.angular_margin = (2 * np.pi) / num_rays
 
         for i in range(self.max_iterations):
+            # 1. Implicit Measurement Calculations (Positive Info)
             H_imp, D_imp, theta_implicit = self.sensor_model.get_implicit_matrices(state_iter_mean, measurements_global_coords)
             # print("H_implicit shape:", H_imp.shape)
             # print("rank(H_implicit):", np.linalg.matrix_rank(H_imp))
@@ -145,7 +148,6 @@ class ImplicitIEKF(Tracker):
             z_pred_iter = self.sensor_model.h_from_theta(state_iter_mean, theta_implicit)
             predicted_measurements_iterates.append(z_pred_iter.copy())
             
-            # The residual y = z - h(x, theta(x,z))
             innovation_iter = z_flat - z_pred_iter
 
             num_meas = measurements_global_coords.shape[1]
@@ -155,17 +157,41 @@ class ImplicitIEKF(Tracker):
                 R_std = self.sensor_model.R(num_meas) 
 
             if self.use_D_imp_for_R:
-                # Effective Measurement Noise
                 R_eff = D_imp @ R_std @ D_imp.T
             else:
                 R_eff = R_std
 
-            S = H_imp @ P_pred @ H_imp.T + R_eff
+            # 2. Explicit Angular Constraints Fusion (Negative Info)
+            H_fused = H_imp
+            innovation_fused = innovation_iter
+            R_fused = R_eff
+            current_virtual_constraints = []
+
+            if self.use_negative_info and num_meas > 2:
+                current_virtual_constraints = self._get_virtual_angular_constraints(measurements_local, state_iter_mean)
+                
+                final_negative_info_count = len(current_virtual_constraints)
+
+                for vc in current_virtual_constraints:
+                    # Calculate Analytical Jacobian
+                    H_virt, gamma_pred = self.sensor_model.get_virtual_measurement_jacobian(
+                        state_iter_mean, vc['body_angle']
+                    )
+                    
+                    ang_residual = ssa(vc['measured_angle'] - gamma_pred)
+                    vc['ang_residual'] = float(ang_residual)
+                    
+                    # Stack matrices
+                    H_fused = np.vstack((H_fused, H_virt))
+                    innovation_fused = np.append(innovation_fused, ang_residual)
+                    R_fused = block_diag(R_fused, self.angular_margin**2)
+                    
+            virtual_constraints_iterates.append(current_virtual_constraints)
+
+            # 3. IEKF State Update Equation
+            S = H_fused @ P_pred @ H_fused.T + R_fused
             
-            # Numerical stability: use solve instead of inv
-            # K = P H^T S^-1
-            # S K^T = H P
-            K_transpose = np.linalg.solve(S, H_imp @ P_pred.T)
+            K_transpose = np.linalg.solve(S, H_fused @ P_pred.T)
             K = K_transpose.T
             
             # IEKF State Update Equation:
@@ -173,35 +199,28 @@ class ImplicitIEKF(Tracker):
             diff_state = state_prior_mean - state_iter_mean
             diff_state[2] = ssa(diff_state[2])
             
-            state_next = state_prior_mean + K @ (innovation_iter - H_imp @ diff_state)
+            state_next = state_prior_mean + K @ (innovation_fused - H_fused @ diff_state)
             state_next[2] = ssa(state_next[2])
 
             # =================================================================
             # ENFORCE OPTIONAL STABILITY CONSTRAINTS
             if self.use_state_clamping:
-                # Prevent completely impossible sizes (divergence safety net)
                 orig_length = state_next.length
                 orig_width = state_next.width
                 if orig_length < 1.0:
                     state_next.length = 1.0
-                    print(f"Clamped length: {orig_length:.3f} -> {state_next.length:.3f}")
                     final_clamped_length = (float(orig_length), 1.0)
                 if orig_width < 0.5:
                     state_next.width = 0.5
-                    print(f"Clamped width:  {orig_width:.3f} -> {state_next.width:.3f}")
                     final_clamped_width = (float(orig_width), 0.5)
 
             if self.use_mahalanobis_projection:
-                # Constrain PCA coefficients to the requested probability ellipsoid
                 eigenvalues = self.config.tracker.pca_eigenvalues
                 e = state_next.pca_coeffs
-
-                # Calculate squared Mahalanobis distance D_M^2
                 mahalanobis_sq = np.sum((e ** 2) / eigenvalues)
 
                 if mahalanobis_sq > self.chi2_thresh:
                     orig_coeffs = e.copy()
-                    # Project the vector back onto the surface of the ellipsoid
                     scale_factor = np.sqrt(self.chi2_thresh / mahalanobis_sq)
                     state_next.pca_coeffs = e * scale_factor
                     final_mahalanobis_projection = (orig_coeffs, state_next.pca_coeffs.copy(), mahalanobis_sq)
@@ -218,13 +237,15 @@ class ImplicitIEKF(Tracker):
             
             prev_state_iter_mean = state_iter_mean.copy()
 
+        # Final Update
         I = np.eye(len(state_iter_mean))
-        state_post_cov = (I - K @ H_imp) @ P_pred @ (I - K @ H_imp).T + K @ R_eff @ K.T
+        state_post_cov = (I - K @ H_fused) @ P_pred @ (I - K @ H_fused).T + K @ R_fused @ K.T
         
         self.state_estimate = MultiVarGauss(mean=state_iter_mean, cov=state_post_cov)
-
-        z_pred_gauss = MultiVarGauss(mean=z_pred_iter, cov=S)
-        innovation_gauss = MultiVarGauss(mean=innovation_iter, cov=S)
+        
+        # NOTE: z_pred_gauss will just represent the positive measurements for visualization/metrics
+        z_pred_gauss = MultiVarGauss(mean=z_pred_iter, cov=(H_imp @ P_pred @ H_imp.T + R_eff))
+        innovation_gauss = MultiVarGauss(mean=innovation_iter, cov=(H_imp @ P_pred @ H_imp.T + R_eff))
 
         return TrackerUpdateResult(
             state_prior=state_pred,
@@ -240,70 +261,98 @@ class ImplicitIEKF(Tracker):
             K_gain=K,
             clamped_length=final_clamped_length,
             clamped_width=final_clamped_width,
-            mahalanobis_projection=final_mahalanobis_projection
+            mahalanobis_projection=final_mahalanobis_projection,
+            negative_info_used=final_negative_info_count,
+            virtual_constraints_info=virtual_constraints_iterates
         )
 
-    # def _augment_with_negative_info(self, measurements: LidarScan, state_pred: np.ndarray) -> LidarScan:
-    #     """
-    #     Generates virtual measurements in the free space if the predicted extent exceeds the measured extent.
-    #     """
-    #     # 1. Analyze Measurements
-    #     meas_angles, meas_ranges = cart2pol(measurements.x, measurements.y)
-        
-    #     if len(meas_angles) == 0:
-    #         return measurements
+    def _get_virtual_angular_constraints(self, measurements: LidarScan, state_pred: np.ndarray) -> list[dict]:
+        """
+        Determines the maximum and minimum angle constraints (Negative Information).
+        Only triggers if the predicted extent overhangs the actual measured extent.
+        """
+        meas_angles, _ = cart2pol(measurements.x, measurements.y)
+        if len(meas_angles) < 2:
+            return []
 
-    #     # Mean-centered unwrapping
-    #     mean_angle = np.arctan2(np.mean(np.sin(meas_angles)), np.mean(np.cos(meas_angles)))
-    #     diff_angles = ssa(meas_angles - mean_angle)
+        # Find the measured bounds (Mean-centered unwrapping to avoid Pi wraparounds)
+        mean_angle = np.arctan2(np.mean(np.sin(meas_angles)), np.mean(np.cos(meas_angles)))
+        diff_angles = ssa(meas_angles - mean_angle)
         
-    #     min_idx = np.argmin(diff_angles)
-    #     max_idx = np.argmax(diff_angles)
-        
-    #     min_meas_angle = meas_angles[min_idx] # Local sensor frame
-    #     max_meas_angle = meas_angles[max_idx] # Local sensor frame
+        min_meas_angle = meas_angles[np.argmin(diff_angles)]
+        max_meas_angle = meas_angles[np.argmax(diff_angles)]
 
-    #     # 2. Analyze Predicted Shape Extent
-    #     body_angles = np.linspace(-np.pi, np.pi, 360).tolist()
-    #     global_points = self.sensor_model.h_lidar(state_pred, body_angles).T 
+        # Sample the predicted shape discretely
+        body_angles = np.linspace(-np.pi, np.pi, 360, endpoint=False)
+        global_points = self.sensor_model.h_lidar(state_pred, body_angles).T 
         
-    #     # Transform to Sensor Frame (relative to lidar)
-    #     sensor_points = global_points - self.sensor_model.lidar_position.reshape(2,1)
-    #     pred_angles, _ = cart2pol(sensor_points[0,:], sensor_points[1,:])
+        sensor_points = global_points - self.sensor_model.lidar_position.reshape(2, 1)
+        pred_angles, _ = cart2pol(sensor_points[0, :], sensor_points[1, :])
         
-    #     pred_diff_angles = ssa(pred_angles - mean_angle)
-    #     min_pred_angle = pred_angles[np.argmin(pred_diff_angles)]
-    #     max_pred_angle = pred_angles[np.argmax(pred_diff_angles)]
+        pred_diff_angles = ssa(pred_angles - mean_angle)
+        
+        min_idx = np.argmin(pred_diff_angles)
+        max_idx = np.argmax(pred_diff_angles)
+        
+        min_pred_angle = pred_angles[min_idx]
+        max_pred_angle = pred_angles[max_idx]
 
-    #     # 3. Logic: Check for "Overhang" into empty space
-    #     virtual_x =[]
-    #     virtual_y =[]
+        virtual_constraints = []
         
-    #     margin = np.deg2rad(5.0) 
-        
-    #     # Left Side (Minimum Angle Overhang)
-    #     if ssa(min_meas_angle - min_pred_angle) > margin:
-    #         # Place virtual point in the free space just outside the measured object
-    #         virt_angle = ssa(min_meas_angle - margin)
-    #         # Cap the range using the adjacent measurement
-    #         virt_range = meas_ranges[min_idx]
+        # Minimum Angle
+        if ssa(min_meas_angle - min_pred_angle) > self.angular_margin:
+            theta_min = body_angles[min_idx]
+            if self.use_exact_extreme_angle:
+                theta_min = self._get_exact_extreme_angle(state_pred, theta_min, mean_angle, is_max=False)
             
-    #         virtual_x.append(virt_range * np.cos(virt_angle))
-    #         virtual_y.append(virt_range * np.sin(virt_angle))
-            
-    #     # Right Side (Maximum Angle Overhang)
-    #     if ssa(max_pred_angle - max_meas_angle) > margin:
-    #         # Place virtual point in the free space just outside the measured object
-    #         virt_angle = ssa(max_meas_angle + margin)
-    #         virt_range = meas_ranges[max_idx]
-            
-    #         virtual_x.append(virt_range * np.cos(virt_angle))
-    #         virtual_y.append(virt_range * np.sin(virt_angle))
+            pt_global_min = self.sensor_model.h_lidar(state_pred, [theta_min]).flatten()
 
-    #     # 4. Concatenate
-    #     if len(virtual_x) > 0:
-    #         new_x = np.concatenate([measurements.x, np.array(virtual_x)])
-    #         new_y = np.concatenate([measurements.y, np.array(virtual_y)])
-    #         return LidarScan(x=new_x, y=new_y)
+            virtual_constraints.append({
+                'measured_angle': ssa(min_meas_angle - self.angular_margin),
+                'body_angle': theta_min,
+                'predicted_point': pt_global_min,
+                'type': 'min_angle'
+            })
+
+        # Maximum Angle
+        if ssa(max_pred_angle - max_meas_angle) > self.angular_margin:
+            theta_max = body_angles[max_idx]
+            if self.use_exact_extreme_angle:
+                theta_max = self._get_exact_extreme_angle(state_pred, theta_max, mean_angle, is_max=True)
             
-    #     return measurements
+            pt_global_max = self.sensor_model.h_lidar(state_pred, [theta_max]).flatten()
+
+            virtual_constraints.append({
+                'measured_angle': ssa(max_meas_angle + self.angular_margin),
+                'body_angle': theta_max,
+                'predicted_point': pt_global_max,
+                'type': 'max_angle'
+            })
+
+        return virtual_constraints
+
+    def _get_exact_extreme_angle(self, state_pred: np.ndarray, guess_theta: float, mean_angle: float, is_max: bool) -> float:
+        """
+        Uses a continuous 1D optimizer to find the exact tangent angle theta_body*,
+        preventing discretization error and satisfying Danskin's theorem.
+        """
+        def objective(theta):
+            # Compute global point
+            pt_global = self.sensor_model.h_lidar(state_pred, [theta]).flatten()
+            u_x = pt_global[0] - self.sensor_model.lidar_position[0]
+            u_y = pt_global[1] - self.sensor_model.lidar_position[1]
+            
+            gamma = np.arctan2(u_y, u_x)
+            
+            # Unwrap relative to the mean measured angle to prevent optimizer from stepping over the +/- pi boundary
+            unwrapped_gamma = ssa(gamma - mean_angle)
+            
+            # Minimize -gamma for maximum, minimize gamma for minimum
+            return -unwrapped_gamma if is_max else unwrapped_gamma
+
+        # Bounded search tightly around the discrete guess (+/- 2 degrees)
+        delta = np.deg2rad(2.0)
+        bounds = (guess_theta - delta, guess_theta + delta)
+        
+        res = minimize_scalar(objective, bounds=bounds, method='bounded')
+        return res.x

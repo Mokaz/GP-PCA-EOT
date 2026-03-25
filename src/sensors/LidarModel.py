@@ -106,6 +106,11 @@ class LidarMeasurementModel(SensorModel[Sequence[LidarScan]]):
         R_single_point = self.R_single_point()
         return np.kron(np.eye(num_measurements), R_single_point)
     
+    def R_scaled(self, num_measurements: int) -> np.ndarray:
+        R_single_point = self.R_single_point()
+        R_scaled = R_single_point * num_measurements 
+        return np.kron(np.eye(num_measurements), R_scaled)
+    
     def R_single_point(self) -> np.ndarray:
         """
         Measurement noise covariance for a single point.
@@ -286,7 +291,62 @@ class LidarMeasurementModel(SensorModel[Sequence[LidarScan]]):
         D_total = block_diag(*D_blocks_list)
         
         return H_total, D_total, angles
-
+    
+    def get_virtual_measurement_jacobian(self, x: np.ndarray, theta_body: float) -> Tuple[np.ndarray, float]:
+        """
+        Computes the analytical explicit Jacobian (H_virt) for the Negative Information 
+        angular boundary, evaluated at a specific body angle.
+        
+        Returns:
+            H_virt: (1, N_state) Jacobian row vector.
+            gamma_pred: The predicted global angle from the sensor to this point.
+        """
+        pos_x, pos_y = x[0], x[1]
+        psi = x[2]
+        L, W = x[6], x[7]
+        pca_coeffs = x[8:]
+        
+        c_psi, s_psi = np.cos(psi), np.sin(psi)
+        c_theta, s_theta = np.cos(theta_body), np.sin(theta_body)
+        
+        # 1. Compute Radius
+        fourier_coeffs = self.pca_mean + self.pca_eigenvectors @ pca_coeffs.reshape(-1, 1)
+        g_theta = fourier_basis_matrix(np.array([theta_body]), self.extent_cfg.N_fourier) # Shape (N_f, 1)
+        
+        r_tilde = (g_theta.T @ fourier_coeffs).item()
+        
+        # 2. Compute the Cartesian coordinates relative to the LiDAR (u_x, u_y)
+        x_body = L * c_theta * r_tilde
+        y_body = W * s_theta * r_tilde
+        
+        u_x = pos_x - self.lidar_position[0] + (c_psi * x_body) - (s_psi * y_body)
+        u_y = pos_y - self.lidar_position[1] + (s_psi * x_body) + (c_psi * y_body)
+        
+        gamma_pred = np.arctan2(u_y, u_x)
+        
+        # 3. Compute Gradients
+        v_e = g_theta.T @ self.pca_eigenvectors # Shape (1, N_PC)
+        
+        # Gradients for u_x
+        dux_dpos = np.array([1.0, 0.0])
+        dux_dpsi = np.array([-s_psi * x_body - c_psi * y_body])
+        dux_dvel = np.array([0.0, 0.0, 0.0])
+        dux_dscale = np.array([c_psi * c_theta * r_tilde, -s_psi * s_theta * r_tilde])
+        dux_de = (c_psi * L * c_theta - s_psi * W * s_theta) * v_e.flatten()
+        grad_ux = np.concatenate([dux_dpos, dux_dpsi, dux_dvel, dux_dscale, dux_de])
+        
+        # Gradients for u_y
+        duy_dpos = np.array([0.0, 1.0])
+        duy_dpsi = np.array([c_psi * x_body - s_psi * y_body])
+        duy_dvel = np.array([0.0, 0.0, 0.0])
+        duy_dscale = np.array([s_psi * c_theta * r_tilde, c_psi * s_theta * r_tilde])
+        duy_de = (s_psi * L * c_theta + c_psi * W * s_theta) * v_e.flatten()
+        grad_uy = np.concatenate([duy_dpos, duy_dpsi, duy_dvel, duy_dscale, duy_de])
+        
+        # 4. Final H_virt using Quotient Rule
+        H_virt = (u_x * grad_uy - u_y * grad_ux) / (u_x**2 + u_y**2)
+        
+        return H_virt.reshape(1, -1), gamma_pred
 
 @dataclass
 class LidarSimulator(SensorModel[Sequence[LidarScan]]):
