@@ -36,6 +36,7 @@ class ImplicitIEKF(Tracker):
             self.chi2_thresh = chi2.ppf(prob, df=config.tracker.N_pca)
         self.use_negative_info = getattr(config.tracker, 'use_negative_info', False)
         self.use_D_imp_for_R = getattr(config.tracker, 'use_D_imp_for_R', True)
+        self.use_scaled_R = getattr(config.tracker, 'use_scaled_R', False)
         # TODO: DEBUG
         self.debug_time_counter = 0
 
@@ -148,7 +149,10 @@ class ImplicitIEKF(Tracker):
             innovation_iter = z_flat - z_pred_iter
 
             num_meas = measurements_global_coords.shape[1]
-            R_std = self.sensor_model.R(num_meas)
+            if self.use_scaled_R:
+                R_std = self.sensor_model.R_scaled(num_meas)
+            else:
+                R_std = self.sensor_model.R(num_meas) 
 
             if self.use_D_imp_for_R:
                 # Effective Measurement Noise
