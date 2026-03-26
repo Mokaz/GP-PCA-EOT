@@ -68,11 +68,16 @@ def load_data(filename):
     }
 
 # --- Widgets ---
-pickle_files = sorted([f.name for f in Path(SIMDATA_PATH).glob("*.pkl")], reverse=True)
+sort_selector = pn.widgets.Select(
+    name='Sort Files By',
+    options=['Date Modified (Newest First)', 'Name (A-Z)'],
+    value='Date Modified (Newest First)',
+    sizing_mode='stretch_width'
+)
 
 file_selector = pn.widgets.Select(
     name='Select Simulation File', 
-    options=[None] + pickle_files, 
+    options=[None], 
     sizing_mode='stretch_width'
 )
 
@@ -82,14 +87,22 @@ refresh_files_button = pn.widgets.Button(
     sizing_mode='stretch_width'
 )
 
-def update_file_list(event):
-    new_files = sorted([f.name for f in Path(SIMDATA_PATH).glob("*.pkl")], reverse=True)
+def update_file_list(event=None):
+    if sort_selector.value == 'Date Modified (Newest First)':
+        new_paths = sorted(Path(SIMDATA_PATH).glob("*.pkl"), key=lambda p: p.stat().st_mtime, reverse=True)
+    else:
+        new_paths = sorted(Path(SIMDATA_PATH).glob("*.pkl"), key=lambda p: p.name.lower())
+    new_files = [p.name for p in new_paths]
     current_val = file_selector.value
     file_selector.options = [None] + new_files
     if current_val in new_files:
         file_selector.value = current_val
 
+# Initialize list
+update_file_list()
+
 refresh_files_button.on_click(update_file_list)
+sort_selector.param.watch(update_file_list, 'value')
 
 iterate_selector = pn.widgets.Select(
     name='Filter Iterate',
@@ -1309,6 +1322,7 @@ save_button.on_click(save_plots)
 controls = pn.Column(
     pn.pane.Markdown("## Controls"),
     refresh_files_button,
+    sort_selector,
     file_selector,
     frame_player,
     frame_input,
