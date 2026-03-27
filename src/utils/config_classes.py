@@ -232,6 +232,7 @@ class TrackerConfig:
     use_exact_extreme_angle: bool = False
     use_D_imp_for_R: bool = True
     use_scaled_R: bool = False
+    R_arc_std: float = 0.01
 
     def __post_init__(self):
         if self.initial_state is None:
