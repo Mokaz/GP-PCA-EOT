@@ -58,14 +58,16 @@ if __name__ == "__main__":
     # Keys: dot-notation path to attribute (or "method" for the tracker type)
     # Values: List of options to sweep over
     param_grid = {
-        "scenario": ["baseline", "wrong_pos_wrong_shape"],
+        "scenario": ["baseline", "wrong_shape"],
+        # "lidar.num_rays": [1024],
         "method": ["implicit_ekf", "implicit_iekf"],
         "selected_boat_id": ["154"],
         "selected_trajectory": ["waypoints2"],
-        # "tracker.use_D_imp_for_R": [True, False],
-        # "tracker.use_scaled_R": [True, False],
+        "tracker.use_D_imp_for_R": [True, False],
+        "tracker.use_scaled_R": [True, False],
         "tracker.use_negative_info": [True, False],
-        # "tracker.use_exact_extreme_angle": [False]
+        # "tracker.use_exact_extreme_angle": [False],
+        "tracker.use_initialize_centroid": [True, False],
     }
 
     # --- 2. Generate Combinations ---
@@ -166,8 +168,8 @@ if __name__ == "__main__":
         config.tracker.use_initialize_centroid = False
         config.tracker.process_model = "inflation"
 
-        config.tracker.use_D_imp_for_R = True
-        config.tracker.use_scaled_R = False
+        # config.tracker.use_D_imp_for_R = True
+        # config.tracker.use_scaled_R = False
         
         # Standardize naming: method + scenario + boat + params + traj + seed
         config.sim.name = f"{method_name}_{scenario_name}_boat{selected_boat_id}{param_suffix}_{config.sim.trajectory.type}_seed_{config.sim.seed}"

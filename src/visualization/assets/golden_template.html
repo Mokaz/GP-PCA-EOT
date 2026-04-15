@@ -95,10 +95,22 @@ var config = {
                     {
                         type: 'row',
                         content:[
-                            {
-                                type: 'component',
-                                componentName: 'view',
-                                componentState: { model: '{{ embed(roots.covariance_view) }}', title: 'Covariance Matrix'},
+                                {
+                                type: 'stack',
+                                content: [
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: { model: '{{ embed(roots.results_table_view) }}', title: 'Simulation Results (Metrics)', css_classes: ['scrollable'] },
+                                        title: 'Simulation Results'
+                                    },
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: { model: '{{ embed(roots.covariance_view) }}', title: 'Covariance Matrix'},
+                                        title: 'Covariance Matrix'
+                                    }
+                                ]
                             },
                             {
                                 type: 'stack',
@@ -112,6 +124,12 @@ var config = {
                                         type: 'component',
                                         componentName: 'view',
                                         componentState: { model: '{{ embed(roots.condition_number_view) }}', title: 'Condition Number'},
+                                    },
+                                    {
+                                        type: 'component',
+                                        componentName: 'view',
+                                        componentState: { model: '{{ embed(roots.iou_view) }}', title: 'IoU over Time'},
+                                        title: 'IoU over Time'
                                     }
                                 ]
                             }

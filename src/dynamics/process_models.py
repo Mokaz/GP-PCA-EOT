@@ -21,6 +21,8 @@ class Model_PCA_CV(DynamicModel):
     x_pos_std_dev: float
     y_pos_std_dev: float
     yaw_std_dev: float
+    length_std_dev: float
+    width_std_dev: float
 
     # Number of PCA components
     N_pca: int
@@ -51,10 +53,11 @@ class Model_PCA_CV(DynamicModel):
         
         Q_extent_pca = np.zeros((2 + self.N_pca, 2 + self.N_pca))
         
-        # Combine into the full Q matrix
-        Q = np.block([
-            [Qk,                  np.zeros((6, 2 + self.N_pca))],
-            [np.zeros((2 + self.N_pca, 6)), Q_extent_pca]
+        # INJECT L & W RANDOM WALK NOISE HERE
+        Q_extent_pca[0, 0] = (self.length_std_dev ** 2) * dt
+        Q_extent_pca[1, 1] = (self.width_std_dev ** 2) * dt
+        
+        Q = np.block([[Qk,np.zeros((6, 2 + self.N_pca))],[np.zeros((2 + self.N_pca, 6)), Q_extent_pca]
         ])
         return Q
 
@@ -68,6 +71,9 @@ class Model_PCA_Temporal(DynamicModel):
     x_pos_std_dev: float
     y_pos_std_dev: float
     yaw_std_dev: float
+    length_std_dev: float
+    width_std_dev: float
+
     N_pca: int
 
     # Temporal parameters
@@ -101,11 +107,9 @@ class Model_PCA_Temporal(DynamicModel):
         t_int = np.array([[(dt**3)/3, (dt**2)/2], [(dt**2)/2, dt]])
         Qk = np.kron(t_int, Q_c_matrix)
         
-        # Length/Width Noise (Small Random Walk to allow evolution)
-        # Or set to 0 if strictly static
-        Q_lw = np.eye(2) * 0.001 
+        # UPDATE THIS: Use the class attributes instead of hardcoded 0.001
+        Q_lw = np.diag([self.length_std_dev**2, self.width_std_dev**2]) * dt
 
-        # PCA Process Noise (Balances the decay to maintain variance)
         scaling = (1 - np.exp(-2 * self.eta_f * dt))
         if self.pca_process_var is not None:
             Q_pca = np.diag(scaling * self.pca_process_var)
@@ -126,6 +130,8 @@ class Model_PCA_Inflation(DynamicModel):
     y_pos_std_dev: float
     yaw_std_dev: float
     N_pca: int
+    length_std_dev: float = 0.01
+    width_std_dev: float = 0.01
 
     # Inflation parameter
     lambda_f: float = 0.99
@@ -149,9 +155,11 @@ class Model_PCA_Inflation(DynamicModel):
         Qk = np.kron(t_int, Q_c_matrix)
         Q_extent_pca = np.zeros((2 + self.N_pca, 2 + self.N_pca))
         
-        Q = np.block([
-            [Qk,                  np.zeros((6, 2 + self.N_pca))],
-            [np.zeros((2 + self.N_pca, 6)), Q_extent_pca]
+        Q_extent_pca[0, 0] = (self.length_std_dev ** 2) * dt
+        Q_extent_pca[1, 1] = (self.width_std_dev ** 2) * dt
+
+        Q = np.block([[Qk, np.zeros((6, 2 + self.N_pca))],
+                      [np.zeros((2 + self.N_pca, 6)), Q_extent_pca]
         ])
         return Q
 

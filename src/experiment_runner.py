@@ -2,10 +2,8 @@ import os
 import sys
 import numpy as np
 import pickle
-import matplotlib.pyplot as plt
-from bokeh.plotting import figure, show
-from bokeh.io import output_notebook
-from bokeh.models import ColumnDataSource, HoverTool
+import json
+from bokeh.plotting import figure
 from pathlib import Path
 from tqdm import tqdm
 
@@ -35,7 +33,9 @@ from src.senfuslib.simulator import Simulator
 from src.senfuslib.timesequence import TimeSequence
 
 from src.utils.SimulationResult import SimulationResult
-from src.utils.geometry_utils import compute_exact_vessel_shape_global
+from src.utils.geometry_utils import compute_exact_vessel_shape_global, compute_estimated_shape_global, calculate_iou
+
+from src.analysis.analysis_utils import create_consistency_analysis_from_sim_result
 
 from src.utils.config_classes import Config
 
@@ -137,7 +137,9 @@ def run_single_simulation(config: Config) -> SimulationResult:
             x_pos_std_dev=tracker_cfg.pos_north_std_dev,
             y_pos_std_dev=tracker_cfg.pos_east_std_dev,
             yaw_std_dev=tracker_cfg.heading_std_dev,
-            N_pca=tracker_cfg.N_pca
+            N_pca=tracker_cfg.N_pca,
+            length_std_dev=config.tracker.length_std_dev,
+            width_std_dev=config.tracker.width_std_dev 
         )
 
         if tracker_cfg.process_model == "cv":
@@ -278,7 +280,12 @@ def run_single_simulation(config: Config) -> SimulationResult:
         update_result = tracker.update(measurement, ground_truth=ground_truth_ts.get_t(ts))
         results_ts.insert(ts, update_result)
 
-    filename = os.path.join(SIMDATA_PATH, f"{sim_cfg.name}.pkl")
+    
+    # Create a specific directory for this simulation run
+    sim_dir = os.path.join(SIMDATA_PATH, sim_cfg.name)
+    os.makedirs(sim_dir, exist_ok=True)
+    
+    filename = os.path.join(sim_dir, f"{sim_cfg.name}.pkl")
 
     # NOTE Martin: static_covariances might need adjustment for GP, but keeping generic for now
     static_covariances = {
@@ -296,5 +303,61 @@ def run_single_simulation(config: Config) -> SimulationResult:
     with open(filename, "wb") as f:
         pickle.dump(data_to_save, f)
     print(f"Simulation run data saved to {filename}")
+
+    # Calculate metrics for the JSON sidecar
+    try:
+        consistency_analyzer = create_consistency_analysis_from_sim_result(data_to_save)
+        
+        # NEES
+        nees_data = consistency_analyzer.get_nees(indices='all')
+        avg_nees = nees_data.a if nees_data else None
+        
+        # RMSE
+        # x_err_ts = consistency_analyzer.get_x_err('all') - NOTE: 'all' might not be a valid index group for named arrays in senfuslib
+        if hasattr(consistency_analyzer, 'x_err_gauss') and consistency_analyzer.x_err_gauss is not None:
+            err_arrays = [e.mean for e in consistency_analyzer.x_err_gauss.values]
+            rmse = np.sqrt(np.mean(np.square(err_arrays)))
+        else:
+            rmse = None
+
+        # IoU
+        ious = []
+        for i, res in enumerate(results_ts.values):
+            if i < len(ground_truth_ts.values):
+                gt_state = ground_truth_ts.values[i]
+                est_state = res.state_posterior.mean
+                # compute_exact_vessel_shape_global gives (x, y) = (North, East)
+                gt_x, gt_y = compute_exact_vessel_shape_global(gt_state, extent_cfg.shape_coords_body)
+                # compute_estimated_shape_global gives (x, y) = (North, East)
+                try:
+                    est_x, est_y = compute_estimated_shape_global(est_state, config, pca_params)
+                    iou = calculate_iou(gt_x, gt_y, est_x, est_y)
+                    ious.append(iou)
+                except Exception:
+                    pass
+        avg_iou = np.mean(ious) if ious else None
+        final_iou = ious[-1] if ious else None
+
+    except Exception as e:
+        print(f"Error calculating metrics for JSON sidecar: {e}")
+        avg_nees, rmse, avg_iou, final_iou = None, None, None, None
+
+    # Save Sidecar JSON
+    summary_data = {
+        "name": sim_cfg.name,
+        "method": tracker_cfg.method,
+        "scenario": sim_cfg.name,
+        # "num_rays": lidar_cfg.num_rays, # TODO determine which values to include in the JSON sidecar
+        "use_negative_info": getattr(tracker_cfg, 'use_negative_info', False),
+        "avg_nees": float(avg_nees) if avg_nees is not None else None,
+        "rmse": float(rmse) if rmse is not None else None,
+        "avg_iou": float(avg_iou) if avg_iou is not None else None,
+        "final_iou": float(final_iou) if final_iou is not None else None
+    }
+    
+    json_filename = os.path.join(sim_dir, f"{sim_cfg.name}.json")
+    with open(json_filename, "w") as f:
+        json.dump(summary_data, f, indent=4)
+    print(f"Metrics saved to JSON sidecar: {json_filename}")
 
     return data_to_save

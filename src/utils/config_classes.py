@@ -208,10 +208,15 @@ class TrackerConfig:
     gp_forgetting_factor: float = 0.05
     gp_use_negative_info: bool = True
 
+    # Q and R noise parameters
     pos_north_std_dev: float = 0.3
     pos_east_std_dev: float = 0.3
     heading_std_dev: float = 0.1
+    length_std_dev: float = 0.1
+    width_std_dev: float = 0.1
+
     lidar_std_dev: float = 0.15
+    
 
     # Accepts State_GP or State_PCA
     initial_state: Optional[Any] = None 

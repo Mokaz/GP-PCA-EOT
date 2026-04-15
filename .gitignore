@@ -1,6 +1,6 @@
 
 *.pkl
-
+*.json
 *.csv
 *.stl
 

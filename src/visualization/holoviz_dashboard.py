@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import numpy as np
 import pickle
 import argparse
+import json
 from pathlib import Path
 import matplotlib.pyplot as plt
 import sys
@@ -33,7 +34,7 @@ from src.visualization.plotly_offline_generator import (
 from src.visualization.cost_landscape_component import CostLandscapeComponent
 from src.states.states import State_PCA, State_GP 
 from src.utils.tools import calculate_body_angles
-from src.utils.geometry_utils import compute_estimated_shape_global
+from src.utils.geometry_utils import compute_estimated_shape_global, compute_exact_vessel_shape_global, calculate_iou
 
 ASSETS_DIR = Path(__file__).parent / 'assets'
 
@@ -48,12 +49,27 @@ css_files = [
 pn.extension('plotly', 'tabulator', js_files=js_files, css_files=css_files)
 
 @pn.cache(max_items=5)
-def load_data(filename):
+def load_data(sim_name):
     """Loads simulation result and performs initial analysis. Cached for performance."""
-    if not filename:
+    if not sim_name:
         return None
-    print(f"Loading and processing {filename}...")
-    with open(Path(SIMDATA_PATH) / filename, "rb") as f:
+    print(f"Loading and processing {sim_name}...")
+    
+    base_path = Path(SIMDATA_PATH)
+    pkl_path = None
+    
+    # Support backward compatibility
+    if (base_path / sim_name / f"{sim_name}.pkl").exists():
+        pkl_path = base_path / sim_name / f"{sim_name}.pkl"
+    elif (base_path / f"{sim_name}.pkl").exists():
+        pkl_path = base_path / f"{sim_name}.pkl"
+    elif (base_path / sim_name).exists() and sim_name.endswith('.pkl'):
+        pkl_path = base_path / sim_name
+    else:
+        # Fallback
+        pkl_path = base_path / f"{sim_name}.pkl"
+
+    with open(pkl_path, "rb") as f:
         sim_result = pickle.load(f)
     
     consistency_analyzer = create_consistency_analysis_from_sim_result(sim_result)
@@ -67,19 +83,68 @@ def load_data(filename):
         "pca_params": pca_params,
     }
 
+# --- Data Loading Logic ---
+def load_summary_dataframe():
+    json_paths = sorted(Path(SIMDATA_PATH).rglob("*.json"))
+    data = []
+    for jp in json_paths:
+        try:
+            with open(jp, 'r') as f:
+                json_data = json.load(f)
+                data.append(json_data)
+        except Exception:
+            continue
+            
+    if not data:
+        # Fallback empty dataframe
+        return pd.DataFrame([{"name": "No data found"}])
+        
+    df = pd.DataFrame(data)
+    if "name" not in df.columns:
+        if "filename" in df.columns:
+            df["name"] = df["filename"].apply(lambda x: Path(x).stem)
+    return df
+
+summary_df = load_summary_dataframe()
+results_table = pn.widgets.Tabulator(
+    summary_df, 
+    pagination='local',
+    page_size=30,
+    selectable=1,
+    sizing_mode='stretch_both',
+    hidden_columns=['filename']
+)
+
 # --- Widgets ---
-sort_selector = pn.widgets.Select(
-    name='Sort Files By',
-    options=['Date Modified (Newest First)', 'Name (A-Z)'],
-    value='Date Modified (Newest First)',
+file_selector = pn.widgets.Select(
+    name='Select Simulation File', 
+    options=[None] + summary_df["name"].tolist() if "name" in summary_df else [None], 
+    visible=True,
     sizing_mode='stretch_width'
 )
 
-file_selector = pn.widgets.Select(
-    name='Select Simulation File', 
-    options=[None], 
-    sizing_mode='stretch_width'
-)
+def on_table_click(event):
+    if len(event.new) > 0:
+        selected_idx = event.new[0]
+        try:
+            selected_name = results_table.value.iloc[selected_idx]['name']
+            # Only update the value, do not wipe out the options!
+            file_selector.value = selected_name
+        except Exception as e:
+            print(f"Error selecting row: {e}")
+
+results_table.param.watch(on_table_click, 'selection')
+
+def on_dropdown_select(event):
+    selected_name = event.new
+    if selected_name:
+        # Find index in the dataframe where name matches
+        df = results_table.value
+        matches = df.index[df['name'] == selected_name].tolist()
+        if matches:
+            results_table.selection = matches
+
+file_selector.param.watch(on_dropdown_select, 'value')
 
 refresh_files_button = pn.widgets.Button(
     name='Refresh Files',
@@ -88,21 +153,22 @@ refresh_files_button = pn.widgets.Button(
 )
 
 def update_file_list(event=None):
-    if sort_selector.value == 'Date Modified (Newest First)':
-        new_paths = sorted(Path(SIMDATA_PATH).glob("*.pkl"), key=lambda p: p.stat().st_mtime, reverse=True)
-    else:
-        new_paths = sorted(Path(SIMDATA_PATH).glob("*.pkl"), key=lambda p: p.name.lower())
-    new_files = [p.name for p in new_paths]
+    new_df = load_summary_dataframe()
+    results_table.value = new_df
+    
     current_val = file_selector.value
-    file_selector.options = [None] + new_files
-    if current_val in new_files:
+    if "name" in new_df:
+        file_selector.options = [None] + new_df["name"].tolist()
+    else:
+        file_selector.options = [None]
+        
+    if current_val in file_selector.options:
         file_selector.value = current_val
 
 # Initialize list
 update_file_list()
 
 refresh_files_button.on_click(update_file_list)
-sort_selector.param.watch(update_file_list, 'value')
 
 iterate_selector = pn.widgets.Select(
     name='Filter Iterate',
@@ -459,7 +525,9 @@ def calculate_detailed_cost_breakdown(sim_result, consistency_analyzer):
         x_pos_std_dev=config.tracker.pos_north_std_dev,
         y_pos_std_dev=config.tracker.pos_east_std_dev,
         yaw_std_dev=config.tracker.heading_std_dev,
-        N_pca=config.tracker.N_pca
+        N_pca=config.tracker.N_pca,
+        length_std_dev=config.tracker.length_std_dev,
+        width_std_dev=config.tracker.width_std_dev
     )
     
     pca_eigenvectors = pca_params['eigenvectors'][:, :config.tracker.N_pca].real if pca_params else None
@@ -1192,65 +1260,141 @@ def get_cost_landscape_view(filename):
     
     return explorer
 
-@pn.depends(file_selector.param.value)
-def get_constraints_view(filename):
+
+def get_iou_view(filename):
     loaded_data = load_data(filename)
     if not loaded_data:
-        return pn.pane.Markdown("### Select a file to view Constraints History")
-        
-    sim_result = loaded_data["sim_result"]
-    tracker_results = sim_result.tracker_results_ts.values
-    
-    frames = []
-    constraints = []
-    details = []
-    
-    for i, res in enumerate(tracker_results):
-        if hasattr(res, 'clamped_length') and res.clamped_length is not None:
-            frames.append(i)
-            constraints.append("Length Clamped")
-            details.append(f"{res.clamped_length[0]:.3f} -> {res.clamped_length[1]:.3f}")
-            
-        if hasattr(res, 'clamped_width') and res.clamped_width is not None:
-            frames.append(i)
-            constraints.append("Width Clamped")
-            details.append(f"{res.clamped_width[0]:.3f} -> {res.clamped_width[1]:.3f}")
-            
-        if hasattr(res, 'mahalanobis_projection') and res.mahalanobis_projection is not None:
-            frames.append(i)
-            constraints.append("Mahalanobis Projection")
-            details.append(f"dist: {res.mahalanobis_projection[2]:.2f}")
-            
-        if hasattr(res, 'negative_info_used') and res.negative_info_used is not None and res.negative_info_used > 0:
-            frames.append(i)
-            constraints.append("Negative Information Used")
-            details.append(f"count: {res.negative_info_used}")
+        return pn.pane.Markdown("### Select a file to view IoU over Time")
 
+    sim_result = loaded_data["sim_result"]
+    config = loaded_data["config"]
+    pca_params = loaded_data["pca_params"]
+
+    ground_truth_ts = sim_result.ground_truth_ts.values
+    tracker_results_ts = sim_result.tracker_results_ts.values
+    
+    if len(ground_truth_ts) == 0 or len(tracker_results_ts) == 0:
+        return pn.pane.Markdown("### Not enough data to compute IoU.")
+
+    extent_cfg = config.extent
+
+    frames = []
+    ious = []
+
+    for i, res in enumerate(tracker_results_ts):
+        if i < len(ground_truth_ts):
+            gt_state = ground_truth_ts[i]
+            est_state = res.state_posterior.mean
+
+            try:
+                gt_x, gt_y = compute_exact_vessel_shape_global(gt_state, extent_cfg.shape_coords_body)
+                est_x, est_y = compute_estimated_shape_global(est_state, config, pca_params)
+                iou = calculate_iou(gt_x, gt_y, est_x, est_y)
+                frames.append(i)
+                ious.append(iou)
+            except Exception as e:
+                pass
+    
     if not frames:
-        return pn.pane.Markdown("### No constraints were triggered during this simulation.")
-        
+        return pn.pane.Markdown("### Could not calculate IoU.")
+
+    import pandas as pd
     df = pd.DataFrame({
         'Frame': frames,
-        'Constraint Type': constraints,
-        'Details': details
-    })
-    
-    plot = df.hvplot.scatter(
-        x='Frame', 
-        y='Constraint Type', 
-        by='Constraint Type',
-        hover_cols=['Details'],
-        size=150,
-        title="Tracker Constraints Trigger History",
-        height=400,
+        'IoU': ious
+    }).set_index('Frame')
+
+    plot = df.hvplot.line(
+        title="Intersection over Union (IoU) over Time",
+        ylabel="IoU",
+        ylim=(0, 1.05),
         responsive=True,
-    ).opts(
-        xlim=(0, len(tracker_results)),
-        show_grid=True,
-        framewise=True
+        height=400,
+        grid=True,
+        line_width=2
     )
-    
+
     return pn.pane.HoloViews(plot, sizing_mode="stretch_both")
+
+
+def get_constraints_view(filename):
+    print(f"DEBUG: get_constraints_view called with filename={filename}", flush=True)
+    import sys
+    sys.stderr.write(f"\\n---> [Constraints View Triggered] filename={filename}\\n")
+    try:
+        loaded_data = load_data(filename)
+        if not loaded_data:
+            return pn.pane.Markdown(f"### Select a file to view Constraints History (Current: {filename})")
+            
+        sim_result = loaded_data["sim_result"]
+        tracker_results = sim_result.tracker_results_ts.values
+        
+        frames = []
+        constraints = []
+        details = []
+        
+        for i, res in enumerate(tracker_results):
+            if hasattr(res, 'clamped_length') and res.clamped_length is not None:
+                frames.append(i)
+                constraints.append("Length Clamped")
+                details.append(f"{res.clamped_length[0]:.3f} -> {res.clamped_length[1]:.3f}")
+                
+            if hasattr(res, 'clamped_width') and res.clamped_width is not None:
+                frames.append(i)
+                constraints.append("Width Clamped")
+                details.append(f"{res.clamped_width[0]:.3f} -> {res.clamped_width[1]:.3f}")
+                
+            if hasattr(res, 'mahalanobis_projection') and res.mahalanobis_projection is not None:
+                frames.append(i)
+                constraints.append("Mahalanobis Projection")
+                # Handle cases where mahalanobis_projection doesn't have 3 elements
+                dist = res.mahalanobis_projection[2] if len(res.mahalanobis_projection) > 2 else "unknown"
+                if isinstance(dist, float):
+                    details.append(f"dist: {dist:.2f}")
+                else:
+                    details.append(f"dist: {dist}")
+                
+            if hasattr(res, 'negative_info_used') and res.negative_info_used is not None:
+                # Handle bools and ints properly
+                val = res.negative_info_used
+                if isinstance(val, bool) and val:
+                    frames.append(i)
+                    constraints.append("Negative Information Used")
+                    details.append(f"active: {val}")
+                elif isinstance(val, (int, float, np.number)) and val > 0:
+                    frames.append(i)
+                    constraints.append("Negative Information Used")
+                    details.append(f"count: {val}")
+
+        if not frames:
+            return pn.pane.Markdown("### No constraints were triggered during this simulation.")
+            
+        df = pd.DataFrame({
+            'Frame': frames,
+            'Constraint Type': constraints,
+            'Details': details
+        })
+        
+        plot = df.hvplot.scatter(
+            x='Frame', 
+            y='Constraint Type', 
+            by='Constraint Type',
+            hover_cols=['Details'],
+            size=150,
+            title="Tracker Constraints Trigger History",
+            height=400,
+            responsive=True,
+        ).opts(
+            xlim=(0, len(tracker_results)),
+            show_grid=True,
+            framewise=True
+        )
+        
+        return pn.pane.HoloViews(plot, sizing_mode="stretch_both")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return pn.pane.Markdown(f"### Error rendering constraints: {e}")
 
 
 def save_plots(event):
@@ -1322,7 +1466,6 @@ save_button.on_click(save_plots)
 controls = pn.Column(
     pn.pane.Markdown("## Controls"),
     refresh_files_button,
-    sort_selector,
     file_selector,
     frame_player,
     frame_input,
@@ -1355,10 +1498,12 @@ data_browser_view = pn.Column(
     sizing_mode="stretch_both", 
     styles={'overflow-x': 'auto', 'overflow-y': 'auto'}
 )
+results_table_view = pn.Column(results_table, sizing_mode="stretch_both", styles={'overflow-x': 'auto', 'overflow-y': 'auto'})
 cost_landscape_view = pn.Column(get_cost_landscape_view, sizing_mode="stretch_both")
 
 cost_breakdown_view = pn.Column(cost_breakdown_toggle, get_cost_breakdown_view, sizing_mode="stretch_both")
-constraints_view = pn.Column(get_constraints_view, sizing_mode="stretch_both")
+iou_view = pn.Column(pn.bind(get_iou_view, file_selector.param.value), sizing_mode="stretch_both")
+constraints_view = pn.Column(pn.bind(get_constraints_view, file_selector.param.value), sizing_mode="stretch_both")
 
 # --- Custom GoldenLayout Template ---
 template_file = ASSETS_DIR / 'golden_template.html'
@@ -1378,8 +1523,10 @@ tmpl.add_panel('covariance_view', covariance_view)
 tmpl.add_panel('condition_number_view', condition_number_view)
 tmpl.add_panel('nis_view', nis_view)
 tmpl.add_panel('data_browser_view', data_browser_view)
+tmpl.add_panel('results_table_view', results_table_view)
 tmpl.add_panel('cost_breakdown', cost_breakdown_view)
 tmpl.add_panel('cost_landscape', cost_landscape_view)
+tmpl.add_panel('iou_view', iou_view)
 tmpl.add_panel('constraints_view', constraints_view)
 tmpl.servable(title="GP-PCA-EOT Simulation Analysis Dashboard")
 

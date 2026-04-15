@@ -35,7 +35,9 @@ class CostLandscapeComponent(pn.viewable.Viewer):
             x_pos_std_dev=self.config.tracker.pos_north_std_dev,
             y_pos_std_dev=self.config.tracker.pos_east_std_dev,
             yaw_std_dev=self.config.tracker.heading_std_dev,
-            N_pca=self.config.tracker.N_pca
+            N_pca=self.config.tracker.N_pca,
+            length_std_dev=self.config.tracker.length_std_dev,
+            width_std_dev=self.config.tracker.width_std_dev
         )
         
         sensor_model = LidarMeasurementModel(

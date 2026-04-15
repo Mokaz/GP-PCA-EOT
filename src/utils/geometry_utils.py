@@ -2,6 +2,29 @@ import numpy as np
 
 from src.utils.tools import rot2D, generate_fourier_function, pol2cart
 from src.states.states import State_PCA, State_GP
+from shapely.geometry import Polygon
+
+def calculate_iou(x1, y1, x2, y2):
+    """
+    Calculates Intersection over Union (IoU) using Shapely polygons.
+    x1, y1: Coordinates of shape 1
+    x2, y2: Coordinates of shape 2
+    """
+    try:
+        poly1 = Polygon(zip(x1, y1)).buffer(0)
+        poly2 = Polygon(zip(x2, y2)).buffer(0)
+        
+        if not poly1.is_valid or not poly2.is_valid:
+            print("Warning: Invalid polygon encountered during IoU calculation.")
+            return 0.0
+
+        intersection = poly1.intersection(poly2).area
+        union = poly1.union(poly2).area
+        
+        return intersection / union if union > 0 else 0.0
+    except Exception as e:
+        print(f"Failed to calculate IoU: {e}")
+        return 0.0
 
 def compute_estimated_shape(tracker, angles):
     L = tracker.state[6]
