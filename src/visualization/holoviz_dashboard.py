@@ -361,6 +361,7 @@ data_browser_mode = pn.widgets.Select(
         'Current Frame Measurement Error',
         'Consistency Analysis (Summary)',
         'Config', 
+        'Copy Config Script',
         'Full Simulation Result (Summary)'
     ],
     value='Current Frame Tracker Result',
@@ -1154,6 +1155,35 @@ data_browser_depth_slider = pn.widgets.IntSlider(
 )
 
 data_browser_json_pane = pn.pane.JSON({}, sizing_mode='stretch_width', depth=2, theme='light')
+data_browser_code_pane = pn.widgets.CodeEditor(value="", sizing_mode='stretch_both', readonly=True, language='python', visible=False, theme='monokai')
+
+import dataclasses
+def _format_config_value(v, indent=4):
+    if hasattr(v, '__dataclass_fields__'):
+        return generate_config_code(v, indent)
+    elif isinstance(v, str):
+        return f"'{v}'"
+    elif isinstance(v, np.ndarray):
+        if v.size <= 16:
+            return f"np.array({v.tolist()})"
+        return f"np.array([]) # Omitted massive array of shape {v.shape}"
+    else:
+        return repr(v)
+
+def generate_config_code(obj, indent=4):
+    if not hasattr(obj, '__dataclass_fields__'):
+        return repr(obj)
+    cls_name = obj.__class__.__name__
+    lines = [f"{cls_name}("]
+    ind_str = " " * indent
+    for field_name, f_def in obj.__dataclass_fields__.items():
+        if not f_def.init:
+            continue
+        val = getattr(obj, field_name)
+        val_str = _format_config_value(val, indent + 4)
+        lines.append(f"{ind_str}{field_name}={val_str},")
+    lines.append(" " * (indent - 4) + ")")
+    return "\n".join(lines)
 
 @pn.depends(data_browser_mode.param.value, frame_player.param.value, file_selector.param.value, data_browser_depth_slider.param.value, watch=True)
 def update_data_browser_view(mode, frame_idx, filename, depth):
@@ -1161,10 +1191,34 @@ def update_data_browser_view(mode, frame_idx, filename, depth):
     loaded_data = load_data(filename)
     if not loaded_data:
         data_browser_json_pane.object = {"info": "Select a file to begin."}
+        data_browser_json_pane.visible = True
+        data_browser_code_pane.visible = False
+        data_browser_depth_slider.visible = True
         return
     
     sim_result = loaded_data["sim_result"]
     consistency_analyzer = loaded_data["consistency_analyzer"]
+    
+    if mode == 'Copy Config Script':
+        data_browser_json_pane.visible = False
+        data_browser_depth_slider.visible = False
+        data_browser_code_pane.visible = True
+        try:
+            imports = (
+                "from src.utils.config_classes import Config, SimConfig, LidarConfig, ExtentConfig, TrackerConfig, SimulationConfig, TrajectoryConfig\n"
+                "from src.states.states import State_PCA, State_GP\n"
+                "import numpy as np\n\n"
+                "from src.experiment_runner import run_single_simulation\n\n"
+            )
+            code_str = imports + f"config = {generate_config_code(sim_result.config, indent=4)}\n\nif __name__ == '__main__':\n    # Run the simulation\n    run_single_simulation(config)\n"
+            data_browser_code_pane.value = code_str
+        except Exception as e:
+            data_browser_code_pane.value = f"# Error generating code:\n# {e}"
+        return
+        
+    data_browser_json_pane.visible = True
+    data_browser_depth_slider.visible = True
+    data_browser_code_pane.visible = False
     
     data_to_show = {}
     
@@ -1495,6 +1549,7 @@ nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
 data_browser_view = pn.Column(
     data_browser_depth_slider, 
     data_browser_json_pane, 
+    data_browser_code_pane,
     sizing_mode="stretch_both", 
     styles={'overflow-x': 'auto', 'overflow-y': 'auto'}
 )
