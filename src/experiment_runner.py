@@ -346,9 +346,9 @@ def run_single_simulation(config: Config) -> SimulationResult:
     summary_data = {
         "name": sim_cfg.name,
         "method": tracker_cfg.method,
-        "scenario": sim_cfg.name,
+        "trajectory_type": traj_cfg.type,
         # "num_rays": lidar_cfg.num_rays, # TODO determine which values to include in the JSON sidecar
-        "use_negative_info": getattr(tracker_cfg, 'use_negative_info', False),
+        # "use_negative_info": getattr(tracker_cfg, 'use_negative_info', False),
         "avg_nees": float(avg_nees) if avg_nees is not None else None,
         "rmse": float(rmse) if rmse is not None else None,
         "avg_iou": float(avg_iou) if avg_iou is not None else None,
@@ -359,5 +359,24 @@ def run_single_simulation(config: Config) -> SimulationResult:
     with open(json_filename, "w") as f:
         json.dump(summary_data, f, indent=4)
     print(f"Metrics saved to JSON sidecar: {json_filename}")
+
+    # Save Config JSON
+    config_filename = os.path.join(sim_dir, f"{sim_cfg.name}_config.json")
+    class ConfigEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            if hasattr(obj, '__dataclass_fields__'):
+                from dataclasses import asdict
+                return asdict(obj)
+            return str(obj)
+
+    try:
+        from dataclasses import asdict
+        with open(config_filename, "w") as f:
+            json.dump(asdict(config), f, indent=4, cls=ConfigEncoder)
+        print(f"Config saved to JSON: {config_filename}")
+    except Exception as e:
+        print(f"Error saving config to JSON: {e}")
 
     return data_to_save

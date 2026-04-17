@@ -233,7 +233,10 @@ class TrackerConfig:
     use_state_clamping: bool = True
     use_mahalanobis_projection: bool = True
     mahalanobis_projection_prob: float = 0.99
-    use_negative_info: bool = False
+    use_negative_info_angular: bool = False
+    use_negative_info_front: bool = False
+    use_negative_info_centroid: bool = False
+    radial_margin: float = 0.1
     use_exact_extreme_angle: bool = False
     use_D_imp_for_R: bool = True
     use_scaled_R: bool = False

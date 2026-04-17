@@ -116,6 +116,30 @@ results_table = pn.widgets.Tabulator(
 )
 
 # --- Widgets ---
+# --- Status Indicator ---
+global_loading_spinner = pn.indicators.LoadingSpinner(value=False, width=30, height=30, sizing_mode='fixed')
+pn.state.sync_busy(global_loading_spinner)
+
+global_status_text = pn.pane.Markdown("**Ready**", sizing_mode='stretch_width', margin=(10, 0, 0, 5), min_height=30)
+
+status_row = pn.Row(
+    global_loading_spinner,
+    global_status_text,
+    sizing_mode='stretch_width',
+    min_height=40,
+    align='center'
+)
+
+def set_status(msg):
+    global_status_text.object = f"**{msg}**"
+    print(f"---> [Status] {msg}")
+
+def _clear_status_on_idle(e):
+    if not e.new:  # not busy
+        global_status_text.object = "**Ready**"
+
+pn.state.param.watch(_clear_status_on_idle, 'busy')
+
 file_selector = pn.widgets.Select(
     name='Select Simulation File', 
     options=[None] + summary_df["name"].tolist() if "name" in summary_df else [None], 
@@ -372,6 +396,9 @@ data_browser_mode = pn.widgets.Select(
 # --- Interactive functions ---
 @pn.depends(file_selector.param.value, watch=True)
 def update_widgets(filename):
+    if filename:
+        set_status(f"Loading '{filename}' data...")
+
     loaded_data = load_data(filename)
     if not loaded_data:
         frame_player.visible = False
@@ -575,11 +602,27 @@ def calculate_detailed_cost_breakdown(sim_result, consistency_analyzer):
         'Total Cost': total_costs
     }).set_index('Frame')
 
-@pn.depends(file_selector.param.value, cost_breakdown_toggle.param.value)
-def get_cost_breakdown_view(filename, log_scale):
+cost_auto_calc_checkbox = pn.widgets.Checkbox(name='Auto-Calculate Cost', value=False, margin=(5, 10, 5, 0))
+cost_calc_button = pn.widgets.Button(name='Calculate Now', button_type='primary', width=120, margin=(5, 10, 5, 10))
+cost_content_pane = pn.Column(pn.pane.Markdown("### Select a file to view Cost Breakdown"), sizing_mode="stretch_both")
+
+def update_cost_breakdown_view(event=None, force=False):
+    filename = file_selector.value
+    log_scale = cost_breakdown_toggle.value
+
+    if not filename:
+        cost_content_pane.objects = [pn.pane.Markdown("### Select a file to view Cost Breakdown")]
+        return
+
+    if not force and not cost_auto_calc_checkbox.value:
+        cost_content_pane.objects = [pn.pane.Markdown(f"### Auto-calculation disabled for '{filename}'. Click 'Calculate Now' below.")]
+        return
+
+    set_status("Calculating Cost Breakdown...")
     loaded_data = load_data(filename)
     if not loaded_data:
-        return pn.pane.Markdown("### Select a file to view Cost Breakdown")
+        cost_content_pane.objects = [pn.pane.Markdown("### Error loading data.")]
+        return
 
     if "cost_df" not in loaded_data:
         df = calculate_detailed_cost_breakdown(loaded_data["sim_result"], loaded_data["consistency_analyzer"])
@@ -588,7 +631,8 @@ def get_cost_breakdown_view(filename, log_scale):
         df = loaded_data["cost_df"]
 
     if df.empty:
-        return pn.pane.Markdown("### Could not calculate costs.")
+        cost_content_pane.objects = [pn.pane.Markdown("### Could not calculate costs.")]
+        return
 
     if log_scale:
         # Avoid log(0) or log(neg) issues
@@ -607,7 +651,12 @@ def get_cost_breakdown_view(filename, log_scale):
         line_width=2
     )
 
-    return pn.pane.HoloViews(plot, sizing_mode="stretch_both")
+    cost_content_pane.objects = [pn.pane.HoloViews(plot, sizing_mode="stretch_both")]
+
+cost_calc_button.on_click(lambda e: update_cost_breakdown_view(force=True))
+file_selector.param.watch(lambda e: update_cost_breakdown_view(force=False), 'value')
+cost_breakdown_toggle.param.watch(lambda e: update_cost_breakdown_view(force=False), 'value')
+cost_auto_calc_checkbox.param.watch(lambda e: update_cost_breakdown_view(force=True) if e.new else None, 'value')
 
 def serialize_state_object(state_obj):
     """Helper to convert State_PCA/State_GP objects into a labeled dictionary."""
@@ -762,27 +811,62 @@ def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_
         virt_pts_x, virt_pts_y = [], []
         virt_rays_x, virt_rays_y = [], []
         virt_pred_rays_x, virt_pred_rays_y = [], []
+        fw_arcs_x, fw_arcs_y = [], []
+        cd_arcs_x, cd_arcs_y = [], []
         for vc in vci_list:
-            pt_global = vc['predicted_point']
-            virt_pts_x.append(pt_global[0])
-            virt_pts_y.append(pt_global[1])
+            c_type = vc.get('type', 'min_angle')
             
-            p_angle = np.arctan2(pt_global[1] - lidar_pos[1], pt_global[0] - lidar_pos[0])
-            p_ray_end = np.array(lidar_pos) + config.lidar.max_distance * np.array([np.cos(p_angle), np.sin(p_angle)])
-            virt_pred_rays_x.extend([lidar_pos[0], p_ray_end[0], None])
-            virt_pred_rays_y.extend([lidar_pos[1], p_ray_end[1], None])
+            if c_type in ['min_angle', 'max_angle'] or 'predicted_point' in vc:
+                pt_global = vc['predicted_point']
+                virt_pts_x.append(pt_global[0])
+                virt_pts_y.append(pt_global[1])
+                
+                p_angle = np.arctan2(pt_global[1] - lidar_pos[1], pt_global[0] - lidar_pos[0])
+                p_ray_end = np.array(lidar_pos) + config.lidar.max_distance * np.array([np.cos(p_angle), np.sin(p_angle)])
+                virt_pred_rays_x.extend([lidar_pos[0], p_ray_end[0], None])
+                virt_pred_rays_y.extend([lidar_pos[1], p_ray_end[1], None])
+                
+                if draw_measured_bounds:
+                    angle = vc.get('measured_val', vc.get('measured_angle'))
+                    if angle is not None:
+                        ray_end = np.array(lidar_pos) + config.lidar.max_distance * np.array([np.cos(angle), np.sin(angle)])
+                        virt_rays_x.extend([lidar_pos[0], ray_end[0], None])
+                        virt_rays_y.extend([lidar_pos[1], ray_end[1], None])
             
-            if draw_measured_bounds:
-                angle = vc['measured_angle']
-                ray_end = np.array(lidar_pos) + config.lidar.max_distance * np.array([np.cos(angle), np.sin(angle)])
-                virt_rays_x.extend([lidar_pos[0], ray_end[0], None])
-                virt_rays_y.extend([lidar_pos[1], ray_end[1], None])
+            elif c_type == 'front_wall':
+                if draw_measured_bounds:
+                    radius = vc.get('measured_val')
+                    if radius is not None:
+                        arc_angles = np.linspace(-np.pi, np.pi, 50)
+                        for a in arc_angles:
+                            fw_arcs_x.append(lidar_pos[0] + radius * np.cos(a))
+                            fw_arcs_y.append(lidar_pos[1] + radius * np.sin(a))
+                        fw_arcs_x.append(None)
+                        fw_arcs_y.append(None)
+                        
+            elif c_type == 'centroid_depth':
+                if draw_measured_bounds:
+                    radius = vc.get('measured_val')
+                    if radius is not None:
+                        arc_angles = np.linspace(-np.pi, np.pi, 50)
+                        for a in arc_angles:
+                            cd_arcs_x.append(lidar_pos[0] + radius * np.cos(a))
+                            cd_arcs_y.append(lidar_pos[1] + radius * np.sin(a))
+                        cd_arcs_x.append(None)
+                        cd_arcs_y.append(None)
             
         if virt_pts_x:
-            fig.add_trace(go.Scatter(x=virt_pts_y, y=virt_pts_x, mode='markers', name=f'Pred. Const. Pts {label_suffix}', marker=dict(color='saddlebrown', size=8, symbol='diamond')))
-            fig.add_trace(go.Scatter(x=virt_pred_rays_y, y=virt_pred_rays_x, mode='lines', name=f'Pred. Const. Rays {label_suffix}', line=dict(color='saddlebrown', width=1)))
-            if draw_measured_bounds and virt_rays_x:
-                fig.add_trace(go.Scatter(x=virt_rays_y, y=virt_rays_x, mode='lines', name=f'Meas. Bounds {label_suffix}', line=dict(color='saddlebrown', width=1, dash='dash')))
+            fig.add_trace(go.Scatter(x=virt_pts_y, y=virt_pts_x, mode='markers', name=f'Pred. Angle Pts {label_suffix}', marker=dict(color='saddlebrown', size=8, symbol='diamond')))
+            fig.add_trace(go.Scatter(x=virt_pred_rays_y, y=virt_pred_rays_x, mode='lines', name=f'Pred. Angle Rays {label_suffix}', line=dict(color='saddlebrown', width=1)))
+        
+        if draw_measured_bounds and virt_rays_x:
+            fig.add_trace(go.Scatter(x=virt_rays_y, y=virt_rays_x, mode='lines', name=f'Meas. Angle Bounds {label_suffix}', line=dict(color='saddlebrown', width=1, dash='dash')))
+
+        if draw_measured_bounds and fw_arcs_x:
+            fig.add_trace(go.Scatter(x=fw_arcs_y, y=fw_arcs_x, mode='lines', name=f'Front Wall Range {label_suffix}', line=dict(color='red', width=1.5, dash='dot')))
+            
+        if draw_measured_bounds and cd_arcs_x:
+            fig.add_trace(go.Scatter(x=cd_arcs_y, y=cd_arcs_x, mode='lines', name=f'Centroid Max Range {label_suffix}', line=dict(color='blue', width=1.5, dash='dashdot')))
 
     try:
         if hasattr(tracker_result, 'virtual_constraints_info') and tracker_result.virtual_constraints_info:
@@ -1205,8 +1289,12 @@ def update_data_browser_view(mode, frame_idx, filename, depth):
         data_browser_code_pane.visible = True
         try:
             imports = (
-                "from src.utils.config_classes import Config, SimConfig, LidarConfig, ExtentConfig, TrackerConfig, SimulationConfig, TrajectoryConfig\n"
-                "from src.states.states import State_PCA, State_GP\n"
+                "import sys\n"
+                "from pathlib import Path\n\n"
+                "PROJECT_ROOT = Path(__file__).resolve().parent.parent\n"
+                "sys.path.append(str(PROJECT_ROOT))\n\n"
+                "from src.utils.config_classes import Config, LidarConfig, ExtentConfig, TrackerConfig, SimulationConfig, TrajectoryConfig\n"
+                "from src.states.states import State_PCA\n"
                 "import numpy as np\n\n"
                 "from src.experiment_runner import run_single_simulation\n\n"
             )
@@ -1315,10 +1403,27 @@ def get_cost_landscape_view(filename):
     return explorer
 
 
-def get_iou_view(filename):
+iou_auto_calc_checkbox = pn.widgets.Checkbox(name='Auto-Calculate IoU', value=False, margin=(5, 10, 5, 0))
+iou_calc_button = pn.widgets.Button(name='Calculate Now', button_type='primary', width=120, margin=(5, 10, 5, 10))
+iou_content_pane = pn.Column(pn.pane.Markdown("### Select a file to view IoU over Time"), sizing_mode="stretch_both")
+
+def update_iou_view(event=None, force=False):
+    filename = file_selector.value
+
+    if not filename:
+        iou_content_pane.objects = [pn.pane.Markdown("### Select a file to view IoU over Time")]
+        return
+
+    if not force and not iou_auto_calc_checkbox.value:
+        iou_content_pane.objects = [pn.pane.Markdown(f"### Auto-calculation disabled for '{filename}'. Click 'Calculate Now' below.")]
+        return
+
+    set_status("Calculating IoU (This may take a while)...")
+
     loaded_data = load_data(filename)
     if not loaded_data:
-        return pn.pane.Markdown("### Select a file to view IoU over Time")
+        iou_content_pane.objects = [pn.pane.Markdown("### Error loading data.")]
+        return
 
     sim_result = loaded_data["sim_result"]
     config = loaded_data["config"]
@@ -1328,7 +1433,8 @@ def get_iou_view(filename):
     tracker_results_ts = sim_result.tracker_results_ts.values
     
     if len(ground_truth_ts) == 0 or len(tracker_results_ts) == 0:
-        return pn.pane.Markdown("### Not enough data to compute IoU.")
+        iou_content_pane.objects = [pn.pane.Markdown("### Not enough data to compute IoU.")]
+        return
 
     extent_cfg = config.extent
 
@@ -1350,7 +1456,8 @@ def get_iou_view(filename):
                 pass
     
     if not frames:
-        return pn.pane.Markdown("### Could not calculate IoU.")
+        iou_content_pane.objects = [pn.pane.Markdown("### Could not calculate IoU.")]
+        return
 
     import pandas as pd
     df = pd.DataFrame({
@@ -1368,7 +1475,12 @@ def get_iou_view(filename):
         line_width=2
     )
 
-    return pn.pane.HoloViews(plot, sizing_mode="stretch_both")
+    iou_content_pane.objects = [pn.pane.HoloViews(plot, sizing_mode="stretch_both")]
+    set_status("Ready")
+
+iou_calc_button.on_click(lambda e: update_iou_view(force=True))
+file_selector.param.watch(lambda e: update_iou_view(force=False), 'value')
+iou_auto_calc_checkbox.param.watch(lambda e: update_iou_view(force=True) if e.new else None, 'value')
 
 
 def get_constraints_view(filename):
@@ -1408,7 +1520,28 @@ def get_constraints_view(filename):
                 else:
                     details.append(f"dist: {dist}")
                 
-            if hasattr(res, 'negative_info_used') and res.negative_info_used is not None:
+            has_new_vci = False
+            if hasattr(res, 'virtual_constraints_info') and res.virtual_constraints_info:
+                vci = res.virtual_constraints_info
+                final_vci = vci[-1] if isinstance(vci, list) and len(vci) > 0 and isinstance(vci[0], list) else vci
+                if isinstance(final_vci, list) and len(final_vci) > 0:
+                    has_new_vci = True
+                    for vc in final_vci:
+                        c_type = vc.get('type')
+                        if c_type in ['min_angle', 'max_angle']:
+                            frames.append(i)
+                            constraints.append("Neg Info: Angular")
+                            details.append(f"{c_type}, angle: {vc.get('body_angle', 0):.2f}")
+                        elif c_type == 'front_wall':
+                            frames.append(i)
+                            constraints.append("Neg Info: Front Wall")
+                            details.append(f"val: {vc.get('measured_val', 0):.2f}")
+                        elif c_type == 'centroid_depth':
+                            frames.append(i)
+                            constraints.append("Neg Info: Centroid Depth")
+                            details.append(f"rho_c: {vc.get('rho_c', 0):.2f}")
+
+            if not has_new_vci and hasattr(res, 'negative_info_used') and res.negative_info_used is not None:
                 # Handle bools and ints properly
                 val = res.negative_info_used
                 if isinstance(val, bool) and val:
@@ -1519,6 +1652,7 @@ save_button.on_click(save_plots)
 # --- Build Panel objects ---
 controls = pn.Column(
     pn.pane.Markdown("## Controls"),
+    status_row,
     refresh_files_button,
     file_selector,
     frame_player,
@@ -1556,8 +1690,16 @@ data_browser_view = pn.Column(
 results_table_view = pn.Column(results_table, sizing_mode="stretch_both", styles={'overflow-x': 'auto', 'overflow-y': 'auto'})
 cost_landscape_view = pn.Column(get_cost_landscape_view, sizing_mode="stretch_both")
 
-cost_breakdown_view = pn.Column(cost_breakdown_toggle, get_cost_breakdown_view, sizing_mode="stretch_both")
-iou_view = pn.Column(pn.bind(get_iou_view, file_selector.param.value), sizing_mode="stretch_both")
+cost_breakdown_view = pn.Column(
+    pn.Row(cost_breakdown_toggle, cost_calc_button, cost_auto_calc_checkbox, sizing_mode="stretch_width", align='center'), 
+    cost_content_pane, 
+    sizing_mode="stretch_both"
+)
+iou_view = pn.Column(
+    pn.Row(iou_calc_button, iou_auto_calc_checkbox, sizing_mode="stretch_width", align='center'),
+    iou_content_pane, 
+    sizing_mode="stretch_both"
+)
 constraints_view = pn.Column(pn.bind(get_constraints_view, file_selector.param.value), sizing_mode="stretch_both")
 
 # --- Custom GoldenLayout Template ---
