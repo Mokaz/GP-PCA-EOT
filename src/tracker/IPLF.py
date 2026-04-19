@@ -158,22 +158,16 @@ class IPLF(Tracker):
             Phi = (weights[:, None] * Z_diff).T @ Z_diff
             
             # 1d. Calculate Linearization Parameters (A, b, Omega)
-            # Safe solve: A_imp = Psi.T @ inv(P) -> solved as P @ A_imp.T = Psi
             A_imp = np.linalg.solve(state_iter_cov + np.eye(len(state_iter_mean))*1e-6, Psi).T
             
-            # --- THE FIX --- TODO: Note this in thesis
-            # A single LiDAR frame cannot observe instantaneous velocity/yaw_rate.
-            # Force columns 3, 4, 5 (vel_x, vel_y, yaw_rate) to exactly 0 to 
-            # prevent spurious numerical explosions during sharp turns.
+            # --- STABILITY FIX: KINEMATIC UNOBSERVABILITY ---
+            # Single-frame spatial measurements provide exactly zero information about 
+            # instantaneous velocity or yaw_rate. Force to zero to prevent Cubature noise.
             A_imp[:, 3:6] = 0.0
-            # ---------------
-            
-            # Offset
-            b_imp = z_bar - A_imp @ state_iter_mean
             
             # Omega is the Linearization Noise (Captures non-linearity uncertainty)
             Omega_imp = Phi - A_imp @ state_iter_cov @ A_imp.T
-            Omega_imp = (Omega_imp + Omega_imp.T) / 2 # Enforce exact symmetry
+            Omega_imp = (Omega_imp + Omega_imp.T) / 2 
             
             # --- DIAGNOSTIC PRINT ---
             if self.debug_prints:
@@ -189,7 +183,7 @@ class IPLF(Tracker):
                     print(">>> SUCCESS: Omega_imp is strictly Positive Definite/Semi-Definite!")
             # ------------------------
             
-            # Performance & Stability Fix: Extract the diagonal, clamp to >= 0
+            # Extract the diagonal, clamp to >= 0
             omega_diag = np.maximum(np.diag(Omega_imp), 0.0)
             Omega_imp = np.diag(omega_diag)
             
@@ -210,10 +204,16 @@ class IPLF(Tracker):
 
             H_fused = A_imp
             
-            # Innovation is measured against the linear approximation evaluated at the PRIOR
-            innovation_fused = z_flat - (A_imp @ state_prior_mean + b_imp)
-            R_fused = R_eff
+            # --- STABILITY FIX: ANGLE WRAPPING IN TAYLOR EXPANSION ---
+            # Crucial: Calculate properly wrapped difference between prior and iteration point
+            state_diff = state_prior_mean - state_iter_mean
+            state_diff[2] = ssa(state_diff[2])
+            
+            # Evaluate linear approximation at the prior state safely
+            z_pred_prior = z_bar + A_imp @ state_diff
+            innovation_fused = z_flat - z_pred_prior
 
+            R_fused = R_eff
             current_virtual_constraints =[]
 
             # =================================================================
@@ -227,7 +227,7 @@ class IPLF(Tracker):
                 for vc in current_virtual_constraints:
                     c_type = vc['type']
                     
-                    if c_type in ['min_angle', 'max_angle']:
+                    if c_type in['min_angle', 'max_angle']:
                         H_virt, gamma_pred = self.sensor_model.get_virtual_measurement_jacobian(
                             state_iter_mean, vc['body_angle'], is_radial=False
                         )
@@ -257,8 +257,8 @@ class IPLF(Tracker):
                     
                     H_fused = np.vstack((H_fused, H_stack))
                     
-                    # For constraints, we map the residual back to the prior linearly
-                    innov_virt = residual - H_stack @ (state_prior_mean - state_iter_mean)
+                    # Compute virtual constraint innovation using safely wrapped state_diff
+                    innov_virt = residual - H_stack @ state_diff
                     innovation_fused = np.append(innovation_fused, innov_virt)
                     
                     neg_info_std = getattr(self.config.tracker, 'R_arc_std', 0.01)
@@ -277,6 +277,7 @@ class IPLF(Tracker):
             H_prior[0, 6] = 1.0  
             H_prior[1, 7] = 1.0  
             
+            # Extent prior naturally operates on the prior mean, no wrapping needed
             innov_L = expected_L - state_prior_mean[6]
             innov_W = expected_W - state_prior_mean[7]
             innov_prior = np.array([innov_L, innov_W])
