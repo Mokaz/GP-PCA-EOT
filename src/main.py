@@ -178,6 +178,7 @@ def get_pca_tracker_config(lidar_pos, initial_state_gt, N_pca=4,
         heading_std_dev=0.1,
         length_std_dev=0.01,
         width_std_dev=0.01,
+        pca_std_dev_scale=0.3, # TEST
         lidar_std_dev=0.15,
         initial_state=initial_state_tracker,
         initial_std_devs=initial_std_devs_tracker,
@@ -202,7 +203,7 @@ if __name__ == "__main__":
     # selected_boat_id = None # Example: "1" = Sailing Yacht, "112" = Multihull
 
     # method_list = ["implicit_ekf", "implicit_iekf"]
-    method_list = ["implicit_iekf"]
+    method_list = ["iplf"]
     # method_list = ["ekf", "iekf"]
     for method in method_list:
         N_pca = 4
@@ -231,18 +232,25 @@ if __name__ == "__main__":
         config = Config(sim=sim_base, lidar=lidar_base, tracker=tracker_cfg, extent=extent_base)
 
         # Custom user settings
+        tracker_cfg.debug_prints = False
+
         boat_id = extent_base.shape_params_true.get('id', 'custom')
         config.sim.use_cache = True # Disable cache for new trajectories to ensure they are generated
         config.sim.num_frames = 800
         config.lidar.lidar_gt_std_dev = 0.0
         config.tracker.use_initialize_centroid = False
-        config.tracker.use_D_imp_for_R = True
+        config.tracker.use_D_imp_for_R = False
 
-        config.tracker.use_negative_info = False
-        config.tracker.use_exact_extreme_angle = False
+        config.tracker.use_state_clamping = True
+        config.tracker.use_mahalanobis_projection = True
+
+        config.tracker.use_negative_info_angular = True
+        config.tracker.use_negative_info_front = True
+        config.tracker.use_negative_info_centroid = True
 
         # Unique Name
-        config.sim.name = f"Neg_info_test_boat{boat_id}_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
+        # config.sim.name = f"Neg_info_test_boat{boat_id}_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
+        config.sim.name = f"cubature_fix_{method}"
 
         # Run
         sim_result = run_single_simulation(config=config)

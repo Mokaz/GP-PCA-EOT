@@ -88,9 +88,20 @@ def load_summary_dataframe():
     json_paths = sorted(Path(SIMDATA_PATH).rglob("*.json"))
     data = []
     for jp in json_paths:
+        if jp.name.endswith('_config.json'):
+            continue
         try:
             with open(jp, 'r') as f:
                 json_data = json.load(f)
+                
+                # Add modification date
+                try:
+                    mtime = jp.stat().st_mtime
+                    from datetime import datetime
+                    json_data["date"] = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    pass
+                
                 data.append(json_data)
         except Exception:
             continue
@@ -1687,7 +1698,19 @@ data_browser_view = pn.Column(
     sizing_mode="stretch_both", 
     styles={'overflow-x': 'auto', 'overflow-y': 'auto'}
 )
-results_table_view = pn.Column(results_table, sizing_mode="stretch_both", styles={'overflow-x': 'auto', 'overflow-y': 'auto'})
+def get_csv_export():
+    import io
+    sio = io.BytesIO()
+    results_table.current_view.to_csv(sio, index=False)
+    sio.seek(0)
+    return sio
+
+results_table_view = pn.Column(
+    pn.Row(pn.widgets.FileDownload(callback=get_csv_export, filename='simulation_results.csv', label='Export CSV', button_type='primary', sizing_mode='stretch_width'), sizing_mode="stretch_width"),
+    results_table, 
+    sizing_mode="stretch_both", 
+    styles={'overflow-x': 'auto', 'overflow-y': 'auto'}
+)
 cost_landscape_view = pn.Column(get_cost_landscape_view, sizing_mode="stretch_both")
 
 cost_breakdown_view = pn.Column(

@@ -132,9 +132,12 @@ class Model_PCA_Inflation(DynamicModel):
     N_pca: int
     length_std_dev: float = 0.01
     width_std_dev: float = 0.01
+    pca_std_dev_scale: float = 0.05
 
     # Inflation parameter
     lambda_f: float = 0.99
+
+    pca_eigenvalues: np.ndarray = None
 
     def F_d(self, x: State_PCA, dt: float) -> np.ndarray:
         # Kinematics (CV) + Fixed Extent
@@ -155,8 +158,24 @@ class Model_PCA_Inflation(DynamicModel):
         Qk = np.kron(t_int, Q_c_matrix)
         Q_extent_pca = np.zeros((2 + self.N_pca, 2 + self.N_pca))
         
+        # INJECT L & W RANDOM WALK
         Q_extent_pca[0, 0] = (self.length_std_dev ** 2) * dt
         Q_extent_pca[1, 1] = (self.width_std_dev ** 2) * dt
+        
+        # # # INJECT PCA RANDOM WALK (CONSTANT VARIANCE) TODO: Add const setting
+        # pca_std_dev = self.pca_std_dev_scale
+        # for i in range(self.N_pca):
+        #     Q_extent_pca[2 + i, 2 + i] = (pca_std_dev ** 2) * dt
+
+        # PROPORTIONAL PCA RANDOM WALK
+        for i in range(self.N_pca):
+            # Fallback to 1.0 if no eigenvalues provided, otherwise use natural std dev
+            eigen_std = np.sqrt(self.pca_eigenvalues[i]) if self.pca_eigenvalues is not None else 1.0
+            
+            # The actual noise standard deviation applied to this specific component
+            scaled_std_dev = self.pca_std_dev_scale * eigen_std
+            
+            Q_extent_pca[2 + i, 2 + i] = (scaled_std_dev ** 2) * dt
 
         Q = np.block([[Qk, np.zeros((6, 2 + self.N_pca))],
                       [np.zeros((2 + self.N_pca, 6)), Q_extent_pca]

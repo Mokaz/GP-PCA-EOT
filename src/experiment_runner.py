@@ -25,6 +25,8 @@ from src.tracker.BFGS import BFGS
 # from src.tracker.smoothing_SLSQP import SmoothingSLSQP
 # from src.tracker.UnscentedKalmanFilter import UKF
 from src.tracker.ImplicitIEKF import ImplicitIEKF
+from src.tracker.IPLF import IPLF
+from src.tracker.UT_IPLF import UT_IPLF
 
 from src.tracker.TrackerUpdateResult import TrackerUpdateResult
 from src.sensors.LidarModel import LidarMeasurementModel
@@ -155,7 +157,9 @@ def run_single_simulation(config: Config) -> SimulationResult:
         elif tracker_cfg.process_model == "inflation":
             filter_dyn_model = Model_PCA_Inflation(
                 **common_kwargs,
-                lambda_f=tracker_cfg.inflation_lambda
+                lambda_f=tracker_cfg.inflation_lambda,
+                pca_std_dev_scale=tracker_cfg.pca_std_dev_scale,
+                pca_eigenvalues=config.tracker.pca_eigenvalues
             )
         else:
             raise ValueError(f"Unknown process model: {tracker_cfg.process_model}")
@@ -178,6 +182,10 @@ def run_single_simulation(config: Config) -> SimulationResult:
             tracker = IterativeEKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
         elif method == "implicit_iekf" or method == "implicit_ekf":
             tracker = ImplicitIEKF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
+        elif method == "iplf":
+            tracker = IPLF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
+        elif method == "ut_iplf":
+            tracker = UT_IPLF(dynamic_model=filter_dyn_model, lidar_model=lidar_model, config=config)
         else:
             raise ValueError(f"Unknown method {method}")
 
@@ -347,8 +355,14 @@ def run_single_simulation(config: Config) -> SimulationResult:
         "name": sim_cfg.name,
         "method": tracker_cfg.method,
         "trajectory_type": traj_cfg.type,
-        # "num_rays": lidar_cfg.num_rays, # TODO determine which values to include in the JSON sidecar
-        # "use_negative_info": getattr(tracker_cfg, 'use_negative_info', False),
+        "scenario": getattr(sim_cfg, "scenario", None),
+        "num_rays": getattr(lidar_cfg, "num_rays", None),
+        "use_D_imp_for_R": getattr(tracker_cfg, 'use_D_imp_for_R', False),
+        "use_scaled_R": getattr(tracker_cfg, 'use_scaled_R', False),
+        "use_negative_info_angular": getattr(tracker_cfg, 'use_negative_info_angular', False),
+        "use_negative_info_front": getattr(tracker_cfg, 'use_negative_info_front', False),
+        "use_negative_info_centroid": getattr(tracker_cfg, 'use_negative_info_centroid', False),
+        "use_initialize_centroid": getattr(tracker_cfg, 'use_initialize_centroid', False),
         "avg_nees": float(avg_nees) if avg_nees is not None else None,
         "rmse": float(rmse) if rmse is not None else None,
         "avg_iou": float(avg_iou) if avg_iou is not None else None,

@@ -212,11 +212,14 @@ class TrackerConfig:
     pos_north_std_dev: float = 0.3
     pos_east_std_dev: float = 0.3
     heading_std_dev: float = 0.1
+
     length_std_dev: float = 0.1
     width_std_dev: float = 0.1
+    pca_std_dev_scale: float = 0.1
 
     lidar_std_dev: float = 0.15
     
+    debug_prints: bool = False
 
     # Accepts State_GP or State_PCA
     initial_state: Optional[Any] = None 

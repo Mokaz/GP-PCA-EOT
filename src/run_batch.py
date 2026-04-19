@@ -61,12 +61,13 @@ if __name__ == "__main__":
         "scenario": ["baseline", "wrong_shape"],
         # "lidar.num_rays": [1024],
         "method": ["implicit_ekf", "implicit_iekf"],
-        "selected_boat_id": ["154"],
+        "selected_boat_id": ["103", "154"],
         "selected_trajectory": ["waypoints2"],
         "tracker.use_D_imp_for_R": [True, False],
         "tracker.use_scaled_R": [True, False],
-        "tracker.use_negative_info": [True, False],
-        # "tracker.use_exact_extreme_angle": [False],
+        "tracker.use_negative_info_angular": [True, False],
+        "tracker.use_negative_info_front": [True, False],
+        "tracker.use_negative_info_centroid": [True, False],
         "tracker.use_initialize_centroid": [True, False],
     }
 
@@ -165,7 +166,7 @@ if __name__ == "__main__":
         # Custom user settings
         config.sim.use_cache = True
         config.lidar.lidar_gt_std_dev = 0.0
-        config.tracker.use_initialize_centroid = False
+        # config.tracker.use_initialize_centroid = False
         config.tracker.process_model = "inflation"
 
         # config.tracker.use_D_imp_for_R = True
