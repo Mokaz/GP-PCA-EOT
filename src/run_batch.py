@@ -71,7 +71,7 @@ if __name__ == "__main__":
         # "tracker.use_negative_info_front": [True, False],
         # "tracker.use_negative_info_centroid": [True, False],
         # "tracker.use_initialize_centroid": [True, False],
-        "tracker.use_LW_soft_extent_prior": [False, True],
+        "tracker.use_absolute_L_W_prior": [False, True],
         "tracker.use_L_W_aspect_ratio_prior": [False, True]
     }
 

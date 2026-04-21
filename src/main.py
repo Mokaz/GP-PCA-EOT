@@ -248,7 +248,7 @@ if __name__ == "__main__":
         config.tracker.use_negative_info_front = True
         config.tracker.use_negative_info_centroid = True
 
-        config.tracker.use_LW_soft_extent_prior = False
+        config.tracker.use_absolute_L_W_prior = False
         config.tracker.use_L_W_aspect_ratio_prior = False
 
         # Unique Name
