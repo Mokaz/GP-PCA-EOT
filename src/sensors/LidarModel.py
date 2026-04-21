@@ -152,6 +152,27 @@ class LidarMeasurementModel(SensorModel[Sequence[LidarScan]]):
 
         return z_pred.flatten('F') # Return as flat array[x1, y1, x2, y2...]
     
+    def get_implicit_angles(self, x: np.ndarray, z_measurements_global: np.ndarray) -> np.ndarray:
+        """
+        Lightweight function to calculate ONLY the implicit parametric angles.
+        Bypasses the heavy Jacobian/Matrix assembly, making it incredibly fast for Sigma Points.
+        """
+        L = x[6]
+        W = x[7]
+        pos = x[:2].reshape(2, 1)
+        R_mat = rot2D(x[2])
+        
+        # Transform measurements to local body frame
+        z_loc = R_mat.T @ (z_measurements_global - pos) # Shape (2, N)
+        
+        # Normalized coordinates
+        x_tilde = z_loc[0, :] / L
+        y_tilde = z_loc[1, :] / W
+        
+        # Calculate and return Theta
+        angles = np.arctan2(y_tilde, x_tilde)
+        return angles
+    
     def get_implicit_matrices(self, x: np.ndarray, z_measurements_global: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Calculates the Implicit State Jacobian (H_total), 

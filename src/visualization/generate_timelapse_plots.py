@@ -179,7 +179,11 @@ def main():
     parser.add_argument('--num_snapshots', type=int, default=4, help='Number of snapshot timesteps to plot (default: 4)')
     args = parser.parse_args()
 
-    files = sorted(list(SIMDATA_PATH.glob("*.pkl")))
+    # Search recursively to handle runs inside their own directories
+    all_files = list(SIMDATA_PATH.rglob("*.pkl"))
+    # Filter out historical/old runs to process only the active new results
+    files = sorted([f for f in all_files if not f.parent.name.startswith("old") and "old" not in f.parts])
+    
     if not files:
         print("No .pkl files found in results folder.")
         return

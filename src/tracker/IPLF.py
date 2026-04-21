@@ -47,6 +47,13 @@ class IPLF(Tracker):
         self.use_exact_extreme_angle = getattr(config.tracker, 'use_exact_extreme_angle', False)
         self.use_scaled_R = getattr(config.tracker, 'use_scaled_R', False)
         self.debug_prints = getattr(config.tracker, 'debug_prints', False)
+        self.use_absolute_L_W_prior = getattr(config.tracker, 'use_absolute_L_W_prior', False)
+        self.prior_target_L = getattr(config.tracker, 'prior_target_L', 20.0)
+        self.prior_target_W = getattr(config.tracker, 'prior_target_W', 6.0)
+        self.prior_size_std = getattr(config.tracker, 'prior_size_std', 5.0)
+        self.use_L_W_aspect_ratio_prior = getattr(config.tracker, 'use_L_W_aspect_ratio_prior', False)
+        self.prior_aspect_ratio = getattr(config.tracker, 'prior_aspect_ratio', 3.5)
+        self.prior_ratio_std = getattr(config.tracker, 'prior_ratio_std', 1.0)
 
     def _get_sigma_points(self, mean: np.ndarray, cov: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -99,8 +106,8 @@ class IPLF(Tracker):
         num_meas = measurements_local.x.shape[0]
 
         lidar_pos = self.sensor_model.lidar_position.reshape(2, 1)
-        measurements_global_coords = measurements_local + lidar_pos
-        z_flat = measurements_global_coords.flatten('F')
+        z_measurements_global_coords = measurements_local + lidar_pos
+        z_flat = z_measurements_global_coords.flatten('F')
         
         # Initialize Iteration Variables
         state_iter_mean = state_prior_mean.copy()
@@ -137,7 +144,7 @@ class IPLF(Tracker):
             Z_sigmas =[]
             for X in sigmas:
                 # 1a. Find implicit angles for this specific sigma point
-                _, _, theta_imp = self.sensor_model.get_implicit_matrices(X, measurements_global_coords)
+                theta_imp = self.sensor_model.get_implicit_angles(X, z_measurements_global_coords)
                 
                 # 1b. Predict measurements
                 Z = self.sensor_model.h_from_theta(X, theta_imp)
@@ -168,7 +175,7 @@ class IPLF(Tracker):
             # Omega is the Linearization Noise (Captures non-linearity uncertainty)
             Omega_imp = Phi - A_imp @ state_iter_cov @ A_imp.T
             Omega_imp = (Omega_imp + Omega_imp.T) / 2 
-            
+
             # --- DIAGNOSTIC PRINT ---
             if self.debug_prints:
                 evals_omega = np.linalg.eigvalsh(Omega_imp)
@@ -268,25 +275,61 @@ class IPLF(Tracker):
             virtual_constraints_iterates.append(current_virtual_constraints)
 
             # =================================================================
-            # 4. SOFT EXTENT PRIOR FUSION
+            # 4. SOFT L and W EXTENT PRIOR
             # =================================================================
-            expected_L = self.config.extent.shape_params_true.get("L", 28.0)
-            expected_W = self.config.extent.shape_params_true.get("W", 8.0)
-            
-            H_prior = np.zeros((2, len(state_iter_mean)))
-            H_prior[0, 6] = 1.0  
-            H_prior[1, 7] = 1.0  
-            
-            # Extent prior naturally operates on the prior mean, no wrapping needed
-            innov_L = expected_L - state_prior_mean[6]
-            innov_W = expected_W - state_prior_mean[7]
-            innov_prior = np.array([innov_L, innov_W])
-            
-            R_prior = np.diag([5.0**2, 5.0**2])
-            
-            H_fused = np.vstack((H_fused, H_prior))
-            innovation_fused = np.append(innovation_fused, innov_prior)
-            R_fused = block_diag(R_fused, R_prior)
+            H_prior_list = []
+            innov_prior_list =[]
+            R_prior_list =[]
+
+            # A. Absolute Size Prior
+            if self.use_absolute_L_W_prior:
+                L_target = self.prior_target_L
+                W_target = self.prior_target_W
+                std_size = self.prior_size_std
+
+                H_size = np.zeros((2, len(state_iter_mean)))
+                H_size[0, 6] = 1.0  # d/dL
+                H_size[1, 7] = 1.0  # d/dW
+
+                # Innovation against the prior state
+                innov_size = np.array([
+                    L_target - state_prior_mean[6],
+                    W_target - state_prior_mean[7]
+                ])
+                R_size = np.diag([std_size**2, std_size**2])
+
+                H_prior_list.append(H_size)
+                innov_prior_list.append(innov_size)
+                R_prior_list.append(R_size)
+
+            # B. Aspect Ratio Prior
+            if self.use_L_W_aspect_ratio_prior:
+                target_ratio = self.prior_aspect_ratio
+                std_ratio = self.prior_ratio_std 
+
+                # 1*L - target_ratio*W = 0
+                H_ratio = np.zeros((1, len(state_iter_mean)))
+                H_ratio[0, 6] = 1.0
+                H_ratio[0, 7] = -target_ratio
+
+                innov_ratio = np.array([
+                    0.0 - (state_prior_mean[6] - target_ratio * state_prior_mean[7])
+                ])
+                R_ratio = np.array([[std_ratio**2]])
+
+                H_prior_list.append(H_ratio)
+                innov_prior_list.append(innov_ratio)
+                R_prior_list.append(R_ratio)
+
+            # C. Fuse active priors into the Kalman matrices
+            if H_prior_list:
+                H_prior_stacked = np.vstack(H_prior_list)
+                innov_prior_stacked = np.concatenate(innov_prior_list)
+                R_prior_stacked = block_diag(*R_prior_list)
+
+                H_fused = np.vstack((H_fused, H_prior_stacked))
+                innovation_fused = np.append(innovation_fused, innov_prior_stacked)
+                R_fused = block_diag(R_fused, R_prior_stacked)
 
             # =================================================================
             # 5. KALMAN UPDATE (Solving for next Iteration Posterior)

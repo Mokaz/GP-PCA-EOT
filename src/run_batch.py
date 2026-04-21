@@ -58,17 +58,21 @@ if __name__ == "__main__":
     # Keys: dot-notation path to attribute (or "method" for the tracker type)
     # Values: List of options to sweep over
     param_grid = {
-        "scenario": ["baseline", "wrong_shape"],
+        "scenario": ["baseline"],
         # "lidar.num_rays": [1024],
-        "method": ["implicit_ekf", "implicit_iekf"],
-        "selected_boat_id": ["103", "154"],
+        "method": ["implicit_ekf"],
+        "selected_boat_id": ["154"],
         "selected_trajectory": ["waypoints2"],
-        "tracker.use_D_imp_for_R": [True, False],
-        "tracker.use_scaled_R": [True, False],
-        "tracker.use_negative_info_angular": [True, False],
-        "tracker.use_negative_info_front": [True, False],
-        "tracker.use_negative_info_centroid": [True, False],
-        "tracker.use_initialize_centroid": [True, False],
+        # "tracker.pca_std_dev_scale": [0.1, 0.3, 0.5],
+        # "tracker.lidar_std_dev": [0.1, 0.15, 0.3, 0.5],
+        # "tracker.use_D_imp_for_R": [True, False],
+        # "tracker.use_scaled_R": [True, False],
+        # "tracker.use_negative_info_angular": [True, False],
+        # "tracker.use_negative_info_front": [True, False],
+        # "tracker.use_negative_info_centroid": [True, False],
+        # "tracker.use_initialize_centroid": [True, False],
+        "tracker.use_LW_soft_extent_prior": [False, True],
+        "tracker.use_L_W_aspect_ratio_prior": [False, True]
     }
 
     # --- 2. Generate Combinations ---
@@ -169,8 +173,15 @@ if __name__ == "__main__":
         # config.tracker.use_initialize_centroid = False
         config.tracker.process_model = "inflation"
 
-        # config.tracker.use_D_imp_for_R = True
-        # config.tracker.use_scaled_R = False
+        config.tracker.use_initialize_centroid = False
+        config.tracker.use_D_imp_for_R = False
+
+        config.tracker.use_state_clamping = True
+        config.tracker.use_mahalanobis_projection = True
+
+        config.tracker.use_negative_info_angular = True
+        config.tracker.use_negative_info_front = True
+        config.tracker.use_negative_info_centroid = True
         
         # Standardize naming: method + scenario + boat + params + traj + seed
         config.sim.name = f"{method_name}_{scenario_name}_boat{selected_boat_id}{param_suffix}_{config.sim.trajectory.type}_seed_{config.sim.seed}"

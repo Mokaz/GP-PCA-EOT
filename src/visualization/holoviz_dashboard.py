@@ -1132,11 +1132,26 @@ def get_covariance_view(matrix_name, frame_idx, filename):
     
     return pn.pane.HoloViews(heatmap, sizing_mode="stretch_both")
 
-@pn.depends(cov_matrix_selector.param.value, file_selector.param.value)
-def get_condition_number_view(matrix_name, filename):
+cond_auto_calc_checkbox = pn.widgets.Checkbox(name='Auto-Calculate Condition Number', value=False, margin=(5, 10, 5, 0))
+cond_calc_button = pn.widgets.Button(name='Calculate Now', button_type='primary', width=120, margin=(5, 10, 5, 10))
+cond_content_pane = pn.Column(pn.pane.Markdown("### Select a file to view Condition Number over Time"), sizing_mode="stretch_both")
+
+def update_cond_view(event=None, force=False):
+    matrix_name = cov_matrix_selector.value
+    filename = file_selector.value
+    
+    if not filename:
+        cond_content_pane.objects = [pn.pane.Markdown("### Select a file to view Condition Number over Time")]
+        return
+        
+    if not force and not cond_auto_calc_checkbox.value:
+        cond_content_pane.objects = [pn.pane.Markdown(f"### Auto-calculation disabled for Condition Number. Click 'Calculate Now' below.")]
+        return
+
     loaded_data = load_data(filename)
     if not loaded_data:
-        return pn.pane.Markdown("### Select a file to begin.")
+        cond_content_pane.objects = [pn.pane.Markdown("### Error loading data.")]
+        return
 
     sim_result = loaded_data["sim_result"]
     attr_name = COV_MATRIX_MAPPING[matrix_name]
@@ -1157,7 +1172,8 @@ def get_condition_number_view(matrix_name, filename):
             pass
             
     if not frames:
-        return pn.pane.Markdown(f"### No valid covariance data to compute condition numbers for {matrix_name}.")
+        cond_content_pane.objects = [pn.pane.Markdown(f"### No valid covariance data to compute condition numbers for {matrix_name}.")]
+        return
         
     df = pd.DataFrame({'Frame': frames, 'Condition Number': cond_numbers}).set_index('Frame')
     
@@ -1171,16 +1187,36 @@ def get_condition_number_view(matrix_name, filename):
         line_width=2
     )
 
-    return pn.pane.HoloViews(plot, sizing_mode="stretch_both")
+    cond_content_pane.objects = [pn.pane.HoloViews(plot, sizing_mode="stretch_both")]
 
-@pn.depends(nis_field_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
-def get_nis_view(selected_field, filename, backend):
+cond_calc_button.on_click(lambda e: update_cond_view(force=True))
+file_selector.param.watch(lambda e: update_cond_view(force=False), 'value')
+cov_matrix_selector.param.watch(lambda e: update_cond_view(force=False), 'value')
+cond_auto_calc_checkbox.param.watch(lambda e: update_cond_view(force=True) if e.new else None, 'value')
+
+nis_auto_calc_checkbox = pn.widgets.Checkbox(name='Auto-Calculate NIS', value=False, margin=(5, 10, 5, 0))
+nis_calc_button = pn.widgets.Button(name='Calculate Now', button_type='primary', width=120, margin=(5, 10, 5, 10))
+nis_content_pane = pn.Column(pn.pane.Markdown("### Select a file to view NIS"), sizing_mode="stretch_both")
+
+def update_nis_view(event=None, force=False):
+    selected_field = nis_field_selector.value
+    filename = file_selector.value
+    backend = plot_backend_selector.value
+    
+    if not filename:
+        nis_content_pane.objects = [pn.pane.Markdown("### Select a file to view NIS")]
+        return
+        
+    if not force and not nis_auto_calc_checkbox.value:
+        nis_content_pane.objects = [pn.pane.Markdown(f"### Auto-calculation disabled for NIS. Click 'Calculate Now' below.")]
+        return
+
     loaded_data = load_data(filename)
     if not loaded_data:
-        return pn.pane.Markdown("### Select a file to begin.")
+        nis_content_pane.objects = [pn.pane.Markdown("### Error loading data.")]
+        return
     
     consistency_analyzer = loaded_data["consistency_analyzer"]
-    
     fields_to_plot = ["all"]
     
     if backend == 'Matplotlib':
@@ -1189,8 +1225,9 @@ def get_nis_view(selected_field, filename, backend):
             fields_nis=fields_to_plot
         )
         if fig is None:
-             return pn.pane.Markdown("### No NIS data available.")
-        return pn.pane.Matplotlib(fig, sizing_mode='stretch_both')
+             nis_content_pane.objects = [pn.pane.Markdown("### No NIS data available.")]
+             return
+        nis_content_pane.objects = [pn.pane.Matplotlib(fig, sizing_mode='stretch_both')]
     else:
         bokeh_plot = interactive_show_consistency(
             analysis=consistency_analyzer, 
@@ -1198,9 +1235,16 @@ def get_nis_view(selected_field, filename, backend):
         )
 
         if bokeh_plot is None:
-            return pn.pane.Markdown("### No NIS data available.")
+            nis_content_pane.objects = [pn.pane.Markdown("### No NIS data available.")]
+            return
         
-        return pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')
+        nis_content_pane.objects = [pn.pane.Bokeh(bokeh_plot, sizing_mode='stretch_both')]
+
+nis_calc_button.on_click(lambda e: update_nis_view(force=True))
+file_selector.param.watch(lambda e: update_nis_view(force=False), 'value')
+nis_field_selector.param.watch(lambda e: update_nis_view(force=False), 'value')
+plot_backend_selector.param.watch(lambda e: update_nis_view(force=False), 'value')
+nis_auto_calc_checkbox.param.watch(lambda e: update_nis_view(force=True) if e.new else None, 'value')
 
 
 @pn.depends(error_group_selector.param.value, custom_states_selector.param.value, file_selector.param.value, plot_backend_selector.param.value)
@@ -1689,8 +1733,18 @@ plotly_view = pn.Column(persistent_plotly_pane, sizing_mode="stretch_both")
 nees_view = pn.Column(get_nees_view, sizing_mode="stretch_both")
 error_view = pn.Column(get_error_view, sizing_mode="stretch_both")
 covariance_view = pn.Column(get_covariance_view, sizing_mode="stretch_both")
-condition_number_view = pn.Column(get_condition_number_view, sizing_mode="stretch_both")
-nis_view = pn.Column(get_nis_view, sizing_mode="stretch_both")
+
+condition_number_view = pn.Column(
+    pn.Row(cond_calc_button, cond_auto_calc_checkbox, sizing_mode="stretch_width", align='center'),
+    cond_content_pane, 
+    sizing_mode="stretch_both"
+)
+nis_view = pn.Column(
+    pn.Row(nis_calc_button, nis_auto_calc_checkbox, sizing_mode="stretch_width", align='center'),
+    nis_content_pane, 
+    sizing_mode="stretch_both"
+)
+
 data_browser_view = pn.Column(
     data_browser_depth_slider, 
     data_browser_json_pane, 

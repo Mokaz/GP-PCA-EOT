@@ -248,6 +248,9 @@ if __name__ == "__main__":
         config.tracker.use_negative_info_front = True
         config.tracker.use_negative_info_centroid = True
 
+        config.tracker.use_LW_soft_extent_prior = False
+        config.tracker.use_L_W_aspect_ratio_prior = False
+
         # Unique Name
         # config.sim.name = f"Neg_info_test_boat{boat_id}_{tracker_cfg.process_model}_{config.sim.trajectory.type}_{method}"
         config.sim.name = f"cubature_fix_{method}"

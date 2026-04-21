@@ -215,7 +215,7 @@ class TrackerConfig:
 
     length_std_dev: float = 0.1
     width_std_dev: float = 0.1
-    pca_std_dev_scale: float = 0.1
+    pca_std_dev_scale: float = 0.3
 
     lidar_std_dev: float = 0.15
     
@@ -244,6 +244,16 @@ class TrackerConfig:
     use_D_imp_for_R: bool = True
     use_scaled_R: bool = False
     R_arc_std: float = 0.01
+
+    # --- Soft Extent Priors ---
+    use_absolute_L_W_prior: bool = False
+    prior_target_L: float = 20.0
+    prior_target_W: float = 6.0
+    prior_size_std: float = 5.0
+
+    use_L_W_aspect_ratio_prior: bool = True
+    prior_aspect_ratio: float = 3.8  # L / W
+    prior_ratio_std: float = 5.0     # Tolerance in meters
 
     def __post_init__(self):
         if self.initial_state is None:
