@@ -58,11 +58,10 @@ def load_data(sim_name):
     base_path = Path(SIMDATA_PATH)
     pkl_path = None
     
-    # Support backward compatibility
-    if (base_path / sim_name / f"{sim_name}.pkl").exists():
-        pkl_path = base_path / sim_name / f"{sim_name}.pkl"
-    elif (base_path / f"{sim_name}.pkl").exists():
-        pkl_path = base_path / f"{sim_name}.pkl"
+    # Support backward compatibility and nested runs
+    pkl_matches = list(base_path.rglob(f"{sim_name}.pkl"))
+    if pkl_matches:
+        pkl_path = pkl_matches[0]
     elif (base_path / sim_name).exists() and sim_name.endswith('.pkl'):
         pkl_path = base_path / sim_name
     else:

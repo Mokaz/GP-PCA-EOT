@@ -60,19 +60,19 @@ if __name__ == "__main__":
     param_grid = {
         "scenario": ["baseline"],
         # "lidar.num_rays": [1024],
-        "method": ["implicit_ekf"],
+        "method": ["implicit_ekf", "implicit_smoother"],
         "selected_boat_id": ["154"],
         "selected_trajectory": ["waypoints2"],
         # "tracker.pca_std_dev_scale": [0.1, 0.3, 0.5],
-        # "tracker.lidar_std_dev": [0.1, 0.15, 0.3, 0.5],
+        "tracker.lidar_std_dev": [0.05, 0.15, 0.2, 0.3, 0.5],
         # "tracker.use_D_imp_for_R": [True, False],
         # "tracker.use_scaled_R": [True, False],
         # "tracker.use_negative_info_angular": [True, False],
         # "tracker.use_negative_info_front": [True, False],
         # "tracker.use_negative_info_centroid": [True, False],
         # "tracker.use_initialize_centroid": [True, False],
-        "tracker.use_absolute_L_W_prior": [False, True],
-        "tracker.use_L_W_aspect_ratio_prior": [False, True]
+        "tracker.use_absolute_L_W_prior": [True],
+        "tracker.use_L_W_aspect_ratio_prior": [True]
     }
 
     # --- 2. Generate Combinations ---

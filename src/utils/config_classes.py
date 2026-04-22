@@ -255,6 +255,9 @@ class TrackerConfig:
     prior_aspect_ratio: float = 3.8  # L / W
     prior_ratio_std: float = 5.0     # Tolerance in meters
 
+    # Smoother specific
+    smoother_window_size: int = 10
+
     def __post_init__(self):
         if self.initial_state is None:
             from src.states.states import State_PCA
