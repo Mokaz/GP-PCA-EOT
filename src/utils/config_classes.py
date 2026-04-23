@@ -174,6 +174,17 @@ class ExtentConfig:
                 else:
                     radii[idx] = np.interp(np.pi - angle, angles_interpol, r_interpol, period=2*np.pi)
 
+        elif shape_type == "true_extent":
+            true_radii = shape_params_true.get("radii")
+            true_angles = shape_params_true.get("angles")
+            if true_radii is None or true_angles is None:
+                raise ValueError("true_extent requires 'radii' and 'angles'")
+            true_radii = np.array(true_radii).flatten()
+            true_angles = np.array(true_angles).flatten()
+            # Ensure angles are sorted and unwrap if needed for interpolation
+            sort_idx = np.argsort(true_angles)
+            radii = np.interp(angles, true_angles[sort_idx], true_radii[sort_idx], period=2*np.pi)
+
         else:
             raise ValueError(f"Unknown ground truth shape type: {shape_type}")
 

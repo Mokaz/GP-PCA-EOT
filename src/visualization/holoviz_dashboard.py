@@ -113,6 +113,17 @@ def load_summary_dataframe():
     if "name" not in df.columns:
         if "filename" in df.columns:
             df["name"] = df["filename"].apply(lambda x: Path(x).stem)
+            
+    cols = df.columns.tolist()
+    first_cols = []
+    if 'date' in cols:
+        first_cols.append('date')
+    if 'name' in cols:
+        first_cols.append('name')
+        
+    other_cols = [c for c in cols if c not in first_cols]
+    df = df[first_cols + other_cols]
+            
     return df
 
 summary_df = load_summary_dataframe()
@@ -789,13 +800,18 @@ def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_
     sim_result = loaded_data["sim_result"]
     config = loaded_data["config"]
     pca_params = loaded_data["pca_params"]
-    ground_truth_states = list(sim_result.ground_truth_ts.values)
-    tracker_results = list(sim_result.tracker_results_ts.values)
 
-    if frame_idx >= len(ground_truth_states):
+    tracker_results = list(sim_result.tracker_results_ts.values)
+    
+    # Optional history list
+    ground_truth_states = []
+    if sim_result.ground_truth_ts is not None and len(sim_result.ground_truth_ts.values) > 0:
+        ground_truth_states = list(sim_result.ground_truth_ts.values)
+
+    if frame_idx >= len(tracker_results):
         return
 
-    gt_state = ground_truth_states[frame_idx]
+    gt_state = ground_truth_states[frame_idx] if frame_idx < len(ground_truth_states) else None
     tracker_result = tracker_results[frame_idx]
     est_state = tracker_result.state_posterior.mean
 
@@ -807,7 +823,7 @@ def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_
             gt_state=gt_state,
             est_state=tracker_result.state_posterior.mean,
             z_lidar_cart=tracker_result.measurements.reshape((-1, 2)),
-            ground_truth_history=ground_truth_states[:frame_idx],
+            ground_truth_history=ground_truth_states[:frame_idx] if ground_truth_states else [],
             config=config,
             pca_params=pca_params,
             virtual_constraints=None
@@ -1047,6 +1063,9 @@ def get_nees_view(selected_groups, custom_states, filename, backend):
         
     consistency_analyzer = loaded_data["consistency_analyzer"]
     
+    if consistency_analyzer.x_gts is None:
+        return pn.pane.Markdown("### No ground truth available to compute NEES for this dataset.")
+    
     if backend == 'Matplotlib':
         fig = matplotlib_show_consistency(
             analysis=consistency_analyzer, 
@@ -1268,6 +1287,9 @@ def get_error_view(selected_groups, custom_states, filename, backend):
         
     consistency_analyzer = loaded_data["consistency_analyzer"]
     
+    if consistency_analyzer.x_gts is None:
+        return pn.pane.Markdown("### No ground truth available to compute Error for this dataset.")
+    
     if backend == 'Matplotlib':
         fig = matplotlib_show_error(
             analysis=consistency_analyzer, 
@@ -1416,8 +1438,8 @@ def update_data_browser_view(mode, frame_idx, filename, depth):
         data_to_show = {
             "num_frames_analyzed": len(consistency_analyzer.x_err_gauss) if hasattr(consistency_analyzer, 'x_err_gauss') else 0,
             "has_ground_truth": consistency_analyzer.x_gts is not None,
-            "average_nees": safe_serialize(consistency_analyzer.get_nees(indices='all').a) if consistency_analyzer.x_gts else "N/A",
-            "average_nis": safe_serialize(consistency_analyzer.get_nis(indices='all').a),
+            "average_nees": safe_serialize(consistency_analyzer.get_nees(indices='all').a) if (consistency_analyzer.x_gts is not None and consistency_analyzer.get_nees(indices='all') is not None) else "N/A",
+            "average_nis": safe_serialize(consistency_analyzer.get_nis(indices='all').a) if consistency_analyzer.get_nis(indices='all') is not None else "N/A",
         }
             
     elif mode == 'Config':

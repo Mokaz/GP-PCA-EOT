@@ -166,6 +166,10 @@ def show_consistency(analysis: ConsistencyAnalysis,
             else:
                 data = analysis.get_nees(field)
 
+            if data is None:
+                ax.text(0.5, 0.5, 'No Data', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
+                continue
+
             aconf = data.aconf
             insym = '$\\in$' if aconf[0] < data.a < aconf[1] else '$\\notin$'
             aconf_str = f'({aconf[0]:.3f}, {aconf[1]:.3f})'
@@ -310,6 +314,8 @@ def interactive_show_consistency(
         plots_group = []
         for i, field in enumerate(fields):
             data = analysis.get_nis(field) if name == 'NIS' else analysis.get_nees(field)
+            if data is None:
+                continue
             
             plot_title = f'{name} {title}' if i == 0 else ''
             p = figure(title=plot_title, y_axis_type="log")
