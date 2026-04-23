@@ -130,6 +130,7 @@ def create_frame_from_state(est_state, z_lidar_cart, current_timestep, locationx
         data=[
             go.Scatter(x=locationy, y=locationx, mode='lines', name='Vessel Path', line=dict(color='royalblue')),
             go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent (GT)', line=dict(color='black')),
+            go.Scatter(x=[locationy[-1]], y=[locationx[-1]], mode='markers', name='Centroid (GT)', marker=dict(color='black', size=8, symbol='cross')),
             go.Scatter(x=est_shape_y, y=est_shape_x, mode='lines', name='Estimated Extent', line=dict(color='green')),
             go.Scatter(x=lidar_ray_y, y=lidar_ray_x, mode='lines+markers', name='LiDAR Rays', line=dict(color='red', width=1)),
             
@@ -237,6 +238,7 @@ def generate_initial_plotly_fig(gt_state, est_state, config, pca_params):
     if gt_state is not None:
         shape_x, shape_y = compute_exact_vessel_shape_global(gt_state, config.extent.shape_coords_body)
         fig.add_trace(go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent (GT)', line=dict(color='black')))
+        fig.add_trace(go.Scatter(x=[gt_state.y], y=[gt_state.x], mode='markers', name='Centroid (GT)', marker=dict(color='black', size=8, symbol='cross')))
 
     # Add Estimated shape
     est_shape_x, est_shape_y = compute_estimated_shape_global(est_state, config, pca_params)
@@ -257,6 +259,7 @@ def generate_plotly_fig_for_frame(frame_idx, gt_state, est_state, z_lidar_cart, 
     if gt_state is not None:
         shape_x, shape_y = compute_exact_vessel_shape_global(gt_state, config.extent.shape_coords_body)
         fig.add_trace(go.Scatter(x=shape_y, y=shape_x, mode='lines', name='Vessel Extent (GT)', line=dict(color='black')))
+        fig.add_trace(go.Scatter(x=[gt_state.y], y=[gt_state.x], mode='markers', name='Centroid (GT)', marker=dict(color='black', size=8, symbol='cross')))
 
     # Estimated Shape
     est_shape_x, est_shape_y = compute_estimated_shape_global(est_state, config, pca_params)

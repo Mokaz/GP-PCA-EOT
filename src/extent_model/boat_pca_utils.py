@@ -75,23 +75,41 @@ def get_gt_pca_coeffs_for_boat(boat_id: str, N_pca: int, pca_path: str = None) -
             raise ValueError(f"Shape mismatch: PCA Mean {mean_fourier.shape}, Calculated Vec {vec.shape}")
 
     # Project onto Basis
-    # c = M.T @ (x - mu) / s^2  (if M is scaled orthogonal)
-    # Assuming standard eigenvectors from sklearn PCA (orthonormal), then c = M.T @ (x - mu)
+    # Fix: Use norm of each eigenvector, not just the first one
+    norms = np.linalg.norm(eigenvectors, axis=0)
+    norms[norms == 0] = 1.0
+    scaling_factor_sq = norms**2
+    centered_vec = vec - mean_fourier
+    all_coeffs = (eigenvectors.T @ centered_vec) / scaling_factor_sq
     
-    # CHECK SCALING:
-    # In calculate_gt_coeffs_basicshapes.py, it does:
-    # s = np.linalg.norm(eigenvectors[:, 0])
-    # scaling_factor_sq = s**2
-    # all_coeffs = (eigenvectors.T @ centered_vec) / scaling_factor_sq
+    return all_coeffs[:N_pca]
+
+def get_pca_coeffs_from_radii(radii: np.ndarray, angles: np.ndarray, length: float, N_pca: int, pca_path: str = None) -> np.ndarray:
+    """
+    Calculates the Ground Truth PCA coefficients for a given set of radii and angles.
+    """
+    if pca_path is None:
+        pca_path = src_root.parent / 'data' / 'input_parameters' / 'FourierPCAParameters_scaled.npz'
     
-    # If the eigenvectors are scaled by singular values (S), then M^T M = S^2.
-    # The projection to get normalized coefficients (z ~ N(0,1)) is distinct from coefficients used for reconstruction (c = M z).
-    # Wait, usually PCA coeffs are 'scores'. x = mu + scores @ components.
-    # If 'eigenvectors' are the principal components (axes), then scores = (x - mu) @ components.T
+    pca_path = Path(pca_path)
+    if not pca_path.exists():
+        raise FileNotFoundError(f"PCA parameters not found at {pca_path}")
+
+    # Load PCA Model
+    pca_data = np.load(pca_path)
+    mean_fourier = pca_data['mean'].flatten()
+    eigenvectors = pca_data['eigenvectors'] 
+
+    # Normalize radii by length
+    normalized_radii = radii / length
     
-    # Let's follow the logic in `calculate_gt_coeffs_basicshapes.py` exactly to be consistent.
-    s = np.linalg.norm(eigenvectors[:, 0])
-    scaling_factor_sq = s**2
+    # Compute Fourier Transform
+    vec = fourier_transform(angles, normalized_radii, num_coeff=64, symmetry=True).flatten()
+    
+    # Project onto Basis
+    norms = np.linalg.norm(eigenvectors, axis=0)
+    norms[norms == 0] = 1.0
+    scaling_factor_sq = norms**2
     centered_vec = vec - mean_fourier
     all_coeffs = (eigenvectors.T @ centered_vec) / scaling_factor_sq
     

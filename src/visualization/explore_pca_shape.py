@@ -68,6 +68,8 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.rotate_toggle = pn.widgets.Checkbox(name='Rotate 90°', value=False, sizing_mode='stretch_width')
         
         self.reset_btn = pn.widgets.Button(name='Reset Coefficients', button_type='warning', sizing_mode='stretch_width')
+        self.coeff_input = pn.widgets.TextInput(name='Paste Coefficients (comma-separated)', sizing_mode='stretch_width')
+        self.set_coeff_btn = pn.widgets.Button(name='Apply Pasted Coefficients', button_type='primary', sizing_mode='stretch_width')
         
         # Feasibility controls
         self.x_axis_select = pn.widgets.Select(name='X Axis (Feasibility)', options=[], sizing_mode='stretch_width')
@@ -103,6 +105,7 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.n_pca_input.param.watch(self.on_npca_change, 'value')
         self.boat_selector.param.watch(self.on_boat_select, 'value')
         self.reset_btn.on_click(self.reset_coefficients)
+        self.set_coeff_btn.on_click(self.set_coefficients_from_text)
         self.reset_lw_btn.on_click(self.reset_lw)
         
         self.slider_L.param.watch(self._on_manual_change, 'value')
@@ -382,6 +385,32 @@ class ShapeExplorer(pn.viewable.Viewer):
         self.slider_W.value = 6.0
         self._ignore_callbacks = False
         self.trigger_update()
+
+    def set_coefficients_from_text(self, event=None):
+        """Parses the text input and updates sliders."""
+        text = self.coeff_input.value
+        if not text:
+            return
+        
+        try:
+            # Remove brackets if present and split by comma
+            clean_text = text.replace('[', '').replace(']', '').replace('np.array(', '').replace(')', '')
+            values = [float(x.strip()) for x in clean_text.split(',')]
+            
+            self._ignore_callbacks = True
+            for i, val in enumerate(values):
+                if i < len(self.pca_sliders):
+                    self.pca_sliders[i].value = val
+                    self.current_coeffs[i] = val
+                    
+            if self.boat_selector.value != "Custom":
+                self.boat_selector.value = "Custom"
+                
+            self._ignore_callbacks = False
+            self.trigger_update()
+                    
+        except ValueError:
+            print("Invalid input format. Please use comma-separated numbers.")
 
     def trigger_update(self):
         # Update Plotly
@@ -734,6 +763,8 @@ class ShapeExplorer(pn.viewable.Viewer):
             pn.layout.Divider(),
             pn.pane.Markdown("### PCA Coefficients"),
             self.reset_btn,
+            self.coeff_input,
+            self.set_coeff_btn,
             pn.Spacer(height=10),
             self.pca_sliders_column,
             sizing_mode='stretch_width' 
