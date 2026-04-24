@@ -352,10 +352,20 @@ def reset_to_current_preset(event):
 
 reset_preset_button.on_click(reset_to_current_preset)
 
-axis_controls = pn.Accordion(
+show_angle_bounds_checkbox = pn.widgets.Checkbox(name='Show Angle Constraints', value=True, sizing_mode='stretch_width')
+show_front_wall_checkbox = pn.widgets.Checkbox(name='Show Front Wall Constraints', value=True, sizing_mode='stretch_width')
+show_centroid_depth_checkbox = pn.widgets.Checkbox(name='Show Centroid Depth Constraints', value=True, sizing_mode='stretch_width')
+
+plot_settings_controls = pn.Accordion(
     (
-        'Plot Axis Ranges',
+        '2D View Settings',
         pn.Column(
+            pn.pane.Markdown("**Constraint Visibility**"),
+            show_angle_bounds_checkbox,
+            show_front_wall_checkbox,
+            show_centroid_depth_checkbox,
+            pn.layout.Divider(),
+            pn.pane.Markdown("**Plot Axis Ranges**"),
             preset_radio,
             reset_preset_button,
             keep_zoom_checkbox,
@@ -424,7 +434,7 @@ def update_widgets(filename):
     if not loaded_data:
         frame_player.visible = False
         frame_input.visible = False
-        axis_controls.visible = False
+        plot_settings_controls.visible = False
         nees_group_selector.visible = False
         error_group_selector.visible = False
         cov_matrix_selector.visible = False
@@ -514,8 +524,8 @@ def update_widgets(filename):
     frame_input.end = sim_result.config.sim.num_frames
     frame_input.value = 1
     frame_input.visible = True
-    axis_controls.visible = True
-    
+    plot_settings_controls.visible = True
+
     # Update NEES Group Selector
     nees_group_selector.options = dynamic_nees_mapping
     nees_group_selector.value = ['all']
@@ -789,7 +799,7 @@ persistent_plotly_pane = pn.pane.Plotly(
     config={'responsive': True}
 )
 
-def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_max, keep_zoom, reset_count):
+def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_max, keep_zoom, reset_count, show_angle_bounds, show_front_wall, show_centroid_depth):
     loaded_data = load_data(filename)
 
     if not loaded_data:
@@ -802,8 +812,6 @@ def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_
     pca_params = loaded_data["pca_params"]
 
     tracker_results = list(sim_result.tracker_results_ts.values)
-    
-    # Optional history list
     ground_truth_states = []
     if sim_result.ground_truth_ts is not None and len(sim_result.ground_truth_ts.values) > 0:
         ground_truth_states = list(sim_result.ground_truth_ts.values)
@@ -829,20 +837,27 @@ def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_
             virtual_constraints=None
         )
 
-    # Function to draw virtual constraints (Negative Info)
-    def draw_vci(vci_list, label_suffix, draw_measured_bounds=True):
+    # --- UPDATED INTERNAL FUNCTION ---
+    def draw_vci(vci_list, label_suffix, is_first_iteration=True):
         if not vci_list:
             return
         lidar_pos = config.lidar.lidar_position
+        
+        # Accumulators for different trace types
         virt_pts_x, virt_pts_y = [], []
-        virt_rays_x, virt_rays_y = [], []
         virt_pred_rays_x, virt_pred_rays_y = [], []
+        virt_rays_x, virt_rays_y = [], []
         fw_arcs_x, fw_arcs_y = [], []
         cd_arcs_x, cd_arcs_y = [], []
+
         for vc in vci_list:
             c_type = vc.get('type', 'min_angle')
             
+            # 1. Handle Angular Constraints
             if c_type in ['min_angle', 'max_angle'] or 'predicted_point' in vc:
+                if not show_angle_bounds:
+                    continue
+                
                 pt_global = vc['predicted_point']
                 virt_pts_x.append(pt_global[0])
                 virt_pts_y.append(pt_global[1])
@@ -852,66 +867,74 @@ def update_plotly_view(frame_idx, filename, iterate_sel, x_min, x_max, y_min, y_
                 virt_pred_rays_x.extend([lidar_pos[0], p_ray_end[0], None])
                 virt_pred_rays_y.extend([lidar_pos[1], p_ray_end[1], None])
                 
-                if draw_measured_bounds:
+                # Only draw the dashed "Measured" bound if it's the first iteration shown 
+                # (to avoid clutter) AND if the checkbox is on
+                if is_first_iteration:
                     angle = vc.get('measured_val', vc.get('measured_angle'))
                     if angle is not None:
                         ray_end = np.array(lidar_pos) + config.lidar.max_distance * np.array([np.cos(angle), np.sin(angle)])
                         virt_rays_x.extend([lidar_pos[0], ray_end[0], None])
                         virt_rays_y.extend([lidar_pos[1], ray_end[1], None])
             
+            # 2. Handle Front Wall Constraints
             elif c_type == 'front_wall':
-                if draw_measured_bounds:
-                    radius = vc.get('measured_val')
-                    if radius is not None:
-                        arc_angles = np.linspace(-np.pi, np.pi, 50)
-                        for a in arc_angles:
-                            fw_arcs_x.append(lidar_pos[0] + radius * np.cos(a))
-                            fw_arcs_y.append(lidar_pos[1] + radius * np.sin(a))
-                        fw_arcs_x.append(None)
-                        fw_arcs_y.append(None)
+                if not show_front_wall:
+                    continue
+                radius = vc.get('measured_val')
+                if radius is not None and is_first_iteration:
+                    arc_angles = np.linspace(-np.pi, np.pi, 50)
+                    for a in arc_angles:
+                        fw_arcs_x.append(lidar_pos[0] + radius * np.cos(a))
+                        fw_arcs_y.append(lidar_pos[1] + radius * np.sin(a))
+                    fw_arcs_x.append(None)
+                    fw_arcs_y.append(None)
                         
+            # 3. Handle Centroid Depth Constraints
             elif c_type == 'centroid_depth':
-                if draw_measured_bounds:
-                    radius = vc.get('measured_val')
-                    if radius is not None:
-                        arc_angles = np.linspace(-np.pi, np.pi, 50)
-                        for a in arc_angles:
-                            cd_arcs_x.append(lidar_pos[0] + radius * np.cos(a))
-                            cd_arcs_y.append(lidar_pos[1] + radius * np.sin(a))
-                        cd_arcs_x.append(None)
-                        cd_arcs_y.append(None)
+                if not show_centroid_depth:
+                    continue
+                radius = vc.get('measured_val')
+                if radius is not None and is_first_iteration:
+                    arc_angles = np.linspace(-np.pi, np.pi, 50)
+                    for a in arc_angles:
+                        cd_arcs_x.append(lidar_pos[0] + radius * np.cos(a))
+                        cd_arcs_y.append(lidar_pos[1] + radius * np.sin(a))
+                    cd_arcs_x.append(None)
+                    cd_arcs_y.append(None)
             
+        # Add the traces to the figure if they have data
         if virt_pts_x:
-            fig.add_trace(go.Scatter(x=virt_pts_y, y=virt_pts_x, mode='markers', name=f'Pred. Angle Pts {label_suffix}', marker=dict(color='saddlebrown', size=8, symbol='diamond')))
-            fig.add_trace(go.Scatter(x=virt_pred_rays_y, y=virt_pred_rays_x, mode='lines', name=f'Pred. Angle Rays {label_suffix}', line=dict(color='saddlebrown', width=1)))
+            fig.add_trace(go.Scatter(x=virt_pts_y, y=virt_pts_x, mode='markers', name=f'Pred. Pts {label_suffix}', marker=dict(color='saddlebrown', size=8, symbol='diamond')))
+            fig.add_trace(go.Scatter(x=virt_pred_rays_y, y=virt_pred_rays_x, mode='lines', name=f'Pred. Rays {label_suffix}', line=dict(color='saddlebrown', width=1)))
         
-        if draw_measured_bounds and virt_rays_x:
-            fig.add_trace(go.Scatter(x=virt_rays_y, y=virt_rays_x, mode='lines', name=f'Meas. Angle Bounds {label_suffix}', line=dict(color='saddlebrown', width=1, dash='dash')))
+        if virt_rays_x:
+            fig.add_trace(go.Scatter(x=virt_rays_y, y=virt_rays_x, mode='lines', name=f'Meas. Bounds {label_suffix}', line=dict(color='saddlebrown', width=1, dash='dash')))
 
-        if draw_measured_bounds and fw_arcs_x:
-            fig.add_trace(go.Scatter(x=fw_arcs_y, y=fw_arcs_x, mode='lines', name=f'Front Wall Range {label_suffix}', line=dict(color='red', width=1.5, dash='dot')))
+        if fw_arcs_x:
+            fig.add_trace(go.Scatter(x=fw_arcs_y, y=fw_arcs_x, mode='lines', name=f'Front Wall {label_suffix}', line=dict(color='red', width=1.5, dash='dot')))
             
-        if draw_measured_bounds and cd_arcs_x:
-            fig.add_trace(go.Scatter(x=cd_arcs_y, y=cd_arcs_x, mode='lines', name=f'Centroid Max Range {label_suffix}', line=dict(color='blue', width=1.5, dash='dashdot')))
+        if cd_arcs_x:
+            fig.add_trace(go.Scatter(x=cd_arcs_y, y=cd_arcs_x, mode='lines', name=f'Centroid Max {label_suffix}', line=dict(color='blue', width=1.5, dash='dashdot')))
 
+    # --- END UPDATED INTERNAL FUNCTION ---
+
+    # Call draw_vci based on the iterate selector
     try:
         if hasattr(tracker_result, 'virtual_constraints_info') and tracker_result.virtual_constraints_info:
             vci = tracker_result.virtual_constraints_info
             
-            # Check if it's the new list of lists format
             if isinstance(vci, list) and len(vci) > 0 and isinstance(vci[0], list):
                 if iterate_sel == 'Final':
-                    draw_vci(vci[-1], '(Final)')
+                    draw_vci(vci[-1], '(Final)', is_first_iteration=True)
                 elif iterate_sel.startswith('Iterate'):
                     idx = int(iterate_sel.split(' ')[1])
                     if idx < len(vci):
-                        draw_vci(vci[idx], f'({iterate_sel})')
+                        draw_vci(vci[idx], f'({iterate_sel})', is_first_iteration=True)
                 elif iterate_sel == 'All':
-                    # Only draw the true unmoving measured bounds ray once 
                     for i, cycle_vci in enumerate(vci):
-                        draw_vci(cycle_vci, f'(It {i})', draw_measured_bounds=(i == 0))
+                        draw_vci(cycle_vci, f'(It {i})', is_first_iteration=(i == 0))
             else:
-                draw_vci(vci, '(Final)')  # Fallback for old saved results
+                draw_vci(vci, '(Final)')
     except Exception as e:
         print(f"Error drawing virtual constraints: {e}")
 
@@ -1045,6 +1068,9 @@ pn.bind(
     y_max_input,
     keep_zoom_checkbox,
     reset_counter,
+    show_angle_bounds_checkbox,
+    show_front_wall_checkbox,
+    show_centroid_depth_checkbox,
     watch=True
 )
 
@@ -1734,7 +1760,7 @@ controls = pn.Column(
     frame_player,
     frame_input,
     iterate_selector,
-    axis_controls,
+    plot_settings_controls,
     data_browser_mode,
     nees_group_selector,
     error_group_selector,
